@@ -1,0 +1,40 @@
+# @package _global_
+
+seed: 42
+epochs: 1
+backend: gloo
+lr_init: 0.001
+# momentum: 0.5
+num_threads: 0
+logfreq: 10
+batch_size: 50
+test_batch_size: 50
+fp16_allreduce: False
+
+
+
+
+# pytorch geometric data 
+path_to_vtk: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
+path_to_ei: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_index
+path_to_ea: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_attr
+path_to_pos: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/pos
+
+
+
+
+hydra:
+  job:
+    chdir: true
+
+    #defaults:
+    #  - override hydra/hydra_logging: colorlog
+    #  - override hydra/job_logging: colorlog
+
+# path to original working directory
+# hydra hijacks working directory by changing it to the new log directory
+# so its useful to have this path as a special variable
+# https://hydra.cc/docs/next/tutorials/basic/running_your_app/working_directory
+work_dir: ${hydra:runtime.cwd}
+# path to folder with data
+data_dir: ${work_dir}/datasets/

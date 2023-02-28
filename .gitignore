@@ -8,7 +8,6 @@ figures/
 outputs/
 logs/
 datasets/
-conf/
 
 *.swp
 .DS_Store
