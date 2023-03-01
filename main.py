@@ -245,7 +245,7 @@ class Trainer:
     ) -> Tensor:
         if WITH_CUDA:
             data = data.cuda()
-# 
+        
         self.optimizer.zero_grad()
         out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
         loss = self.loss_fn(out, data.x)
