@@ -121,6 +121,10 @@ class Trainer:
         # ~~~~ Init torch stuff 
         self.setup_torch()
 
+        # ~~~~ Init training and testing loss history 
+        self.loss_hist_train = np.zeros(self.cfg.epochs)
+        self.loss_hist_test = np.zeros(self.cfg.epochs)
+
         # ~~~~ Init datasets
         self.data = self.setup_data()
 
@@ -142,7 +146,9 @@ class Trainer:
         if self.cfg.restart:
             ckpt = torch.load(self.ckpt_path)
             self.model.load_state_dict(ckpt['model_state_dict'])
-            self.epoch_start = ckpt['epoch']
+            self.epoch_start = ckpt['epoch'] + 1
+            self.loss_hist_train = ckpt['loss_hist_train']
+            self.loss_hist_test = ckpt['loss_hist_test']
 
         # ~~~~ Wrap model in DDP
         if WITH_DDP and SIZE > 1:
@@ -162,11 +168,12 @@ class Trainer:
             self.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
             self.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
             if RANK == 0: 
-                astr = 'RESTARTING FROM CHECKPOINT -- AT EPOCH %d/%d' %(self.epoch_start, self.cfg.epochs)
+                astr = 'RESTARTING FROM CHECKPOINT -- STATE AT EPOCH %d/%d' %(self.epoch_start-1, self.cfg.epochs)
                 sepstr = '-' * len(astr)
                 log.info(sepstr)
                 log.info(astr)
                 log.info(sepstr)
+
 
         # if WITH_CUDA:
         #    self.loss_fn = self.loss_fn.cuda()
@@ -340,15 +347,17 @@ def train_mnist(cfg: DictConfig):
     start = time.time()
     trainer = Trainer(cfg)
     epoch_times = []
-    for epoch in range(trainer.epoch_start, cfg.epochs + 1):
+    for epoch in range(trainer.epoch_start, cfg.epochs+1):
         # ~~~~ Training step 
         t0 = time.time()
         train_metrics = trainer.train_epoch(epoch)
+        trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
         epoch_times.append(time.time() - t0)
 
         # ~~~~ Validation step
         test_metrics = trainer.test()
-        if epoch % cfg.logfreq and RANK == 0:
+        trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+        if RANK == 0:
             astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
             sepstr = '-' * len(astr)
             log.info(sepstr)
@@ -366,8 +375,8 @@ def train_mnist(cfg: DictConfig):
         trainer.scheduler.step(test_metrics["loss"])
 
         # ~~~~ Checkpointing step 
-        if epoch % cfg.ckptfreq and RANK == 0:
-            astr = 'Checkpointing on root processor'
+        if epoch % cfg.ckptfreq == 0 and RANK == 0:
+            astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
             sepstr = '-' * len(astr)
             log.info(sepstr)
             log.info(astr)
@@ -380,12 +389,16 @@ def train_mnist(cfg: DictConfig):
                 ckpt = {'epoch' : epoch, 
                         'model_state_dict' : trainer.model.module.state_dict(), 
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict()}
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test}
             else:
                 ckpt = {'epoch' : epoch, 
                         'model_state_dict' : trainer.model.state_dict(), 
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict()}
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test}
 
             torch.save(ckpt, trainer.ckpt_path)
         dist.barrier()
@@ -408,12 +421,16 @@ def train_mnist(cfg: DictConfig):
         if WITH_DDP and SIZE > 1:
             save_dict = {
                         'state_dict' : trainer.model.module.state_dict(), 
-                        'input_dict' : trainer.model.module.input_dict() 
+                        'input_dict' : trainer.model.module.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test
                         }
         else:
             save_dict = {   
                         'state_dict' : trainer.model.state_dict(), 
-                        'input_dict' : trainer.model.input_dict() 
+                        'input_dict' : trainer.model.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test
                         }
 
         torch.save(save_dict, trainer.model_path)
