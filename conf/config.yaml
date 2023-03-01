@@ -11,7 +11,7 @@ ckptfreq: 2
 batch_size: 16
 test_batch_size: 50
 fp16_allreduce: False
-restart: False
+restart: True
 
 
 
@@ -46,3 +46,5 @@ work_dir: ${hydra:runtime.cwd}
 data_dir: ${work_dir}/datasets/
 # path to folder for checkpointing
 ckpt_dir: ${work_dir}/ckpt/ 
+# path to saved model directory
+model_dir: ${work_dir}/saved_models/ 

@@ -113,37 +113,54 @@ class Trainer:
         self.rank = RANK
         if scaler is None:
             self.scaler = None
-
         self.device = 'gpu' if torch.cuda.is_available() else 'cpu'
         self.backend = self.cfg.backend
         if WITH_DDP:
             init_process_group(RANK, SIZE, backend=self.backend)
-
+        
+        # ~~~~ Init torch stuff 
         self.setup_torch()
+
+        # ~~~~ Init datasets
         self.data = self.setup_data()
+
+        # ~~~~ Init model and move to gpu 
         self.model = self.build_model()
         if self.device == 'gpu':
             self.model.cuda()
 
+        # ~~~~ Set model and checkpoint savepaths:
+        try:
+            self.ckpt_path = cfg.ckpt_dir + self.model.get_save_header() + '.tar'
+            self.model_path = cfg.model_dir + self.model.get_save_header() + '.tar'
+        except (AttributeError) as e:
+            self.ckpt_path = cfg.ckpt_dir + 'checkpoint.tar'
+            self.model_path = cfg.model_dir + 'model.tar'
+
+        # ~~~~ Load model parameters if we are restarting from checkpoint
+        self.epoch_start = 1
+        if self.cfg.restart:
+            ckpt = torch.load(self.ckpt_path)
+            self.model.load_state_dict(ckpt['model_state_dict'])
+            self.epoch_start = ckpt['epoch']
+
+        # ~~~~ Wrap model in DDP
         if WITH_DDP and SIZE > 1:
             self.model = DDP(self.model)
 
+        # ~~~~ Set loss function 
         self.loss_fn = nn.MSELoss()
-        self.optimizer = self.build_optimizer(self.model)
-        self.scheduler = self.build_scheduler(self.optimizer)
-        self.epoch_start = 1
 
-        # Restart from checkpoint
+        # ~~~~ Set optimizer 
+        self.optimizer = self.build_optimizer(self.model)
+
+        # ~~~~ Set scheduler 
+        self.scheduler = self.build_scheduler(self.optimizer)
+
+        # ~~~~ Load optimizer+scheduler parameters if we are restarting from checkpoint
         if self.cfg.restart:
-            try:
-                ckpt_path = cfg.ckpt_dir + self.model.get_save_header()
-            except (AttributeError) as e:
-                ckpt_path = cfg.ckpt_dir + 'checkpoint.pt'
-            ckpt = torch.load(ckpt_path)
-            self.model.load_state_dict(ckpt['model_state_dict'])
             self.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-            #self.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
-            self.epoch_start = ckpt['epoch']
+            self.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
             if RANK == 0: 
                 astr = 'RESTARTING FROM CHECKPOINT -- AT EPOCH %d/%d' %(self.epoch_start, self.cfg.epochs)
                 sepstr = '-' * len(astr)
@@ -313,13 +330,11 @@ class Trainer:
             loss_avg = metric_average(running_loss)
         return {'loss': loss_avg}
 
-
 def run_demo(demo_fn: Callable, world_size: int | str) -> None:
     mp.spawn(demo_fn,  # type: ignore
              args=(world_size,),
              nprocs=int(world_size),
              join=True)
-
 
 def train_mnist(cfg: DictConfig):
     start = time.time()
@@ -360,36 +375,54 @@ def train_mnist(cfg: DictConfig):
 
             if not os.path.exists(cfg.ckpt_dir):
                 os.makedirs(cfg.ckpt_dir)
-            
-            try:
-                ckpt_path = cfg.ckpt_dir + trainer.model.get_save_header()
-            except (AttributeError) as e:
-                ckpt_path = cfg.ckpt_dir + 'checkpoint.pt'
+           
+            if WITH_DDP and SIZE > 1:
+                ckpt = {'epoch' : epoch, 
+                        'model_state_dict' : trainer.model.module.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict()}
+            else:
+                ckpt = {'epoch' : epoch, 
+                        'model_state_dict' : trainer.model.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict()}
 
-            ckpt = {'epoch' : epoch, 
-                    'model_state_dict' : trainer.model.state_dict(), 
-                    'optimizer_state_dict' : trainer.optimizer.state_dict()} 
-                    #'scheduler_state_dict' : scheduler.state_dict()}
-            torch.save(ckpt, ckpt_path)
+            torch.save(ckpt, trainer.ckpt_path)
         dist.barrier()
 
-    # ~~~~ # rstr = f'[{RANK}] ::'
-    # ~~~~ # log.info(' '.join([
-    # ~~~~ #     rstr,
-    # ~~~~ #     f'Total training time: {time.time() - start} seconds'
-    # ~~~~ # ]))
+    rstr = f'[{RANK}] ::'
+    log.info(' '.join([
+        rstr,
+        f'Total training time: {time.time() - start} seconds'
+    ]))
     #log.info(' '.join([
     #    rstr,
     #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
     #]))
 
+    if RANK == 0:
+        if WITH_CUDA:  
+            trainer.model.to('cpu')
+        if not os.path.exists(cfg.model_dir):
+            os.makedirs(cfg.model_dir)
+        if WITH_DDP and SIZE > 1:
+            save_dict = {
+                        'state_dict' : trainer.model.module.state_dict(), 
+                        'input_dict' : trainer.model.module.input_dict() 
+                        }
+        else:
+            save_dict = {   
+                        'state_dict' : trainer.model.state_dict(), 
+                        'input_dict' : trainer.model.input_dict() 
+                        }
+
+        torch.save(save_dict, trainer.model_path)
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
     print('Rank %d, local rank %d, which has device %s. Sees %d devices.' %(RANK,int(LOCAL_RANK),DEVICE,torch.cuda.device_count()))
     train_mnist(cfg)
     cleanup()
-
 
 if __name__ == '__main__':
     main()

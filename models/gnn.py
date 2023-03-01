@@ -198,6 +198,18 @@ class MP_GNN(torch.nn.Module):
         return x
 
 
+    def input_dict(self) -> dict:
+        a = { 
+                'in_channels_node' : self.in_channels_node,
+                'in_channels_edge' : self.in_channels_edge,
+                'hidden_channels' : self.hidden_channels,
+                'out_channels' : self.out_channels,
+                'act' : self.act,
+                'n_mlp_encode' : self.n_mlp_encode,
+                'n_mlp_mp' : self.n_mlp_mp
+            }
+        return a
+
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}({self.in_channels_node},{self.hidden_channels},{self.out_channels})')
 

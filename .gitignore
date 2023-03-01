@@ -9,6 +9,7 @@ outputs/
 logs/
 datasets/
 ckpt/
+saved_models/
 
 *.swp
 .DS_Store
