@@ -5,10 +5,14 @@ from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn.conv import MessagePassing
+from torch_geometric.nn import GCNConv
+
+
+
+
 
 class MP_GNN(torch.nn.Module):
-    def __init__(self, 
-                 in_channels_node: int, 
+    def __init__(self, in_channels_node: int, 
                  in_channels_edge: int, 
                  hidden_channels: int, 
                  out_channels: int, 
@@ -94,7 +98,6 @@ class MP_GNN(torch.nn.Module):
 
         # ~~~~ Node decoder
         self.node_decode = torch.nn.ModuleList() 
-        self.node_decode_norm = torch.nn.ModuleList()
         for i in range(self.n_mlp_encode): 
             if i == self.n_mlp_encode - 1:
                 input_features = hidden_channels 
@@ -102,7 +105,6 @@ class MP_GNN(torch.nn.Module):
             else:
                 input_features = hidden_channels 
                 output_features = hidden_channels 
-                self.node_decode_norm.append( nn.LayerNorm(output_features) )
             self.node_decode.append( nn.Linear(input_features, output_features) )
 
         self.reset_parameters()
@@ -130,8 +132,13 @@ class MP_GNN(torch.nn.Module):
         for module in self.node_decode:
             module.reset_parameters()
 
-
-    def forward(self, x, edge_index, edge_attr, batch=None):
+    def forward(
+            self, 
+            x: Tensor, 
+            edge_index: LongTensor, 
+            edge_attr: Tensor, 
+            pos: Tensor, 
+            batch: Optional[LongTensor] = None) -> Tensor:
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
         

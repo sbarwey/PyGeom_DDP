@@ -105,10 +105,8 @@ def cleanup():
 
 def metric_average(val: Tensor):
     if (WITH_DDP):
-        # Sum everything and divide by the total size
         dist.all_reduce(val, op=dist.ReduceOp.SUM)
         return val / SIZE
-
     return val
 
 
@@ -133,14 +131,15 @@ class Trainer:
         if WITH_DDP and SIZE > 1:
             self.model = DDP(self.model)
 
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn = nn.MSELoss()
         self.optimizer = self.build_optimizer(self.model)
+        self.scheduler = []
         # if WITH_CUDA:
         #    self.loss_fn = self.loss_fn.cuda()
 
     def build_model(self) -> nn.Module:
         model = gnn.MP_GNN(in_channels_node=1,
-                           in_channels_edge=2,
+                           in_channels_edge=3,
                            hidden_channels=8,
                            out_channels=1,
                            n_mlp_encode=3,
@@ -202,15 +201,14 @@ class Trainer:
 
     def train_step(
         self,
-        data: Tensor,
-        target: Tensor,
-    ) -> tuple[Tensor, Tensor]:
+        data: DataBatch
+    ) -> Tensor:
         if WITH_CUDA:
-            data, target = data.cuda(), target.cuda()
-
+            data = data.cuda()
+# 
         self.optimizer.zero_grad()
-        probs = self.model(data)
-        loss = self.loss_fn(probs, target)
+        out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+        loss = self.loss_fn(out, data.x)
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
@@ -220,10 +218,7 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-        _, pred = probs.data.max(1)
-        acc = (pred == target).sum()
-
-        return loss, acc
+        return loss
 
     def train_epoch(
             self,
@@ -231,78 +226,69 @@ class Trainer:
     ) -> dict:
         self.model.train()
         start = time.time()
-        running_acc = torch.tensor(0.)
         running_loss = torch.tensor(0.)
+        count = torch.tensor(0.)
         if WITH_CUDA:
-            running_acc = running_acc.cuda()
             running_loss = running_loss.cuda()
+            count = count.cuda()
 
         train_sampler = self.data['train']['sampler']
         train_loader = self.data['train']['loader']
         # DDP: set epoch to sampler for shuffling
         train_sampler.set_epoch(epoch)
         for bidx, data in enumerate(train_loader):
-                
-            #print('proc %d sees data:' %(RANK), data)
-            pass
-
-            # ~~~~ # # Evaluate model
-            # ~~~~ # loss, acc = self.train_step(data, target)
-            # ~~~~ # running_acc += acc
-            # ~~~~ # running_loss += loss.item()
+            #print('Rank %d, bid %d, data:' %(RANK, bidx), data.batch.type())
+            loss = self.train_step(data)
+            running_loss += loss.item()
+            count += 1
             
+            # Log on Rank 0:
+            if bidx % self.cfg.logfreq == 0 and RANK == 0:
+                # DDP: use train_sampler to determine the number of
+                # examples in this workers partition
+                metrics = {
+                    'epoch': epoch,
+                    'dt': time.time() - start,
+                    'batch_loss': loss.item(),
+                    'running_loss': running_loss,
+                }
+                pre = [
+                    f'[{RANK}]',
+                    (   # looks like: [num_processed/total (% complete)]
+                        f'[{epoch}/{self.cfg.epochs}:'
+                        f' {bidx * len(data)}/{len(train_sampler)}'
+                        f' ({100. * bidx / len(train_loader):.0f}%)]'
+                    ),
+                ]
+                log.info(' '.join([
+                    *pre, *[f'{k}={v:.4f}' for k, v in metrics.items()]
+                ]))
 
+        # divide running loss by number of batches
+        running_loss = running_loss / count
+        # Allreduce, mean
+        loss_avg = metric_average(running_loss)
+        return {'loss': loss_avg}
 
-            # ~~~~ # if bidx % self.cfg.logfreq == 0 and RANK == 0:
-            # ~~~~ #     # DDP: use train_sampler to determine the number of
-            # ~~~~ #     # examples in this workers partition
-            # ~~~~ #     metrics = {
-            # ~~~~ #         'epoch': epoch,
-            # ~~~~ #         'dt': time.time() - start,
-            # ~~~~ #         'batch_acc': acc.item() / self.cfg.batch_size,
-            # ~~~~ #         'batch_loss': loss.item() / self.cfg.batch_size,
-            # ~~~~ #         'acc': running_acc / len(self.data['train']['sampler']),
-            # ~~~~ #         'running_loss': (
-            # ~~~~ #             running_loss / len(self.data['train']['sampler'])
-            # ~~~~ #         ),
-            # ~~~~ #     }
-            # ~~~~ #     pre = [
-            # ~~~~ #         f'[{RANK}]',
-            # ~~~~ #         (   # looks like: [num_processed/total (% complete)]
-            # ~~~~ #             f'[{epoch}/{self.cfg.epochs}:'
-            # ~~~~ #             f' {bidx * len(data)}/{len(train_sampler)}'
-            # ~~~~ #             f' ({100. * bidx / len(train_loader):.0f}%)]'
-            # ~~~~ #         ),
-            # ~~~~ #     ]
-            # ~~~~ #     log.info(' '.join([
-            # ~~~~ #         *pre, *[f'{k}={v:.4f}' for k, v in metrics.items()]
-            # ~~~~ #     ]))
-
-        running_loss = running_loss / len(train_sampler)
-        running_acc = running_acc / len(train_sampler)
-        
-        #training_acc = metric_average(running_acc)
-        #loss_avg = metric_average(running_loss)
-
-        loss_avg = 0.0
-        training_acc = 0.0
-        return {'loss': loss_avg, 'acc': training_acc}
-
-    def test(self) -> float:
-        total = 0
-        correct = 0
+    def test(self) -> dict:
+        running_loss = torch.tensor(0.)
+        count = torch.tensor(0.)
+        if WITH_CUDA:
+            running_loss = running_loss.cuda()
+            count = count.cuda()
         self.model.eval()
+        test_loader = self.data['test']['loader']
         with torch.no_grad():
-            for data, target in self.data['test']['loader']:
+            for data in test_loader:
                 if self.device == 'gpu':
-                    data, target = data.cuda(), target.cuda()
-
-                probs = self.model(data)
-                _, predicted = probs.data.max(1)
-                total += target.size(0)
-                correct += (predicted == target).sum().item()
-
-        return correct / total
+                    data = data.cuda()
+                out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+                loss = self.loss_fn(out, data.x)
+                running_loss += loss.item()
+                count += 1
+            running_loss = running_loss / count
+            loss_avg = metric_average(running_loss)
+        return {'loss': loss_avg}
 
 
 def run_demo(demo_fn: Callable, world_size: int | str) -> None:
@@ -317,22 +303,24 @@ def train_mnist(cfg: DictConfig):
     trainer = Trainer(cfg)
     epoch_times = []
     for epoch in range(1, cfg.epochs + 1):
+        # ~~~~ Training step 
         t0 = time.time()
-        metrics = trainer.train_epoch(epoch)
+        train_metrics = trainer.train_epoch(epoch)
         epoch_times.append(time.time() - t0)
 
+        # ~~~~ Validation step
+        test_metrics = trainer.test()
+        
         if epoch % cfg.logfreq and RANK == 0:
-            #acc = trainer.test()
-            acc = 0
-            astr = f'[TEST] Accuracy: {100.0 * acc:.0f}%'
+            print('test, shouold be llogging')
+            astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
             sepstr = '-' * len(astr)
             log.info(sepstr)
             log.info(astr)
             log.info(sepstr)
             summary = '  '.join([
                 '[TRAIN]',
-                f'loss={metrics["loss"]:.4f}',
-                f'acc={metrics["acc"] * 100.0:.0f}%'
+                f'loss={train_metrics["loss"]:.4e}'
             ])
             log.info((sep := '-' * len(summary)))
             log.info(summary)
@@ -344,11 +332,11 @@ def train_mnist(cfg: DictConfig):
         rstr,
         f'Total training time: {time.time() - start} seconds'
     ]))
-    #log.info(' '.join([
-    #    rstr,
-    #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
+    log.info(' '.join([
+        rstr,
+        f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
 
-    #]))
+    ]))
 
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
