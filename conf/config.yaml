@@ -11,7 +11,7 @@ ckptfreq: 2
 batch_size: 16
 test_batch_size: 50
 fp16_allreduce: False
-restart: True
+restart: False
 
 
 

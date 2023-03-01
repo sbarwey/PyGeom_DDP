@@ -130,7 +130,7 @@ class Trainer:
 
         self.loss_fn = nn.MSELoss()
         self.optimizer = self.build_optimizer(self.model)
-        self.scheduler = []
+        self.scheduler = self.build_scheduler(self.optimizer)
         self.epoch_start = 1
 
         # Restart from checkpoint
@@ -170,6 +170,12 @@ class Trainer:
         optimizer = optim.Adam(model.parameters(),
                                lr=SIZE * self.cfg.lr_init)
         return optimizer
+
+    def build_scheduler(self, optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler:
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
+                                patience=5, threshold=0.0001, threshold_mode='rel',
+                                cooldown=0, min_lr=1e-7, eps=1e-08, verbose=True)
+        return scheduler
 
     def setup_torch(self):
         torch.manual_seed(self.cfg.seed)
@@ -341,6 +347,8 @@ def train_mnist(cfg: DictConfig):
             log.info(summary)
             log.info(sep)
 
+        # ~~~~ Step scheduler based on validation loss
+        trainer.scheduler.step(test_metrics["loss"])
 
         # ~~~~ Checkpointing step 
         if epoch % cfg.ckptfreq and RANK == 0:
@@ -365,11 +373,11 @@ def train_mnist(cfg: DictConfig):
             torch.save(ckpt, ckpt_path)
         dist.barrier()
 
-    rstr = f'[{RANK}] ::'
-    log.info(' '.join([
-        rstr,
-        f'Total training time: {time.time() - start} seconds'
-    ]))
+    # ~~~~ # rstr = f'[{RANK}] ::'
+    # ~~~~ # log.info(' '.join([
+    # ~~~~ #     rstr,
+    # ~~~~ #     f'Total training time: {time.time() - start} seconds'
+    # ~~~~ # ]))
     #log.info(' '.join([
     #    rstr,
     #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
