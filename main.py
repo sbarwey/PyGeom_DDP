@@ -1,8 +1,5 @@
 """
-DDP/main.py
-
-Conains simple implementation illustrating how to use PyTorch DDP for
-distributed data parallel training.
+PyTorch DDP integrated with PyGeom for multi-node training
 """
 from __future__ import absolute_import, division, print_function, annotations
 import os
