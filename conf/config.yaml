@@ -1,25 +1,31 @@
 # @package _global_
 
 seed: 42
-epochs: 50
-backend: nccl
+epochs: 5
+backend: gloo
 lr_init: 0.001
 # momentum: 0.5
 num_threads: 0
 logfreq: 10
+ckptfreq: 2
 batch_size: 16
 test_batch_size: 50
 fp16_allreduce: False
+restart: True
 
 
 
+  ## pytorch geometric data (eagle) 
+  #path_to_vtk: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/mnist_unstruct_16_2d_0_final.vtk
+  #path_to_ei: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/edge_index
+  #path_to_ea: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/edge_attr
+  #path_to_pos: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/pos
 
-# pytorch geometric data 
-path_to_vtk: /lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
-path_to_ei: /lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_index
-path_to_ea: /lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_attr
-path_to_pos: /lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/pos
-
+# pytorch geometric data (local)
+path_to_vtk: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
+path_to_ei: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_index
+path_to_ea: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_attr
+path_to_pos: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/pos
 
 
 
@@ -38,3 +44,5 @@ hydra:
 work_dir: ${hydra:runtime.cwd}
 # path to folder with data
 data_dir: ${work_dir}/datasets/
+# path to folder for checkpointing
+ckpt_dir: ${work_dir}/ckpt/ 

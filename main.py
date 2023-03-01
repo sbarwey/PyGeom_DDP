@@ -131,18 +131,38 @@ class Trainer:
         self.loss_fn = nn.MSELoss()
         self.optimizer = self.build_optimizer(self.model)
         self.scheduler = []
+        self.epoch_start = 1
+
+        # Restart from checkpoint
+        if self.cfg.restart:
+            try:
+                ckpt_path = cfg.ckpt_dir + self.model.get_save_header()
+            except (AttributeError) as e:
+                ckpt_path = cfg.ckpt_dir + 'checkpoint.pt'
+            ckpt = torch.load(ckpt_path)
+            self.model.load_state_dict(ckpt['model_state_dict'])
+            self.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            #self.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
+            self.epoch_start = ckpt['epoch']
+            if RANK == 0: 
+                astr = 'RESTARTING FROM CHECKPOINT -- AT EPOCH %d/%d' %(self.epoch_start, self.cfg.epochs)
+                sepstr = '-' * len(astr)
+                log.info(sepstr)
+                log.info(astr)
+                log.info(sepstr)
+
         # if WITH_CUDA:
         #    self.loss_fn = self.loss_fn.cuda()
 
     def build_model(self) -> nn.Module:
         model = gnn.MP_GNN(in_channels_node=1,
-                           in_channels_edge=3,
-                           hidden_channels=8,
-                           out_channels=1,
-                           n_mlp_encode=3,
-                           n_mlp_mp=2,
-                           n_mp=2,
-                           act=F.elu)
+                               in_channels_edge=3,
+                               hidden_channels=8,
+                               out_channels=1,
+                               n_mlp_encode=3,
+                               n_mlp_mp=2,
+                               n_mp=2,
+                               act=F.elu)
         return model
 
     def build_optimizer(self, model: nn.Module) -> torch.optim.Optimizer:
@@ -299,7 +319,7 @@ def train_mnist(cfg: DictConfig):
     start = time.time()
     trainer = Trainer(cfg)
     epoch_times = []
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(trainer.epoch_start, cfg.epochs + 1):
         # ~~~~ Training step 
         t0 = time.time()
         train_metrics = trainer.train_epoch(epoch)
@@ -307,9 +327,7 @@ def train_mnist(cfg: DictConfig):
 
         # ~~~~ Validation step
         test_metrics = trainer.test()
-        
         if epoch % cfg.logfreq and RANK == 0:
-            print('test, shouold be llogging')
             astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
             sepstr = '-' * len(astr)
             log.info(sepstr)
@@ -324,16 +342,38 @@ def train_mnist(cfg: DictConfig):
             log.info(sep)
 
 
+        # ~~~~ Checkpointing step 
+        if epoch % cfg.ckptfreq and RANK == 0:
+            astr = 'Checkpointing on root processor'
+            sepstr = '-' * len(astr)
+            log.info(sepstr)
+            log.info(astr)
+            log.info(sepstr)
+
+            if not os.path.exists(cfg.ckpt_dir):
+                os.makedirs(cfg.ckpt_dir)
+            
+            try:
+                ckpt_path = cfg.ckpt_dir + trainer.model.get_save_header()
+            except (AttributeError) as e:
+                ckpt_path = cfg.ckpt_dir + 'checkpoint.pt'
+
+            ckpt = {'epoch' : epoch, 
+                    'model_state_dict' : trainer.model.state_dict(), 
+                    'optimizer_state_dict' : trainer.optimizer.state_dict()} 
+                    #'scheduler_state_dict' : scheduler.state_dict()}
+            torch.save(ckpt, ckpt_path)
+        dist.barrier()
+
     rstr = f'[{RANK}] ::'
     log.info(' '.join([
         rstr,
         f'Total training time: {time.time() - start} seconds'
     ]))
-    log.info(' '.join([
-        rstr,
-        f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
-
-    ]))
+    #log.info(' '.join([
+    #    rstr,
+    #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
+    #]))
 
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
