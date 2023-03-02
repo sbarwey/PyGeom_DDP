@@ -5,26 +5,29 @@ from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.nn import GCNConv
-
 
 class Multiscale_MessagePassing(torch.nn.Module):
-    def __init__(self, edge_aggregator, 
-                        hidden_channels, 
-                        n_mlp_mp, 
-                        n_mp_down, 
-                        n_mp_up, 
-                        n_repeat_mp_up,
-                        lengthscales, 
-                        bounding_box,
-                        act=F.elu, 
-                        interpolation_mode='knn',
-                        name='name'):
+    def __init__(self, 
+                 in_channels_node: int,
+                 in_channels_edge: int,
+                 hidden_channels: int, 
+                 n_mlp_encode: int,
+                 n_mlp_mp: int, 
+                 n_mp_down: List[int], 
+                 n_mp_up: List[int], 
+                 n_repeat_mp_up: int,
+                 lengthscales: List[float], 
+                 bounding_box: List[float],
+                 act: Optional[Callable] = F.elu,
+                 interpolation_mode: Optional[str] = 'knn',
+                 name: Optional[str] = 'name'):
         super().__init__()
         self.edge_aggregator = EdgeAggregation() # EdgeAggregation() object (defined below)
         self.hidden_channels = hidden_channels
         self.act = act
         self.interpolation_mode = interpolation_mode
+        self.n_mlp_encode = n_mlp_encode
+        self.n_mlp_decode = n_mlp_encode
         self.n_mlp_mp = n_mlp_mp # number of MLP layers in node/edge update functions used in message passing blocks
         self.n_mp_down = n_mp_down # number of message passing blocks in downsampling path 
         self.n_mp_up = n_mp_up # number of message passing blocks in upsampling path  
@@ -47,6 +50,41 @@ class Multiscale_MessagePassing(torch.nn.Module):
         self.name = name
 
         assert(len(self.lengthscales) == self.depth), "size of lengthscales must be equal to size of n_mp_up"
+
+        # ~~~~ Node encoder 
+        self.node_encode = torch.nn.ModuleList() 
+        for i in range(self.n_mlp_encode): 
+            if i == 0:
+                input_features = in_channels_node 
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels 
+                output_features = hidden_channels 
+            self.node_encode.append( nn.Linear(input_features, output_features) )
+        self.node_encode_norm = nn.LayerNorm(output_features)
+    
+        # ~~~~ Edge encoder 
+        self.edge_encode = torch.nn.ModuleList() 
+        for i in range(self.n_mlp_encode): 
+            if i == 0:
+                input_features = in_channels_edge
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels 
+                output_features = hidden_channels 
+            self.edge_encode.append( nn.Linear(input_features, output_features) )
+        self.edge_encode_norm = nn.LayerNorm(output_features)
+            
+        # ~~~~ Node decoder
+        self.node_decode = torch.nn.ModuleList()
+        for i in range(self.n_mlp_decode):
+            if i == self.n_mlp_decode - 1:
+                input_features = hidden_channels
+                output_features = in_channels_node
+            else:
+                input_features = hidden_channels
+                output_features = hidden_channels
+            self.node_decode.append( nn.Linear(input_features, output_features) )
 
         # ~~~~ DOWNWARD Message Passing
         # Edge updates: 
@@ -216,6 +254,22 @@ class Multiscale_MessagePassing(torch.nn.Module):
     def forward(self, x, edge_index, edge_attr, pos, batch=None):
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
+
+        # ~~~~ Node Encoder: 
+        for i in range(self.n_mlp_encode):
+            x = self.node_encode[i](x) 
+            if i < self.n_mlp_encode - 1:
+                x = self.act(x)
+        x = self.node_encode_norm(x)
+
+        # ~~~~ Edge Encoder: 
+        for i in range(self.n_mlp_decode):
+            edge_attr = self.edge_encode[i](edge_attr)
+            if i < self.n_mlp_decode - 1:
+                edge_attr = self.act(edge_attr)
+            else:
+                edge_attr = edge_attr
+        edge_attr = self.edge_encode_norm(edge_attr)
 
         # ~~~~ INITIAL MESSAGE PASSING ON FINE GRAPH (m = 0)
         m = 0 # level index 
@@ -484,27 +538,46 @@ class Multiscale_MessagePassing(torch.nn.Module):
                     
                     # 7) node layer norm 
                     x = self.node_up_norms[m][i](x)
+
+        # ~~~~ Node Decoder: 
+        for i in range(self.n_mlp_encode):
+            x = self.node_decode[i](x)
+            if i < self.n_mlp_encode - 1:
+                x = self.act(x)
+
         return x 
 
-    def input_dict(self):
-        a = { 'edge_aggregator' : self.edge_aggregator, 
+    def input_dict(self) -> dict:
+        a = { 
+                'in_channels_node' : self.in_channels_node,
+                'in_channels_edge' : self.in_channels_edge,
                 'hidden_channels' : self.hidden_channels, 
-                'act' : self.act, 
+                'n_mlp_encode' : self.n_mlp_encode,
+                'n_mlp_mp' : self.n_mlp_mp,
+                'n_mp_down' : self.n_mp_down,
+                'n_mp_up' : self.n_mp_up,
+                'n_repeat_mp_up' : self.n_repeat_mp_up,
+                'lengthscales' : self.lengthscales,
+                'bounding_box' : self.bounding_box, 
+                'act' : self.act,
                 'interpolation_mode' : self.interpolation_mode,
-                'n_mlp_mp' : self.n_mlp_mp, 
-                'n_mp_down' : self.n_mp_down, 
-                'n_mp_up' : self.n_mp_up, 
-                'n_repeat_mp_up' : self.n_repeat_mp_up, 
-                'depth' : self.depth, 
-                'lengthscales' : self.lengthscales, 
-                'x_lo' : self.x_lo, 
-                'x_hi' : self.x_hi,
-                'y_lo' : self.y_lo, 
-                'y_hi' : self.y_hi,
-                'name' : self.name }
+                'name' : self.name
+             }
         return a
 
     def reset_parameters(self):
+        # Node encoding
+        for module in self.node_encode:
+            module.reset_parameters()
+
+        # Edge encoding 
+        for module in self.edge_encode:
+            module.reset_parameters()
+
+        # Node decoder:
+        for module in self.node_decode:
+            module.reset_parameters()
+
         # Down Message passing, edge update 
         for modulelist_level in self.edge_down_mps:
             for modulelist_mp in modulelist_level:
