@@ -4,7 +4,9 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
+import torch_geometric.nn as tgnn
 from torch_geometric.nn.conv import MessagePassing
+from pooling import TopKPooling_Mod, avg_pool_mod, avg_pool_mod_no_x
 
 class Multiscale_MessagePassing(torch.nn.Module):
     def __init__(self, 
@@ -22,8 +24,11 @@ class Multiscale_MessagePassing(torch.nn.Module):
                  interpolation_mode: Optional[str] = 'knn',
                  name: Optional[str] = 'name'):
         super().__init__()
-        self.edge_aggregator = EdgeAggregation() # EdgeAggregation() object (defined below)
+        self.in_channels_node = in_channels_node
+        self.out_channels_node = in_channels_node
+        self.in_channels_edge = in_channels_edge
         self.hidden_channels = hidden_channels
+        self.edge_aggregator = EdgeAggregation() # EdgeAggregation() object (defined below)
         self.act = act
         self.interpolation_mode = interpolation_mode
         self.n_mlp_encode = n_mlp_encode
@@ -34,19 +39,20 @@ class Multiscale_MessagePassing(torch.nn.Module):
         self.n_repeat_mp_up = n_repeat_mp_up # number of times to repeat each upward MP layer 
         self.depth = len(n_mp_up) # depth of u net 
         self.lengthscales = lengthscales # lengthscales needed for voxel grid clustering
+        self.bounding_box = bounding_box
 
         # l_char is hard-coded!
         self.l_char = [0.001] + self.lengthscales
-        if not bounding_box:
+        if not self.bounding_box:
             self.x_lo = None
             self.x_hi = None
             self.y_lo = None
             self.y_hi = None
         else:
-            self.x_lo = bounding_box[0]
-            self.x_hi = bounding_box[1]
-            self.y_lo = bounding_box[2]
-            self.y_hi = bounding_box[3]
+            self.x_lo = self.bounding_box[0]
+            self.x_hi = self.bounding_box[1]
+            self.y_lo = self.bounding_box[2]
+            self.y_hi = self.bounding_box[3]
         self.name = name
 
         assert(len(self.lengthscales) == self.depth), "size of lengthscales must be equal to size of n_mp_up"
@@ -55,11 +61,11 @@ class Multiscale_MessagePassing(torch.nn.Module):
         self.node_encode = torch.nn.ModuleList() 
         for i in range(self.n_mlp_encode): 
             if i == 0:
-                input_features = in_channels_node 
-                output_features = hidden_channels 
+                input_features = self.in_channels_node 
+                output_features = self.hidden_channels 
             else:
-                input_features = hidden_channels 
-                output_features = hidden_channels 
+                input_features = self.hidden_channels 
+                output_features = self.hidden_channels 
             self.node_encode.append( nn.Linear(input_features, output_features) )
         self.node_encode_norm = nn.LayerNorm(output_features)
     
@@ -67,11 +73,11 @@ class Multiscale_MessagePassing(torch.nn.Module):
         self.edge_encode = torch.nn.ModuleList() 
         for i in range(self.n_mlp_encode): 
             if i == 0:
-                input_features = in_channels_edge
-                output_features = hidden_channels 
+                input_features = self.in_channels_edge
+                output_features = self.hidden_channels 
             else:
-                input_features = hidden_channels 
-                output_features = hidden_channels 
+                input_features = self.hidden_channels 
+                output_features = self.hidden_channels 
             self.edge_encode.append( nn.Linear(input_features, output_features) )
         self.edge_encode_norm = nn.LayerNorm(output_features)
             
@@ -79,11 +85,11 @@ class Multiscale_MessagePassing(torch.nn.Module):
         self.node_decode = torch.nn.ModuleList()
         for i in range(self.n_mlp_decode):
             if i == self.n_mlp_decode - 1:
-                input_features = hidden_channels
-                output_features = in_channels_node
+                input_features = self.hidden_channels
+                output_features = self.out_channels_node
             else:
-                input_features = hidden_channels
-                output_features = hidden_channels
+                input_features = self.hidden_channels
+                output_features = self.hidden_channels
             self.node_decode.append( nn.Linear(input_features, output_features) )
 
         # ~~~~ DOWNWARD Message Passing
@@ -251,7 +257,13 @@ class Multiscale_MessagePassing(torch.nn.Module):
         # Reset params 
         self.reset_parameters()
 
-    def forward(self, x, edge_index, edge_attr, pos, batch=None):
+    def forward(
+            self, 
+            x: Tensor, 
+            edge_index: LongTensor, 
+            edge_attr: Tensor, 
+            pos: Tensor, 
+            batch: Optional[LongTensor] = None) -> Tensor:
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
 
