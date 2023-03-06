@@ -20,18 +20,19 @@ def get_pygeom_dataset_cell_data_radius(
         path_to_ea : str, 
         path_to_pos : str, 
         device_for_loading : str, 
+        time_lag : Optional[int] = 1,
         features_to_keep : Optional[list] = None, 
         fraction_valid : Optional[float] = 0.1, 
         multiple_cases : Optional[bool] = False ) -> tuple[list,list]:
-    print('Reading vtk: %s' %(path_to_vtk))
+    #print('Reading vtk: %s' %(path_to_vtk))
     mesh = pv.read(path_to_vtk)
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Extract data
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    print('Extracting data from vtk...')
+    #print('Extracting data from vtk...')
     if multiple_cases:
-        print('\tmultiple cases...')
+        #print('\tmultiple cases...')
         data_full_temp = []
         time_vec = []
 
@@ -54,7 +55,7 @@ def get_pygeom_dataset_cell_data_radius(
         time_vec = np.concatenate(time_vec)
         n_snaps = len(time_vec)
     else:
-        print('\tsingle case...')
+        #print('\tsingle case...')
         # Node features 
         data_full_temp = np.array(mesh.cell_data['x']) # [N_nodes x (N_features x N_snaps)]
         field_names = np.array(mesh.field_data['field_list'])
@@ -70,7 +71,7 @@ def get_pygeom_dataset_cell_data_radius(
         data_full[i,:,:] = data_full_temp[:,:,i]
 
     # Edge attributes and index, and node positions 
-    print('Reading edge index and node positions...')
+    #print('Reading edge index and node positions...')
     edge_index = np.loadtxt(path_to_ei, dtype=np.long).T
     #edge_attr = np.loadtxt(path_to_ea, dtype=np.float32)
     pos = np.loadtxt(path_to_pos, dtype=np.float32)
@@ -83,7 +84,7 @@ def get_pygeom_dataset_cell_data_radius(
     # Create radius graph
     # -- outputs are edge_index and edge_attr
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    print('Creating radius graph...')
+    #print('Creating radius graph...')
     # Create initial Knn
     pos = torch.tensor(pos)
     radius = 0.001 # m
@@ -116,9 +117,9 @@ def get_pygeom_dataset_cell_data_radius(
     # Shuffle -- train/valid split
     # set aside 10% of the data for validation  
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    print('arranging data for train/valid split...')
-    print('\tvalidation size is %g * n_data' %(fraction_valid))
-    np.random.seed(12345)
+    #print('arranging data for train/valid split...')
+    #print('\tvalidation size is %g * n_data' %(fraction_valid))
+    #np.random.seed(12345)
 
     # Shuffle 
     n_snaps = data_full.shape[0]
@@ -142,8 +143,8 @@ def get_pygeom_dataset_cell_data_radius(
 
     n_train = n_full - n_valid
     
-    print('\tn_train: ', n_train)
-    print('\tn_valid: ', n_valid)
+    #print('\tn_train: ', n_train)
+    #print('\tn_valid: ', n_valid)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Normalize node data: mean/std standardization  
@@ -203,10 +204,17 @@ def get_pygeom_dataset_cell_data_radius(
 
     # Training 
     data_train_list = []
-    for i in range(n_train):
+    for i in range(n_train - time_lag):
         #print('Train %d/%d' %(i+1, n_train))
+        if time_lag == 0:
+            y_temp = data_train[i]
+        else:
+            y_temp = [] 
+            for t in range(1,time_lag+1):
+                y_temp.append(data_train[i+t])
+
         data_temp = Data(   x = data_train[i],
-                            y = time_vec_train[i],
+                            y = y_temp,
                             distance = distance, 
                             edge_index = edge_index,
                             edge_attr = edge_attr,
@@ -219,13 +227,34 @@ def get_pygeom_dataset_cell_data_radius(
         data_temp = data_temp.to(device_for_loading)
         data_train_list.append(data_temp)
 
+        #data_temp = Data(   x = data_train[i],
+        #                    y = time_vec_train[i],
+        #                    distance = distance, 
+        #                    edge_index = edge_index,
+        #                    edge_attr = edge_attr,
+        #                    pos = pos,
+        #                    data_scale = (data_train_mean, data_train_std), 
+        #                    edge_scale = (edge_attr_mean, edge_attr_std), 
+        #                    # distance_scale = (distance_mean, distance_std),
+        #                    t = time_vec_train[i],
+        #                    field_names = field_names)
+        #data_temp = data_temp.to(device_for_loading)
+        #data_train_list.append(data_temp)
+
 
     # Testing: 
     data_valid_list = []
-    for i in range(n_valid):
+    for i in range(n_valid - time_lag):
         #print('Test %d/%d' %(i+1, n_valid))
+        if time_lag == 0:
+            y_temp = data_valid[i]
+        else:
+            y_temp = [] 
+            for t in range(1, time_lag+1):
+                y_temp.append(data_valid[i+t])
+
         data_temp = Data(   x = data_valid[i],
-                            y = time_vec_valid[i],
+                            y = y_temp,
                             distance = distance,
                             edge_index = edge_index,
                             edge_attr = edge_attr,
@@ -237,6 +266,21 @@ def get_pygeom_dataset_cell_data_radius(
                             field_names = field_names)
         data_temp = data_temp.to(device_for_loading)
         data_valid_list.append(data_temp)
+
+
+        # data_temp = Data(   x = data_valid[i],
+        #                     y = time_vec_valid[i],
+        #                     distance = distance,
+        #                     edge_index = edge_index,
+        #                     edge_attr = edge_attr,
+        #                     pos = pos,
+        #                     data_scale = (data_train_mean, data_train_std),
+        #                     edge_scale = (edge_attr_mean, edge_attr_std), 
+        #                     #distance_scale = (distance_mean, distance_std),
+        #                     t = time_vec_valid[i],
+        #                     field_names = field_names)
+        # data_temp = data_temp.to(device_for_loading)
+        # data_valid_list.append(data_temp)
     
 
     print('\n\tTraining samples: ', len(data_train_list))
