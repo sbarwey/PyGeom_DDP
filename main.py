@@ -231,6 +231,11 @@ class Trainer:
         torch.manual_seed(self.cfg.seed)
         np.random.seed(self.cfg.seed)
 
+    def get_rollout_steps(self) -> int:
+        if self.training_iter >= 0:
+            L = self.cfg.rollout_steps
+        return L
+
     def setup_data(self):
         kwargs = {}
         #if self.device == 'gpu':
@@ -303,7 +308,9 @@ class Trainer:
         # Rollout prediction: 
         x_new = data.x
         loss = torch.tensor([0.0])
-        for t in range(self.cfg.rollout_steps):
+        rollout_length = self.get_rollout_steps()
+        loss_scale = torch.tensor([1.0/rollout_length])
+        for t in range(rollout_length):
             if self.cfg.use_noise and t == 0:
                 noise = self.noise_dist.sample((data.x.shape[0],))
                 if WITH_CUDA:
@@ -319,7 +326,7 @@ class Trainer:
             target = data.y[t]
             if WITH_CUDA:
                 target = target.cuda()
-            loss += self.loss_fn(x_new, target)
+            loss += loss_scale * self.loss_fn(x_new, target)
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
