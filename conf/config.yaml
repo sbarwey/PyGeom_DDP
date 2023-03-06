@@ -14,7 +14,7 @@ test_batch_size: 10
 fp16_allreduce: False
 restart: False
 
-time_lag: 2
+rollout_steps: 2
 
 hydra:
   job:

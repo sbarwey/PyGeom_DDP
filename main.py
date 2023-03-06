@@ -248,7 +248,7 @@ class Trainer:
         train_dataset, test_dataset = bfs.get_pygeom_dataset_cell_data_radius(
                 self.cfg.path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
                 self.cfg.path_to_pos, device_for_loading, 
-                time_lag = self.cfg.time_lag,
+                time_lag = self.cfg.rollout_steps,
                 features_to_keep = [1,2], 
                 fraction_valid = 0.1, 
                 multiple_cases = True)
@@ -303,7 +303,7 @@ class Trainer:
         # Rollout prediction: 
         x_new = data.x
         loss = torch.tensor([0.0])
-        for t in range(self.cfg.time_lag):
+        for t in range(self.cfg.rollout_steps):
             if self.cfg.use_noise and t == 0:
                 noise = self.noise_dist.sample((data.x.shape[0],))
                 if WITH_CUDA:
