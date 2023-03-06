@@ -5,6 +5,7 @@ epochs: 10
 backend: gloo
 lr_init: 0.001
 # momentum: 0.5
+use_noise : True
 num_threads: 0
 logfreq: 10
 ckptfreq: 5

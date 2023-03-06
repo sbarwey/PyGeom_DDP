@@ -17,6 +17,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.cuda.amp.grad_scaler import GradScaler
 import torch.multiprocessing as mp
+import torch.distributions as tdist 
 
 import torch.distributed as dist
 import torch.nn as nn
@@ -126,6 +127,13 @@ class Trainer:
         self.loss_hist_train = np.zeros(self.cfg.epochs)
         self.loss_hist_test = np.zeros(self.cfg.epochs)
 
+        # ~~~~ Noise setup
+        self.noise_dist = []
+        if self.cfg.use_noise:
+            mu = 0.0 
+            std = 1e-2 
+            self.noise_dist = tdist.Normal(torch.tensor([mu]), torch.tensor([std]))
+
         # ~~~~ Init datasets
         self.data = self.setup_data()
 
@@ -144,10 +152,12 @@ class Trainer:
 
         # ~~~~ Load model parameters if we are restarting from checkpoint
         self.epoch_start = 1
+        self.training_iter = 0
         if self.cfg.restart:
             ckpt = torch.load(self.ckpt_path)
             self.model.load_state_dict(ckpt['model_state_dict'])
             self.epoch_start = ckpt['epoch'] + 1
+            self.training_iter = ckpt['training_iter']
             self.loss_hist_train = ckpt['loss_hist_train']
             self.loss_hist_test = ckpt['loss_hist_test']
 
@@ -278,7 +288,11 @@ class Trainer:
         data: DataBatch
     ) -> Tensor:
         if WITH_CUDA:
-            data = data.cuda()
+            data.x = data.x.cuda()
+            data.edge_index = data.edge_index.cuda()
+            data.edge_attr = data.edge_attr.cuda()
+            data.pos = data.pos.cuda()
+            data.batch = data.batch.cuda()
         
         self.optimizer.zero_grad()
 
@@ -290,10 +304,22 @@ class Trainer:
         x_new = data.x
         loss = torch.tensor([0.0])
         for t in range(self.cfg.time_lag):
-            x_old = torch.clone(x_new)
+            if self.cfg.use_noise and t == 0:
+                noise = self.noise_dist.sample((data.x.shape[0],))
+                if WITH_CUDA:
+                    noise.cuda()
+                x_old = torch.clone(x_new) + noise
+            else:
+                x_old = torch.clone(x_new)
+
             x_src = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
             x_new = x_old + x_src
-            loss += self.loss_fn(x_new, data.y[t])
+
+            # Accumulate loss 
+            target = data.y[t]
+            if WITH_CUDA:
+                target = target.cuda()
+            loss += self.loss_fn(x_new, target)
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
@@ -325,7 +351,8 @@ class Trainer:
             #print('Rank %d, bid %d, data:' %(RANK, bidx), data.y[1].shape)
             loss = self.train_step(data)
             running_loss += loss.item()
-            count += 1
+            count += 1 # accumulate current batch count 
+            self.training_iter += 1 # accumulate total training iteration
             
             # Log on Rank 0:
             if bidx % self.cfg.logfreq == 0 and RANK == 0:
@@ -425,6 +452,7 @@ def train(cfg: DictConfig):
            
             if WITH_DDP and SIZE > 1:
                 ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
                         'model_state_dict' : trainer.model.module.state_dict(), 
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
@@ -432,6 +460,7 @@ def train(cfg: DictConfig):
                         'loss_hist_test' : trainer.loss_hist_test}
             else:
                 ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
                         'model_state_dict' : trainer.model.state_dict(), 
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
@@ -461,14 +490,16 @@ def train(cfg: DictConfig):
                         'state_dict' : trainer.model.module.state_dict(), 
                         'input_dict' : trainer.model.module.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : traininer.training_iter
                         }
         else:
             save_dict = {   
                         'state_dict' : trainer.model.state_dict(), 
                         'input_dict' : trainer.model.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : traininer.training_iter
                         }
 
         torch.save(save_dict, trainer.model_path)
