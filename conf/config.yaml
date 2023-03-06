@@ -13,22 +13,6 @@ test_batch_size: 50
 fp16_allreduce: False
 restart: False
 
-
-
-  ## pytorch geometric data (eagle) 
-  #path_to_vtk: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/mnist_unstruct_16_2d_0_final.vtk
-  #path_to_ei: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/edge_index
-  #path_to_ea: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/edge_attr
-  #path_to_pos: /lus/eagle/projects/datascience/sbarwey/codes/ml/ddp_pygeom/datasets/unstructured_mnist/pos
-
-# pytorch geometric data (local)
-path_to_vtk: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
-path_to_ei: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_index
-path_to_ea: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/edge_attr
-path_to_pos: /Users/sbarwey/Files/ml/DDP_PyGeom/datasets/UNSTRUCTURED_MNIST/pos
-
-
-
 hydra:
   job:
     chdir: true
@@ -48,3 +32,21 @@ data_dir: ${work_dir}/datasets/
 ckpt_dir: ${work_dir}/ckpt/ 
 # path to saved model directory
 model_dir: ${work_dir}/saved_models/ 
+
+
+## pytorch geometric data (eagle) 
+#path_to_vtk: ${work_dir}/datasets/unstructured_mnist/mnist_unstruct_16_2d_0_final.vtk
+#path_to_ei: ${work_dir}/datasets/unstructured_mnist/edge_index
+#path_to_ea: ${work_dir}/datasets/unstructured_mnist/edge_attr
+#path_to_pos: ${work_dir}/datasets/unstructured_mnist/pos
+
+## pytorch geometric data (local)
+#path_to_vtk: ${work_dir}/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
+#path_to_ei: ${work_dir}/datasets/UNSTRUCTURED_MNIST/edge_index
+#path_to_ea: ${work_dir}/datasets/UNSTRUCTURED_MNIST/edge_attr
+#path_to_pos: ${work_dir}/datasets/UNSTRUCTURED_MNIST/pos
+
+path_to_vtk: ${work_dir}/datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk
+path_to_ei: ${work_dir}/datasets/BACKWARD_FACING_STEP/edge_index
+path_to_ea: ${work_dir}/datasets/BACKWARD_FACING_STEP/edge_attr
+path_to_pos: ${work_dir}/datasets/BACKWARD_FACING_STEP/pos
