@@ -48,7 +48,7 @@ import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
 ax.plot(a['loss_hist_train'])
 ax.plot(a['loss_hist_test'])
-ax.set_yscale('log')
+#ax.set_yscale('log')
 plt.show(block=False)
 
 
