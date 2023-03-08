@@ -434,6 +434,7 @@ class Trainer:
             loss_avg = metric_average(running_loss)
         return {'loss': loss_avg}
 
+
 def run_demo(demo_fn: Callable, world_size: int | str) -> None:
     mp.spawn(demo_fn,  # type: ignore
              args=(world_size,),
