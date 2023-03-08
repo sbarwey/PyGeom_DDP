@@ -5,7 +5,7 @@
 #PBS -l filesystems=home:eagle
 #PBS -q debug
 #PBS -A datascience
-#PBS -N ddp_no_affinity
+#PBS -N ddp_pygeom
 
 
 # Change to working directory

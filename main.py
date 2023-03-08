@@ -224,7 +224,7 @@ class Trainer:
     def build_scheduler(self, optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
                                 patience=5, threshold=0.0001, threshold_mode='rel',
-                                cooldown=0, min_lr=1e-7, eps=1e-08, verbose=True)
+                                cooldown=0, min_lr=1e-8, eps=1e-08, verbose=True)
         return scheduler
 
     def setup_torch(self):
@@ -292,12 +292,18 @@ class Trainer:
         self,
         data: DataBatch
     ) -> Tensor:
+        rollout_length = self.get_rollout_steps()
+        loss = torch.tensor([0.0])
+        loss_scale = torch.tensor([1.0/rollout_length])
+
         if WITH_CUDA:
             data.x = data.x.cuda()
             data.edge_index = data.edge_index.cuda()
             data.edge_attr = data.edge_attr.cuda()
             data.pos = data.pos.cuda()
             data.batch = data.batch.cuda()
+            loss = loss.cuda()
+            loss_scale = loss_scale.cuda()
         
         self.optimizer.zero_grad()
 
@@ -307,14 +313,11 @@ class Trainer:
 
         # Rollout prediction: 
         x_new = data.x
-        loss = torch.tensor([0.0])
-        rollout_length = self.get_rollout_steps()
-        loss_scale = torch.tensor([1.0/rollout_length])
         for t in range(rollout_length):
             if self.cfg.use_noise and t == 0:
                 noise = self.noise_dist.sample((data.x.shape[0],))
                 if WITH_CUDA:
-                    noise.cuda()
+                    noise = noise.cuda()
                 x_old = torch.clone(x_new) + noise
             else:
                 x_old = torch.clone(x_new)
@@ -399,10 +402,32 @@ class Trainer:
         test_loader = self.data['test']['loader']
         with torch.no_grad():
             for data in test_loader:
-                if self.device == 'gpu':
-                    data = data.cuda()
-                out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
-                loss = self.loss_fn(out, data.x)
+                rollout_length = self.get_rollout_steps()
+                loss = torch.tensor([0.0])
+                loss_scale = torch.tensor([1.0/rollout_length])
+
+                if WITH_CUDA:
+                    data.x = data.x.cuda()
+                    data.edge_index = data.edge_index.cuda()
+                    data.edge_attr = data.edge_attr.cuda()
+                    data.pos = data.pos.cuda()
+                    data.batch = data.batch.cuda()
+                    loss = loss.cuda()
+                    loss_scale = loss_scale.cuda()
+                
+                # Rollout prediction: 
+                x_new = data.x
+                for t in range(rollout_length):
+                    x_old = torch.clone(x_new)
+                    x_src = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_new = x_old + x_src
+
+                    # Accumulate loss 
+                    target = data.y[t]
+                    if WITH_CUDA:
+                        target = target.cuda()
+                    loss += loss_scale * self.loss_fn(x_new, target)
+
                 running_loss += loss.item()
                 count += 1
             running_loss = running_loss / count
@@ -424,7 +449,8 @@ def train(cfg: DictConfig):
         t0 = time.time()
         train_metrics = trainer.train_epoch(epoch)
         trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
-        epoch_times.append(time.time() - t0)
+        epoch_time = time.time() - t0
+        epoch_times.append(epoch_time)
 
         # ~~~~ Validation step
         test_metrics = trainer.test()
@@ -437,11 +463,13 @@ def train(cfg: DictConfig):
             log.info(sepstr)
             summary = '  '.join([
                 '[TRAIN]',
-                f'loss={train_metrics["loss"]:.4e}'
+                f'loss={train_metrics["loss"]:.4e}', 
+                f'epoch_time={epoch_time:.4g} sec'
             ])
             log.info((sep := '-' * len(summary)))
             log.info(summary)
             log.info(sep)
+
 
         # ~~~~ Step scheduler based on validation loss
         trainer.scheduler.step(test_metrics["loss"])
@@ -498,7 +526,7 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.module.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : traininer.training_iter
+                        'training_iter' : trainer.training_iter
                         }
         else:
             save_dict = {   
@@ -506,7 +534,7 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : traininer.training_iter
+                        'training_iter' : trainer.training_iter
                         }
 
         torch.save(save_dict, trainer.model_path)
