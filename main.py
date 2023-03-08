@@ -135,6 +135,7 @@ class Trainer:
             self.noise_dist = tdist.Normal(torch.tensor([mu]), torch.tensor([std]))
 
         # ~~~~ Init datasets
+        self.bounding_box = [0.0, 0.0, 0.0, 0.0]
         self.data = self.setup_data()
 
         # ~~~~ Init model and move to gpu 
@@ -189,18 +190,19 @@ class Trainer:
         #    self.loss_fn = self.loss_fn.cuda()
 
     def build_model(self) -> nn.Module:
-
+        
+        bbox = [tnsr.item() for tnsr in self.bounding_box]
         model = gnn.Multiscale_MessagePassing(
                 in_channels_node = 2,
                 in_channels_edge = 3,
-                hidden_channels = 8,
+                hidden_channels = 128,
                 n_mlp_encode = 3,
                 n_mlp_mp = 2,
-                n_mp_down = [2], #[2,2]
-                n_mp_up = [], #[2]
+                n_mp_down = [4,4,4], #[2,2]
+                n_mp_up = [4,4], #[2]
                 n_repeat_mp_up = 1,
-                lengthscales = [], #[0.5]
-                bounding_box = [0.0, 6.28, 0.0, 6.28],
+                lengthscales = [0.01, 0.02], #[0.5]
+                bounding_box = bbox,
                 act = F.elu,
                 interpolation_mode = 'knn',
                 name = 'test')
@@ -257,6 +259,7 @@ class Trainer:
                 features_to_keep = [1,2], 
                 fraction_valid = 0.1, 
                 multiple_cases = True)
+        self.bounding_box = train_dataset[0].bounding_box
 
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(

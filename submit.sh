@@ -1,11 +1,11 @@
 #!/bin/sh
-#PBS -l select=2:system=polaris
+#PBS -l select=10:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=0:10:00
+#PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
-#PBS -q debug
+#PBS -q debug-scaling
 #PBS -A datascience
-#PBS -N ddp_pygeom
+#PBS -N GNN_DDP
 
 
 # Change to working directory
