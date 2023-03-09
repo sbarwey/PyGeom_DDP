@@ -252,14 +252,26 @@ class Trainer:
         # )
 
         # ~~~~ BFS
-        train_dataset, test_dataset = bfs.get_pygeom_dataset_cell_data_radius(
-                self.cfg.path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
+        filenames = ['Backward_Facing_Step_Cropped_Re_26214.vtk', 
+                     'Backward_Facing_Step_Cropped_Re_29307.vtk', 
+                     'Backward_Facing_Step_Cropped_Re_39076.vtk', 
+                     'Backward_Facing_Step_Cropped_Re_45589.vtk'] 
+        train_dataset = []
+        test_dataset = []
+        for f in filenames: 
+            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/%s' %(f)
+            train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data_radius(
+                path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
                 self.cfg.path_to_pos, device_for_loading, 
                 time_lag = self.cfg.rollout_steps,
                 features_to_keep = [1,2], 
                 fraction_valid = 0.1, 
-                multiple_cases = True)
+                multiple_cases = False)
+            train_dataset = train_dataset + train_dataset_temp
+            test_dataset = test_dataset + test_dataset_temp
+
         self.bounding_box = train_dataset[0].bounding_box
+
 
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
