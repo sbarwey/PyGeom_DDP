@@ -274,7 +274,7 @@ def get_pygeom_dataset_cell_data_radius(
             for t in range(time_lag):
                 y_temp.append(data_y_valid[i,t])
 
-        data_temp = Data(   x = data_x_valid[i],
+        data_temp = Data(   x = data_x_valid[i,0],
                             y = y_temp,
                             distance = distance,
                             edge_index = edge_index,

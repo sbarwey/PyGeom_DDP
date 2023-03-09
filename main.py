@@ -272,7 +272,6 @@ class Trainer:
 
         self.bounding_box = train_dataset[0].bounding_box
 
-
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
             train_dataset, num_replicas=SIZE, rank=RANK,
