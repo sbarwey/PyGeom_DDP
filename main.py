@@ -198,10 +198,10 @@ class Trainer:
                 hidden_channels = 128,
                 n_mlp_encode = 3,
                 n_mlp_mp = 2,
-                n_mp_down = [8], # [4,4,4], #[2,2]
-                n_mp_up = [], #[4,4], #[2]
+                n_mp_down = [4,4,4], # [8], # [4,4,4], #[2,2]
+                n_mp_up = [4,4], #[], #[4,4], #[2]
                 n_repeat_mp_up = 1,
-                lengthscales = [], #[0.01, 0.02], #[0.5]
+                lengthscales = [0.01, 0.02], #[], #[0.01, 0.02], #[0.5]
                 bounding_box = bbox,
                 act = F.elu,
                 interpolation_mode = 'knn',
