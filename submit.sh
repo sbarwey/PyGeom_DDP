@@ -1,9 +1,9 @@
 #!/bin/sh
-#PBS -l select=10:system=polaris
+#PBS -l select=2:system=polaris
 #PBS -l place=scatter
 #PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
-#PBS -q debug-scaling
+#PBS -q debug
 #PBS -A datascience
 #PBS -N GNN_DDP
 
