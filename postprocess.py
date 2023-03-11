@@ -34,21 +34,29 @@ import dataprep.unstructured_mnist as umnist
 import dataprep.backward_facing_step as bfs
 
 
+import matplotlib.pyplot as plt
 
 
 
 
 # Load model 
-a = torch.load('saved_models/model.tar')
+a = torch.load('saved_models/model_single_scale.tar')
+b = torch.load('saved_models/model_multi_scale.tar')
 
 
 
 # Plot losses:
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-ax.plot(a['loss_hist_train'])
-ax.plot(a['loss_hist_test'])
-#ax.set_yscale('log')
+fig, ax = plt.subplots(1,2,sharey=True)
+ax[0].plot(a['loss_hist_train'])
+ax[0].plot(a['loss_hist_test'])
+ax[0].set_yscale('log')
+ax[0].set_ylim([1e-3, 1e-1])
+ax[0].set_xlim([0,150])
+
+ax[1].plot(b['loss_hist_train'])
+ax[1].plot(b['loss_hist_test'])
+ax[1].set_yscale('log')
+ax[1].set_xlim([0,150])
 plt.show(block=False)
 
 
