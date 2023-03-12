@@ -624,6 +624,9 @@ class Multiscale_MessagePassing_UNet(torch.nn.Module):
             for module in self.edge_encoder_f2c_mlp:
                 module.reset_parameters()
 
+    def get_save_header(self):
+        header = '%s' %(self.name)
+        return header
 
 
 class Multiscale_MessagePassing_Layer(torch.nn.Module):

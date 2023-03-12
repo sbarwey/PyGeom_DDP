@@ -14,6 +14,62 @@ import torch_geometric.nn as tgnn
 import torch_geometric.transforms as transforms
 
 
+def get_data_statistics(
+        path_to_vtk : str, 
+        multiple_cases : Optional[bool] = False ) -> List[np.ndarray]:
+    #print('Reading vtk: %s' %(path_to_vtk))
+    mesh = pv.read(path_to_vtk)
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Extract data
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #print('Extracting data from vtk...')
+    if multiple_cases:
+        #print('\tmultiple cases...')
+        data_full_temp = []
+        time_vec = []
+
+        # Get the case file list 
+        case_path_list = mesh.field_data['case_path_list']
+        n_cases = len(case_path_list)
+        for c in range(n_cases):
+            data_full_c = np.array(mesh.cell_data['x_%d' %(c)]) # [N_nodes x (N_features x N_snaps)]
+            time_vec_c = np.array(mesh.field_data['time_%d' %(c)])
+            field_names = np.array(mesh.field_data['field_list'])
+            n_cells = mesh.n_cells
+            n_features = len(field_names)
+            n_snaps = len(time_vec_c)
+            data_full_c = np.reshape(data_full_c, (n_cells, n_features, n_snaps), order='F')
+            data_full_temp.append(data_full_c)
+            time_vec.append(time_vec_c)
+            
+        # Concatenate data_full_temp and time_vec 
+        data_full_temp = np.concatenate(data_full_temp, axis=2)
+        time_vec = np.concatenate(time_vec)
+        n_snaps = len(time_vec)
+    else:
+        #print('\tsingle case...')
+        # Node features 
+        data_full_temp = np.array(mesh.cell_data['x']) # [N_nodes x (N_features x N_snaps)]
+        field_names = np.array(mesh.field_data['field_list'])
+        time_vec = np.array(mesh.field_data['time'])
+        n_cells = mesh.n_cells
+        n_features = len(field_names)
+        n_snaps = len(time_vec)
+        data_full_temp = np.reshape(data_full_temp, (n_cells, n_features, n_snaps), order='F')
+
+    # Do a dumb reshape
+    data_full = np.zeros((n_snaps, n_cells, n_features), dtype=np.float32)
+    for i in range(n_snaps):
+        data_full[i,:,:] = data_full_temp[:,:,i]
+
+    # Compute mean: 
+    data_mean = data_full.mean(axis=(0,1), keepdims=False)
+    data_std = data_full.std(axis=(0,1), keepdims=False)
+
+    return [data_mean, data_std]
+
+
 def get_pygeom_dataset_cell_data_radius(
         path_to_vtk : str, 
         path_to_ei : str, 
@@ -21,6 +77,7 @@ def get_pygeom_dataset_cell_data_radius(
         path_to_pos : str, 
         device_for_loading : str, 
         time_lag : Optional[int] = 1,
+        scaling : Optional[list] = None,
         features_to_keep : Optional[list] = None, 
         fraction_valid : Optional[float] = 0.1, 
         multiple_cases : Optional[bool] = False ) -> tuple[list,list]:
@@ -178,31 +235,28 @@ def get_pygeom_dataset_cell_data_radius(
     #print('data_x_valid: ', data_x_valid.shape)
     #print('data_y_valid: ', data_y_valid.shape)
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Normalize node data: mean/std standardization  
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Scaling node features
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     eps = 1e-10
-    data_train_mean = data_x_train.mean(axis=(0,1,2), keepdims=True)
-    data_train_std = data_x_train.std(axis=(0,1,2), keepdims=True)
+    if scaling:
+        data_train_mean = scaling[0]
+        data_train_std = scaling[1]
+    else:
+        data_train_mean = np.zeros(n_features)
+        data_train_std = np.ones(n_features)
 
     data_x_train = (data_x_train - data_train_mean)/(data_train_std + eps)
     data_y_train = (data_y_train - data_train_mean)/(data_train_std + eps)
     data_x_valid = (data_x_valid - data_train_mean)/(data_train_std + eps)
     data_y_valid = (data_y_valid - data_train_mean)/(data_train_std + eps)
-  
+    
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Normalize edge attributes 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     edge_attr_mean = edge_attr.mean()
     edge_attr_std = edge_attr.std()
     edge_attr = (edge_attr - edge_attr_mean)/(edge_attr_std + eps) 
-    
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # # Normalize distance field  
-    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # distance_mean = distance.mean()
-    # distance_std = distance.std()
-    # distance = (distance - distance_mean)/(distance_std + eps)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Make pyGeom dataset 
@@ -256,9 +310,8 @@ def get_pygeom_dataset_cell_data_radius(
                             edge_attr = edge_attr,
                             pos = pos,
                             bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
-                            data_scale = (data_train_mean, data_train_std), 
-                            edge_scale = (edge_attr_mean, edge_attr_std), 
-                            # distance_scale = (distance_mean, distance_std),
+                            data_scale = (data_train_mean, data_train_std),
+                            edge_scale = (edge_attr_mean, edge_attr_std),
                             t = time_vec_train[i],
                             field_names = field_names)
         data_temp = data_temp.to(device_for_loading)
@@ -282,8 +335,7 @@ def get_pygeom_dataset_cell_data_radius(
                             pos = pos,
                             bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
                             data_scale = (data_train_mean, data_train_std),
-                            edge_scale = (edge_attr_mean, edge_attr_std), 
-                            #distance_scale = (distance_mean, distance_std),
+                            edge_scale = (edge_attr_mean, edge_attr_std),
                             t = time_vec_valid[i],
                             field_names = field_names)
         data_temp = data_temp.to(device_for_loading)

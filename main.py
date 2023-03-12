@@ -135,7 +135,7 @@ class Trainer:
             self.noise_dist = tdist.Normal(torch.tensor([mu]), torch.tensor([std]))
 
         # ~~~~ Init datasets
-        self.bounding_box = [0.0, 0.0, 0.0, 0.0]
+        self.bounding_box = [0.0, 0.0, 0.0, 0.0] # domain bounding box for node positions. [xlo, xhi, ylo, yhi]
         self.data = self.setup_data()
 
         # ~~~~ Init model and move to gpu 
@@ -193,44 +193,44 @@ class Trainer:
         
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
-        ## MMP unet
-        #model = gnn.Multiscale_MessagePassing_UNet(
-        #        in_channels_node = 2,
-        #        in_channels_edge = 3,
-        #        hidden_channels = 128,
-        #        n_mlp_encode = 3,
-        #        n_mlp_mp = 2,
-        #        n_mp_down = [4,4,4], # [8], # [4,4,4], #[2,2]
-        #        n_mp_up = [4,4], #[], #[4,4], #[2]
-        #        n_repeat_mp_up = 1,
-        #        lengthscales = [0.01, 0.02], #[], #[0.01, 0.02], #[0.5]
-        #        bounding_box = bbox,
-        #        act = F.elu,
-        #        interpolation_mode = 'knn',
-        #        name = 'test')
-
-        # MMP topk 
-        model = gnn.GNN_TopK(
+        # MMP unet
+        model = gnn.Multiscale_MessagePassing_UNet(
                 in_channels_node = 2,
                 in_channels_edge = 3,
                 hidden_channels = 128,
-                out_channels = 2, 
-                n_mlp_encode = 3, 
+                n_mlp_encode = 3,
                 n_mlp_mp = 2,
-                n_mp_down_topk = [1,1],
-                n_mp_up_topk = [1,1],
-                pool_ratios = [1./16.],
-                n_mp_down_enc = [4],
-                n_mp_up_enc = [],
-                n_mp_down_dec = [4,4,4],
-                n_mp_up_dec = [4,4], 
-                lengthscales_enc = [],
-                lengthscales_dec = [0.01, 0.02], 
-                bounding_box = bbox, 
-                interpolation_mode = 'knn',
+                n_mp_down = [8], #[4,4,4] 
+                n_mp_up = [], #[4,4]
+                n_repeat_mp_up = 1,
+                lengthscales = [], #[0.01, 0.02]
+                bounding_box = bbox,
                 act = F.elu,
-                param_sharing = False,
-                name = 'test')
+                interpolation_mode = 'knn',
+                name = 'model_single_scale')
+
+        ## MMP topk 
+        #model = gnn.GNN_TopK(
+        #        in_channels_node = 2,
+        #        in_channels_edge = 3,
+        #        hidden_channels = 128,
+        #        out_channels = 2, 
+        #        n_mlp_encode = 3, 
+        #        n_mlp_mp = 2,
+        #        n_mp_down_topk = [1,1],
+        #        n_mp_up_topk = [1,1],
+        #        pool_ratios = [1./16.],
+        #        n_mp_down_enc = [4],
+        #        n_mp_up_enc = [],
+        #        n_mp_down_dec = [4,4,4],
+        #        n_mp_up_dec = [4,4], 
+        #        lengthscales_enc = [],
+        #        lengthscales_dec = [0.01, 0.02], 
+        #        bounding_box = bbox, 
+        #        interpolation_mode = 'knn',
+        #        act = F.elu,
+        #        param_sharing = False,
+        #        name = 'test')
 
 
         return model
@@ -270,6 +270,14 @@ class Trainer:
         # )
 
         # ~~~~ BFS
+
+        # Get statistics using combined dataset:
+        path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
+        data_mean, data_std = bfs.get_data_statistics(
+                path_to_vtk, 
+                multiple_cases = True)
+
+        # Load rollout dataset
         filenames = ['Backward_Facing_Step_Cropped_Re_26214.vtk', 
                      'Backward_Facing_Step_Cropped_Re_29307.vtk', 
                      'Backward_Facing_Step_Cropped_Re_39076.vtk', 
@@ -282,6 +290,7 @@ class Trainer:
                 path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
                 self.cfg.path_to_pos, device_for_loading, 
                 time_lag = self.cfg.rollout_steps,
+                scaling = [data_mean, data_std],
                 features_to_keep = [1,2], 
                 fraction_valid = 0.1, 
                 multiple_cases = False)
@@ -289,6 +298,8 @@ class Trainer:
             test_dataset = test_dataset + test_dataset_temp
 
         self.bounding_box = train_dataset[0].bounding_box
+
+
 
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
