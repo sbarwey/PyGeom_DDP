@@ -246,6 +246,9 @@ def get_pygeom_dataset_cell_data_radius(
         data_train_mean = np.zeros(n_features)
         data_train_std = np.ones(n_features)
 
+    data_train_mean = np.reshape(data_train_mean, (1,1,1,-1))
+    data_train_std = np.reshape(data_train_std, (1,1,1,-1))
+
     data_x_train = (data_x_train - data_train_mean)/(data_train_std + eps)
     data_y_train = (data_y_train - data_train_mean)/(data_train_std + eps)
     data_x_valid = (data_x_valid - data_train_mean)/(data_train_std + eps)
