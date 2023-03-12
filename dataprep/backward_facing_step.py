@@ -202,29 +202,38 @@ def get_pygeom_dataset_cell_data_radius(
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #print('arranging data for train/valid split...')
     #print('\tvalidation size is %g * n_data' %(fraction_valid))
-    #np.random.seed(12345)
- 
-    # How many total snapshots to extract 
-    n_full = n_snaps
-    n_valid = int(np.floor(fraction_valid * n_full))
+    
+    if fraction_valid > 0:
+        # How many total snapshots to extract 
+        n_full = n_snaps
+        n_valid = int(np.floor(fraction_valid * n_full))
 
-    # Get validation set indices 
-    idx_valid = np.sort(np.random.choice(n_full, n_valid, replace=False))
+        # Get validation set indices 
+        idx_valid = np.sort(np.random.choice(n_full, n_valid, replace=False))
 
-    # Get training set indices 
-    idx_train = np.array(list(set(list(range(n_full))) - set(list(idx_valid))))
+        # Get training set indices 
+        idx_train = np.array(list(set(list(range(n_full))) - set(list(idx_valid))))
 
-    # Train/test split 
-    data_x_train = data_x[idx_train]
-    data_y_train = data_y[idx_train]
+        # Train/test split 
+        data_x_train = data_x[idx_train]
+        data_y_train = data_y[idx_train]
 
-    data_x_valid = data_x[idx_valid]
-    data_y_valid = data_y[idx_valid]
+        data_x_valid = data_x[idx_valid]
+        data_y_valid = data_y[idx_valid]
 
-    time_vec_train = time_vec[idx_train]
-    time_vec_valid = time_vec[idx_valid]
+        time_vec_train = time_vec[idx_train]
+        time_vec_valid = time_vec[idx_valid]
 
-    n_train = n_full - n_valid
+        n_train = n_full - n_valid
+    else:
+        data_x_train = data_x
+        data_y_train = data_y
+        data_x_valid = None
+        data_y_valid = None
+        time_vec_train = time_vec
+        n_full = n_snaps
+        n_valid = 0
+        n_train = n_full
     
     #print('\tn_full: ', n_full)
     #print('\tn_train: ', n_train)
@@ -251,8 +260,9 @@ def get_pygeom_dataset_cell_data_radius(
 
     data_x_train = (data_x_train - data_train_mean)/(data_train_std + eps)
     data_y_train = (data_y_train - data_train_mean)/(data_train_std + eps)
-    data_x_valid = (data_x_valid - data_train_mean)/(data_train_std + eps)
-    data_y_valid = (data_y_valid - data_train_mean)/(data_train_std + eps)
+    if fraction_valid > 0:
+        data_x_valid = (data_x_valid - data_train_mean)/(data_train_std + eps)
+        data_y_valid = (data_y_valid - data_train_mean)/(data_train_std + eps)
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Normalize edge attributes 
@@ -266,10 +276,11 @@ def get_pygeom_dataset_cell_data_radius(
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     data_x_train = torch.tensor(data_x_train)
     data_y_train = torch.tensor(data_y_train)
-    data_x_valid = torch.tensor(data_x_valid)
-    data_y_valid = torch.tensor(data_y_valid)
     time_vec_train = torch.tensor(time_vec_train)
-    time_vec_valid = torch.tensor(time_vec_valid)
+    if fraction_valid > 0:
+        data_x_valid = torch.tensor(data_x_valid)
+        data_y_valid = torch.tensor(data_y_valid)
+        time_vec_valid = torch.tensor(time_vec_valid)
     
     edge_index = torch.tensor(edge_index)
     edge_attr = torch.tensor(edge_attr)
@@ -288,8 +299,9 @@ def get_pygeom_dataset_cell_data_radius(
         features_to_keep = list(range(n_features))
     data_x_train = data_x_train[:,:,:,features_to_keep]
     data_y_train = data_y_train[:,:,:,features_to_keep]
-    data_x_valid = data_x_valid[:,:,:,features_to_keep]
-    data_y_valid = data_y_valid[:,:,:,features_to_keep]
+    if fraction_valid > 0:
+        data_x_valid = data_x_valid[:,:,:,features_to_keep]
+        data_y_valid = data_y_valid[:,:,:,features_to_keep]
     data_train_mean = data_train_mean[:,:,:,features_to_keep]
     data_train_std = data_train_std[:,:,:,features_to_keep]
 
@@ -322,27 +334,28 @@ def get_pygeom_dataset_cell_data_radius(
 
     # Testing: 
     data_valid_list = []
-    for i in range(n_valid):
-        if time_lag == 0:
-            y_temp = data_y_valid[i,0]
-        else:
-            y_temp = [] 
-            for t in range(time_lag):
-                y_temp.append(data_y_valid[i,t])
+    if fraction_valid > 0: 
+        for i in range(n_valid):
+            if time_lag == 0:
+                y_temp = data_y_valid[i,0]
+            else:
+                y_temp = [] 
+                for t in range(time_lag):
+                    y_temp.append(data_y_valid[i,t])
 
-        data_temp = Data(   x = data_x_valid[i,0],
-                            y = y_temp,
-                            distance = distance,
-                            edge_index = edge_index,
-                            edge_attr = edge_attr,
-                            pos = pos,
-                            bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
-                            data_scale = (data_train_mean, data_train_std),
-                            edge_scale = (edge_attr_mean, edge_attr_std),
-                            t = time_vec_valid[i],
-                            field_names = field_names)
-        data_temp = data_temp.to(device_for_loading)
-        data_valid_list.append(data_temp)
+            data_temp = Data(   x = data_x_valid[i,0],
+                                y = y_temp,
+                                distance = distance,
+                                edge_index = edge_index,
+                                edge_attr = edge_attr,
+                                pos = pos,
+                                bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
+                                data_scale = (data_train_mean, data_train_std),
+                                edge_scale = (edge_attr_mean, edge_attr_std),
+                                t = time_vec_valid[i],
+                                field_names = field_names)
+            data_temp = data_temp.to(device_for_loading)
+            data_valid_list.append(data_temp)
 
     #print('\n\tTraining samples: ', len(data_train_list))
     #print('\tValidation samples: ', len(data_valid_list))
