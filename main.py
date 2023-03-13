@@ -162,6 +162,15 @@ class Trainer:
             self.loss_hist_train = ckpt['loss_hist_train']
             self.loss_hist_test = ckpt['loss_hist_test']
 
+            if len(self.loss_hist_train) < self.cfg.epochs:
+                loss_hist_train_new = np.zeros(self.cfg.epochs)
+                loss_hist_test_new = np.zeros(self.cfg.epochs)
+                loss_hist_train_new[:len(self.loss_hist_train)] = self.loss_hist_train
+                loss_hist_test_new[:len(self.loss_hist_test)] = self.loss_hist_test
+                self.loss_hist_train = loss_hist_train_new
+                self.loss_hist_test = loss_hist_test_new
+            
+
         # ~~~~ Wrap model in DDP
         if WITH_DDP and SIZE > 1:
             self.model = DDP(self.model)
@@ -200,14 +209,14 @@ class Trainer:
                 hidden_channels = 128,
                 n_mlp_encode = 3,
                 n_mlp_mp = 2,
-                n_mp_down = [8], #[4,4,4] 
-                n_mp_up = [], #[4,4]
+                n_mp_down = [4,4,4], #[8], #[4,4,4] 
+                n_mp_up = [4,4], #[], #[4,4]
                 n_repeat_mp_up = 1,
-                lengthscales = [], #[0.01, 0.02]
+                lengthscales = [0.01, 0.02], #[], #[0.01, 0.02]
                 bounding_box = bbox,
                 act = F.elu,
                 interpolation_mode = 'knn',
-                name = 'model_single_scale')
+                name = 'model_multi_scale')
 
         ## MMP topk 
         #model = gnn.GNN_TopK(
@@ -230,7 +239,7 @@ class Trainer:
         #        interpolation_mode = 'knn',
         #        act = F.elu,
         #        param_sharing = False,
-        #        name = 'test')
+        #        name = 'topk')
 
 
         return model
@@ -421,7 +430,7 @@ class Trainer:
                     f'[{RANK}]',
                     (   # looks like: [num_processed/total (% complete)]
                         f'[{epoch}/{self.cfg.epochs}:'
-                        f' {bidx * len(data)}/{len(train_sampler)}'
+                        f' {bidx}/{len(train_sampler)}'
                         f' ({100. * bidx / len(train_loader):.0f}%)]'
                     ),
                 ]
