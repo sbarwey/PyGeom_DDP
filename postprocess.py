@@ -159,7 +159,7 @@ if 1 == 0:
     # Load model 
     a = torch.load('saved_models/model_single_scale.tar')
     b = torch.load('saved_models/model_multi_scale.tar')
-    c = torch.load('saved_models/model_multi_scale_topk.tar')
+    #c = torch.load('saved_models/model_multi_scale_topk.tar')
 
     # Plot losses:
     fig, ax = plt.subplots(1,3,sharey=True)
@@ -174,10 +174,10 @@ if 1 == 0:
     ax[1].set_yscale('log')
     ax[1].set_xlim([0,150])
 
-    ax[2].plot(c['loss_hist_train'])
-    ax[2].plot(c['loss_hist_test'])
-    ax[2].set_yscale('log')
-    ax[2].set_xlim([0,150])
+    #ax[2].plot(c['loss_hist_train'])
+    #ax[2].plot(c['loss_hist_test'])
+    #ax[2].set_yscale('log')
+    #ax[2].set_xlim([0,150])
 
     plt.show(block=False)
 
@@ -187,7 +187,12 @@ if 1 == 0:
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 1:
-    modelpath = 'saved_models/model_single_scale.tar'
+    modelpath = 'saved_models/model_multi_scale.tar'
+    #modelpath = 'saved_models/model_single_scale.tar'
+    p = torch.load(modelpath)
+
+    input_dict = p['input_dict']
+    print('input_dict: ', input_dict)
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
@@ -205,7 +210,7 @@ if 1 == 1:
                 bounding_box = input_dict['bounding_box'],
                 act = input_dict['act'],
                 interpolation_mode = input_dict['interpolation_mode'],
-                name = 'model_single_scale')
+                name = input_dict['name'])
 
     model.load_state_dict(p['state_dict'])
     model.eval()
@@ -251,13 +256,22 @@ if 1 == 0:
     field_names = ['ux', 'uy']
     #u_vec_target = np.zeros((n_nodes,3))
     #u_vec_pred = np.zeros((n_nodes,3))
-    x_new = test_dataset[0].x
-    for i in range(len(test_dataset)):
+
+
+    ic_index = 240 # 120
+    x_new = test_dataset[ic_index].x
+    for i in range(ic_index,len(test_dataset)):
         print('[%d/%d]' %(i+1, len(test_dataset)))
         data = test_dataset[i]
 
         # Get time 
         time_value = data.t.item()
+
+        # Get single step prediction
+        print('\tSingle step...')
+        x_src = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+        x_new_singlestep = data.x + x_src
+
 
         # Get rollout prediction
         print('\tRollout step...')
@@ -271,10 +285,12 @@ if 1 == 0:
         std_i = data.data_scale[1].reshape((1,n_features))
         x_old_unscaled = x_old * std_i + mean_i
         x_new_unscaled = x_new * std_i + mean_i
+        x_new_singlestep_unscaled = x_new_singlestep * std_i + mean_i
         target_unscaled = target * std_i + mean_i
 
         print('\tRollout error...')
         error_rollout = x_new_unscaled  - target_unscaled
+        error_singlestep = x_new_singlestep_unscaled - target_unscaled
         
         # Create time folder 
         time_folder = save_dir + '/' + header + '/' + '%g' %(time_value)
@@ -284,13 +300,14 @@ if 1 == 0:
         # Write data to time folder 
         for f in range(n_features):
 
-            # Input
-            field_name = '%s_input' %(field_names[f])
-            scalar2openfoam(x_old_unscaled[:,f].numpy(), 
+            # Prediction singlestep   
+            field_name = '%s_pred_singlestep' %(field_names[f])
+            scalar2openfoam(x_new_singlestep_unscaled[:,f].numpy(), 
                             time_folder+'/%s' %(field_name), field_name, time_value)
 
-            # Prediction 
-            field_name = '%s_pred' %(field_names[f])
+
+            # Prediction rollout
+            field_name = '%s_pred_rollout' %(field_names[f])
             scalar2openfoam(x_new_unscaled[:,f].numpy(), 
                             time_folder+'/%s' %(field_name), field_name, time_value)
 
@@ -299,9 +316,14 @@ if 1 == 0:
             scalar2openfoam(target_unscaled[:,f].numpy(), 
                             time_folder+'/%s' %(field_name), field_name, time_value)
 
-            # Error 
-            field_name = '%s_error' %(field_names[f])
+            # Error rollout  
+            field_name = '%s_error_rollout' %(field_names[f])
             scalar2openfoam(error_rollout[:,f].numpy(), 
+                            time_folder+'/%s' %(field_name), field_name, time_value)
+
+            # Error singlestep  
+            field_name = '%s_error_singlestep' %(field_names[f])
+            scalar2openfoam(error_singlestep[:,f].numpy(), 
                             time_folder+'/%s' %(field_name), field_name, time_value)
 
         # # Velocity vector
@@ -320,6 +342,96 @@ if 1 == 0:
         # scalar2openfoam(mask.squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
 
+
+# ~~~~ Plot time evolution at the sensors
+if 1 == 1:
+    case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
+    #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
+
+    sensor_dir = case_dir + '/postProcessing/probes1/'
+
+    field = 'uy'
+    step_max = 40
+    data_target         = np.loadtxt(sensor_dir + '%s_target' %(field))[:step_max]
+    data_singlestep     = np.loadtxt(sensor_dir + '%s_pred_singlestep'%(field))[:step_max]
+    data_rollout        = np.loadtxt(sensor_dir + '%s_pred_rollout'%(field))[:step_max]
+
+    time_vec = data_target[:,0]
+    time_vec = time_vec - time_vec[0]
+
+    time_vec = np.arange(1,len(time_vec)+1)
+
+    wake_1 = 1
+    wake_2 = 2
+    wake_3 = 3
+    fs_1 = 4
+    fs_2 = 5
+    fs_3 = 6
+
+    lw = 1.5
+    ms = 8
+    me = 1
+    marker_singlestep = 'o'
+    marker_rollout = 's'
+
+    fig, ax = plt.subplots(2,3, figsize=(15,8))
+    ax[0,0].plot(time_vec, data_target[:,wake_1], color='black', lw=lw, label='Target')
+    ax[0,0].plot(time_vec, data_singlestep[:,wake_1], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[0,0].plot(time_vec, data_rollout[:,wake_1], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[0,0].set_xlabel('Timestep')
+    ax[0,0].set_ylabel('%s' %(field))
+    ax[0,0].set_ylim([data_target[:,wake_1].min() - 0.50, data_target[:,wake_1].max() + 0.50])
+
+    ax[0,1].plot(time_vec, data_target[:,wake_2], color='black', lw=lw, label='Target')
+    ax[0,1].plot(time_vec, data_singlestep[:,wake_2], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[0,1].plot(time_vec, data_rollout[:,wake_2], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[0,1].set_xlabel('Timestep')
+    ax[0,1].set_ylabel('%s' %(field))
+    ax[0,1].set_ylim([data_target[:,wake_2].min() - 0.50, data_target[:,wake_2].max() + 0.50])
+
+
+    ax[0,2].plot(time_vec, data_target[:,wake_3], color='black', lw=lw, label='Target')
+    ax[0,2].plot(time_vec, data_singlestep[:,wake_3], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[0,2].plot(time_vec, data_rollout[:,wake_3], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[0,2].set_xlabel('Timestep')
+    ax[0,2].set_ylabel('%s' %(field))
+    ax[0,2].set_ylim([data_target[:,wake_3].min() - 0.50, data_target[:,wake_3].max() + 0.50])
+
+    ax[1,0].plot(time_vec, data_target[:,fs_1], color='black', lw=lw, label='Target')
+    ax[1,0].plot(time_vec, data_singlestep[:,fs_1], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[1,0].plot(time_vec, data_rollout[:,fs_1], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[1,0].set_xlabel('Timestep')
+    ax[1,0].set_ylabel('%s' %(field))
+    ax[1,0].set_ylim([data_target[:,fs_1].min() - 0.50, data_target[:,fs_1].max() + 0.50])
+
+    ax[1,1].plot(time_vec, data_target[:,fs_2], color='black', lw=lw, label='Target')
+    ax[1,1].plot(time_vec, data_singlestep[:,fs_2], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[1,1].plot(time_vec, data_rollout[:,fs_2], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[1,1].set_xlabel('Timestep')
+    ax[1,1].set_ylabel('%s' %(field))
+    ax[1,1].set_ylim([data_target[:,fs_2].min() - 0.50, data_target[:,fs_2].max() + 0.50])
+
+
+    ax[1,2].plot(time_vec, data_target[:,fs_3], color='black', lw=lw, label='Target')
+    ax[1,2].plot(time_vec, data_singlestep[:,fs_3], color='blue', ls='--', lw=lw,
+                marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
+    ax[1,2].plot(time_vec, data_rollout[:,fs_3], color='red', ls='--', lw=lw,
+                marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
+    ax[1,2].set_xlabel('Timestep')
+    ax[1,2].set_ylabel('%s' %(field))
+    ax[1,2].set_ylim([data_target[:,fs_3].min() - 0.50, data_target[:,fs_3].max() + 0.50])
+
+    plt.show()
 
 
 
