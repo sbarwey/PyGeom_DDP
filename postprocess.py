@@ -167,17 +167,17 @@ if 1 == 0:
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
     ax[0].set_ylim([1e-3, 1e-1])
-    ax[0].set_xlim([0,150])
 
-    ax[1].plot(b['loss_hist_train'])
-    ax[1].plot(b['loss_hist_test'])
+    ax[1].plot(b['loss_hist_train'], label='train')
+    ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
-    ax[1].set_xlim([0,150])
+    ax[1].set_ylim([1e-3, 1e-1])
 
     #ax[2].plot(c['loss_hist_train'])
     #ax[2].plot(c['loss_hist_test'])
     #ax[2].set_yscale('log')
     #ax[2].set_xlim([0,150])
+    ax[1].legend()
 
     plt.show(block=False)
 
@@ -345,8 +345,8 @@ if 1 == 0:
 
 # ~~~~ Plot time evolution at the sensors
 if 1 == 1:
-    case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
-    #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
+    #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
+    case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
 
     sensor_dir = case_dir + '/postProcessing/probes1/'
 
@@ -380,7 +380,7 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[0,0].plot(time_vec, data_rollout[:,wake_1], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[0,0].set_xlabel('Timestep')
+    ax[0,0].set_xlabel('Steps')
     ax[0,0].set_ylabel('%s' %(field))
     ax[0,0].set_ylim([data_target[:,wake_1].min() - 0.50, data_target[:,wake_1].max() + 0.50])
 
@@ -389,7 +389,7 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[0,1].plot(time_vec, data_rollout[:,wake_2], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[0,1].set_xlabel('Timestep')
+    ax[0,1].set_xlabel('Steps')
     ax[0,1].set_ylabel('%s' %(field))
     ax[0,1].set_ylim([data_target[:,wake_2].min() - 0.50, data_target[:,wake_2].max() + 0.50])
 
@@ -399,7 +399,7 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[0,2].plot(time_vec, data_rollout[:,wake_3], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[0,2].set_xlabel('Timestep')
+    ax[0,2].set_xlabel('Steps')
     ax[0,2].set_ylabel('%s' %(field))
     ax[0,2].set_ylim([data_target[:,wake_3].min() - 0.50, data_target[:,wake_3].max() + 0.50])
 
@@ -408,7 +408,7 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[1,0].plot(time_vec, data_rollout[:,fs_1], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[1,0].set_xlabel('Timestep')
+    ax[1,0].set_xlabel('Steps')
     ax[1,0].set_ylabel('%s' %(field))
     ax[1,0].set_ylim([data_target[:,fs_1].min() - 0.50, data_target[:,fs_1].max() + 0.50])
 
@@ -417,7 +417,7 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[1,1].plot(time_vec, data_rollout[:,fs_2], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[1,1].set_xlabel('Timestep')
+    ax[1,1].set_xlabel('Steps')
     ax[1,1].set_ylabel('%s' %(field))
     ax[1,1].set_ylim([data_target[:,fs_2].min() - 0.50, data_target[:,fs_2].max() + 0.50])
 
@@ -427,9 +427,10 @@ if 1 == 1:
                 marker=marker_singlestep, ms=ms, fillstyle='none', markevery=me, label='Single Step')
     ax[1,2].plot(time_vec, data_rollout[:,fs_3], color='red', ls='--', lw=lw,
                 marker=marker_rollout, ms=ms, fillstyle='none', markevery=me, label='Rollout')
-    ax[1,2].set_xlabel('Timestep')
+    ax[1,2].set_xlabel('Steps')
     ax[1,2].set_ylabel('%s' %(field))
     ax[1,2].set_ylim([data_target[:,fs_3].min() - 0.50, data_target[:,fs_3].max() + 0.50])
+    ax[1,2].legend(fancybox=False, framealpha=1, edgecolor='black')
 
     plt.show()
 
