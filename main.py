@@ -202,44 +202,44 @@ class Trainer:
         
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
-        # MMP unet
-        model = gnn.Multiscale_MessagePassing_UNet(
-                in_channels_node = 2,
-                in_channels_edge = 3,
-                hidden_channels = 128,
-                n_mlp_encode = 3,
-                n_mlp_mp = 2,
-                n_mp_down = [4,4,4], #[8], #[4,4,4] 
-                n_mp_up = [4,4], #[], #[4,4]
-                n_repeat_mp_up = 1,
-                lengthscales = [0.01, 0.02], #[], #[0.01, 0.02]
-                bounding_box = bbox,
-                act = F.elu,
-                interpolation_mode = 'knn',
-                name = 'model_multi_scale')
-
-        ## MMP topk 
-        #model = gnn.GNN_TopK(
+        ## MMP unet
+        #model = gnn.Multiscale_MessagePassing_UNet(
         #        in_channels_node = 2,
         #        in_channels_edge = 3,
         #        hidden_channels = 128,
-        #        out_channels = 2, 
-        #        n_mlp_encode = 3, 
+        #        n_mlp_encode = 3,
         #        n_mlp_mp = 2,
-        #        n_mp_down_topk = [1,1],
-        #        n_mp_up_topk = [1,1],
-        #        pool_ratios = [1./16.],
-        #        n_mp_down_enc = [4],
-        #        n_mp_up_enc = [],
-        #        n_mp_down_dec = [4,4,4],
-        #        n_mp_up_dec = [4,4], 
-        #        lengthscales_enc = [],
-        #        lengthscales_dec = [0.01, 0.02], 
-        #        bounding_box = bbox, 
-        #        interpolation_mode = 'knn',
+        #        n_mp_down = [4,4,4], #[8], #[4,4,4] 
+        #        n_mp_up = [4,4], #[], #[4,4]
+        #        n_repeat_mp_up = 1,
+        #        lengthscales = [0.01, 0.02], #[], #[0.01, 0.02]
+        #        bounding_box = bbox,
         #        act = F.elu,
-        #        param_sharing = False,
-        #        name = 'topk')
+        #        interpolation_mode = 'knn',
+        #        name = 'model_multi_scale')
+
+        # MMP topk 
+        model = gnn.GNN_TopK(
+                in_channels_node = 2,
+                in_channels_edge = 3,
+                hidden_channels = 128,
+                out_channels = 2, 
+                n_mlp_encode = 3, 
+                n_mlp_mp = 2,
+                n_mp_down_topk = [1,1],
+                n_mp_up_topk = [1],
+                pool_ratios = [1./16.],
+                n_mp_down_enc = [4],
+                n_mp_up_enc = [],
+                n_mp_down_dec = [4,4,4],
+                n_mp_up_dec = [4,4], 
+                lengthscales_enc = [],
+                lengthscales_dec = [0.01, 0.02], 
+                bounding_box = bbox, 
+                interpolation_mode = 'knn',
+                act = F.elu,
+                param_sharing = False,
+                name = 'topk')
 
 
         return model
