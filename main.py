@@ -175,91 +175,160 @@ def main(cfg: DictConfig) -> None:
     train(cfg)
 
 
-    # # Non-blocking point-to-point communication 
-    # test_tensor = torch.zeros(1)
-    # if DEVICE == 'gpu':
-    #     test_tensor = test_tensor.cuda()
-
-    # req = None
-    # if RANK == 0:
-    #     test_tensor += 10.3
-
-    #     # Send tensor to process 1 
-    #     req = dist.isend(tensor=test_tensor, dst=1)
-    #     print('Rank 0 started sending')
-    # else:
-    #     req = dist.irecv(tensor=test_tensor, src=0)
-    #     print('Rank 1 started receiving')
-    # req.wait()
-    # print('Rank ', RANK, ' has data ', test_tensor[0])
-
-    # ~~~~ Create simple 1d graph
-    # number of nodes and edges
-    n_nodes = 32
-    n_edges = n_nodes - 1 
-
-    # Node positions and attributes 
-    pos = torch.linspace(0,1,n_nodes).reshape((n_nodes, 1)) 
-    x = torch.rand(n_nodes,1)
-
-    # Edge owner and neighbor 
-    edge_own = torch.arange(n_nodes - 1)
-    edge_nei = torch.arange(1, n_nodes)
-
-    # Edge index 
-    edge_index = torch.zeros((2, n_edges), dtype=torch.long)
-    edge_index[0,:] = edge_own
-    edge_index[1,:] = edge_nei
-
-    # Make undirected:
-    edge_index = torch_geometric.utils.to_undirected(edge_index)
-    n_edges = edge_index.shape[1]
-    data = Data(x=x, edge_index=edge_index, pos=pos) 
+    # Non-blocking point-to-point communication 
+    test_tensor = torch.zeros(10)
     if DEVICE == 'gpu':
-        data = data.to('cuda:0')
+        test_tensor = test_tensor.cuda()
 
-    # ~~~~ Partition the simple 1d graph:
-    n_procs = SIZE  # number of processors
+    req = None
+    if RANK == 0:
+        test_tensor += 10.3
+        # Send tensor to process 1 
+        req = dist.isend(tensor=test_tensor, dst=1)
+        print('Rank 0 started sending')
+    else:
+        req = dist.irecv(tensor=test_tensor, src=0)
+        print('Rank 1 started receiving')
+    req.wait()
+    print('Rank ', RANK, ' has data ', test_tensor)
 
-    # number of nodes per processor: 
-    n_nodes_local = n_nodes / n_procs
-    assert n_nodes_local.is_integer(), "number of nodes must be divisible by number of processors!"
-    n_nodes_local = int(n_nodes_local)
+    # ~~~~ # # ~~~~ Create simple 1d graph
+    # ~~~~ # # number of nodes and edges
+    # ~~~~ # n_nodes_global = 16
+    # ~~~~ # n_edges_global = n_nodes_global - 1 
 
-    # starting end ending indices per processor in the node attribute matrix:
-    start_index = RANK * n_nodes_local # [int(i * nodes_local) for i in range(n_procs)]
-    print('start_index: ', start_index)
+    # ~~~~ # # Node positions and attributes 
+    # ~~~~ # pos = torch.linspace(0,1,n_nodes_global).reshape((n_nodes_global, 1)) 
+    # ~~~~ # n_features = 1
+    # ~~~~ # x = torch.rand(n_nodes_global,n_features)
 
-    # List of neighboring processors for each processor
-    neighboring_procs = {}
-    for i in range(n_procs):
-        if i == 0:
-            neighboring_procs[i] = [1] 
-        elif i == n_procs - 1:
-            neighboring_procs[i] = [n_procs - 2]
-        else:
-            neighboring_procs[i] = [i - 1, i + 1]
+    # ~~~~ # # Edge owner and neighbor 
+    # ~~~~ # edge_own = torch.arange(n_nodes_global - 1)
+    # ~~~~ # edge_nei = torch.arange(1, n_nodes_global)
+
+    # ~~~~ # # Edge index 
+    # ~~~~ # edge_index = torch.zeros((2, n_edges_global), dtype=torch.long)
+    # ~~~~ # edge_index[0,:] = edge_own
+    # ~~~~ # edge_index[1,:] = edge_nei
+
+    # ~~~~ # # Make undirected:
+    # ~~~~ # edge_index = torch_geometric.utils.to_undirected(edge_index)
+    # ~~~~ # n_edges_global = edge_index.shape[1]
+    # ~~~~ # data = Data(x=x, edge_index=edge_index, pos=pos) 
+    # ~~~~ # if DEVICE == 'gpu':
+    # ~~~~ #     data = data.to('cuda:0')
+
+    # ~~~~ # # ~~~~ Partition the simple 1d graph:
+
+    # ~~~~ # # number of nodes per processor: 
+    # ~~~~ # n_nodes_internal = n_nodes_global / SIZE
+    # ~~~~ # assert n_nodes_internal.is_integer(), "number of nodes must be divisible by number of processors!"
+    # ~~~~ # n_nodes_internal = int(n_nodes_internal)
+
+    # ~~~~ # # starting end ending indices per processor in the node attribute matrix:
+    # ~~~~ # start_index = RANK * n_nodes_internal # [int(i * nodes_local) for i in range(n_procs)]
+    # ~~~~ # end_index = start_index + n_nodes_internal
+
+    # ~~~~ # # List of neighboring processors for each processor
+    # ~~~~ # neighboring_procs = {}
+    # ~~~~ # for i in range(SIZE):
+    # ~~~~ #     if i == 0:
+    # ~~~~ #         neighboring_procs[i] = [1] 
+    # ~~~~ #     elif i == SIZE - 1:
+    # ~~~~ #         neighboring_procs[i] = [SIZE - 2]
+    # ~~~~ #     else:
+    # ~~~~ #         neighboring_procs[i] = [i - 1, i + 1]
 
 
 
-    # ~~~~ Create the local graphs. 
-    # 1) Partition the node attribute matrix
-    # 2) Partition the node position matrix 
-    # 3) Create the edge index 
-    print('data.x: ', data.x.shape)
-    x_local = data.x[start_index:n_nodes_local]
-    print('x_local, rank %d: ' %(RANK), x_local)
+    # ~~~~ # # ~~~~ Create the local graphs. 
+    # ~~~~ # # 1) Partition the node attribute matrix
+    # ~~~~ # # 2) Partition the node position matrix 
+    # ~~~~ # # 3) Create the edge index 
+    # ~~~~ # #if RANK == 0:
+    # ~~~~ # #    print('data.x: ', data.x)
+    # ~~~~ # #print('x_local, rank %d: ' %(RANK), x_local)
+    # ~~~~ # #print('pos_local, rank %d: ' %(RANK), pos_local)
+
+    # ~~~~ # # Local node attributes:
+    # ~~~~ # halo = 1
+    # ~~~~ # if RANK == 0: # Left boundary
+    # ~~~~ #     n_nodes_halo = halo
+    # ~~~~ #     n_nodes_local = n_nodes_internal + n_nodes_halo
+    # ~~~~ #     x_local                     = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     pos_local                   = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     x_local[:-halo]           = data.x[start_index:end_index]
+    # ~~~~ #     pos_local[:-halo]         = data.pos[start_index:end_index]
+    # ~~~~ # elif RANK == SIZE - 1: # right boundary
+    # ~~~~ #     n_nodes_halo = halo
+    # ~~~~ #     n_nodes_local = n_nodes_internal + n_nodes_halo
+    # ~~~~ #     x_local                     = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     pos_local                   = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     x_local[halo:]            = data.x[start_index:end_index]
+    # ~~~~ #     pos_local[halo:]          = data.pos[start_index:end_index]
+    # ~~~~ # else: # internal
+    # ~~~~ #     n_nodes_halo = 2*halo
+    # ~~~~ #     n_nodes_local = n_nodes_internal + n_nodes_halo
+    # ~~~~ #     x_local                     = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     pos_local                   = torch.zeros((n_nodes_local, n_features))
+    # ~~~~ #     x_local[halo:-halo]     = data.x[start_index:end_index]
+    # ~~~~ #     pos_local[halo:-halo]   = data.pos[start_index:end_index]
 
 
+    # ~~~~ # # Local connectivities: 
+    # ~~~~ # edge_own_local = torch.arange(n_nodes_local - 1)
+    # ~~~~ # edge_nei_local = torch.arange(1, n_nodes_local)
+
+    # ~~~~ # # Edge index 
+    # ~~~~ # n_edges_local = n_nodes_local - 1 
+    # ~~~~ # edge_index_local = torch.zeros((2, n_edges_local), dtype=torch.long)
+    # ~~~~ # edge_index_local[0,:] = edge_own_local
+    # ~~~~ # edge_index_local[1,:] = edge_nei_local
+    # ~~~~ # edge_index_local = torch_geometric.utils.to_undirected(edge_index_local)
+    # ~~~~ # n_edges_local = edge_index_local.shape[1]
+
+    # ~~~~ # # Make local graph
+    # ~~~~ # data_local = Data(x=x_local, edge_index=edge_index_local, pos=pos_local) 
+    # ~~~~ # if DEVICE == 'gpu':
+    # ~~~~ #     data_local = data_local.to('cuda:0')
+
+    # ~~~~ # # # Print local graph attributes: 
+    # ~~~~ # # if RANK == 0: 
+    # ~~~~ # #     print('Rank 0 graph attributes:') 
+    # ~~~~ # #     print('\tx: ', data_local.x.shape)
+    # ~~~~ # #     print('\tei: ', data_local.edge_index.shape)
+    # ~~~~ # #     print('\tnumber of internal nodes: ', n_nodes_internal) 
+    # ~~~~ # #     print('\tnumber of halo nodes: ', n_nodes_halo) 
+    # ~~~~ # # if RANK == 1: 
+    # ~~~~ # #     print('Rank 1 graph attributes:') 
+    # ~~~~ # #     print('\tx: ', data_local.x.shape)
+    # ~~~~ # #     print('\tei: ', data_local.edge_index.shape)
+    # ~~~~ # #     print('\tnumber of internal nodes: ', n_nodes_internal) 
+    # ~~~~ # #     print('\tnumber of halo nodes: ', n_nodes_halo) 
 
 
+    # ~~~~ # # ~~~~ Create sender and receiver mask:
+    # ~~~~ # mask_send = [None] * SIZE
+    # ~~~~ # mask_recv = [None] * SIZE
 
-
-    # ~~~~ Create sender and receiver mask:
-    # mask_send: boundary cell indices used to populate ghost cells 
-    # mask_recv: ghost cell indices used to receive boundary cell info     
-
-
+    # ~~~~ # for j in neighboring_procs[RANK]:
+    # ~~~~ #     if RANK == 0: 
+    # ~~~~ #         mask_send[j] = [n_nodes_local-halo-1]
+    # ~~~~ #         mask_recv[j] = [n_nodes_local-halo]
+    # ~~~~ #     elif RANK == SIZE-1:
+    # ~~~~ #         mask_send[j] = [halo]
+    # ~~~~ #         mask_recv[j] = [0]
+    # ~~~~ #     else:
+    # ~~~~ #         if j == RANK - 1: #neighbor is on left  
+    # ~~~~ #             mask_send[j] = [halo]
+    # ~~~~ #             mask_recv[j] = [0]
+    # ~~~~ #         elif j == RANK + 1: # neighbor is on right  
+    # ~~~~ #             mask_send[j] = [n_nodes_local-halo-1]
+    # ~~~~ #             mask_recv[j] = [n_nodes_local-halo]
+    # ~~~~ # 
+    # ~~~~ # # print('[RANK %d] mask_send: ' %(RANK), mask_send)
+    # ~~~~ # # print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
+    # ~~~~ # # print('[RANK %d] x: ' %(RANK), data_local.x)
 
 
     #cleanup()
