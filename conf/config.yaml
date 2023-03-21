@@ -12,7 +12,7 @@ ckptfreq: 5
 batch_size: 2
 test_batch_size: 1
 fp16_allreduce: False
-restart: True
+restart: False
 
 # Number of training rollout steps
 rollout_steps: 2

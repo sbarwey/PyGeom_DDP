@@ -8,6 +8,23 @@ import torch_geometric.nn as tgnn
 from torch_geometric.nn.conv import MessagePassing
 from pooling import TopKPooling_Mod, avg_pool_mod, avg_pool_mod_no_x
 
+class GCN(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        num_node_features = 1
+        self.conv1 = tgnn.GCNConv(num_node_features, 16)
+        self.conv2 = tgnn.GCNConv(16, num_node_features)
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index)
+
+        return F.log_softmax(x, dim=1)
+
 class Multiscale_MessagePassing_UNet(torch.nn.Module):
     def __init__(self, 
                  in_channels_node: int,
