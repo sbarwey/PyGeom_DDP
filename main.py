@@ -311,30 +311,82 @@ def main(cfg: DictConfig) -> None:
     mask_send = [None] * SIZE
     mask_recv = [None] * SIZE
 
-    for j in neighboring_procs[RANK]:
+    for i in neighboring_procs[RANK]:
         if RANK == 0: 
-            mask_send[j] = [n_nodes_local-halo-1]
-            mask_recv[j] = [n_nodes_local-halo]
+            mask_send[i] = [n_nodes_local-halo-1]
+            mask_recv[i] = [n_nodes_local-halo]
         elif RANK == SIZE-1:
-            mask_send[j] = [halo]
-            mask_recv[j] = [0]
+            mask_send[i] = [halo]
+            mask_recv[i] = [0]
         else:
-            if j == RANK - 1: #neighbor is on left  
-                mask_send[j] = [halo]
-                mask_recv[j] = [0]
-            elif j == RANK + 1: # neighbor is on right  
-                mask_send[j] = [n_nodes_local-halo-1]
-                mask_recv[j] = [n_nodes_local-halo]
-    
-
-
-    # ~~~~ Create sender and receiver buffers : 
-    
-
-
+            if i == RANK - 1: #neighbor is on left  
+                mask_send[i] = [halo]
+                mask_recv[i] = [0]
+            elif i == RANK + 1: # neighbor is on right  
+                mask_send[i] = [n_nodes_local-halo-1]
+                mask_recv[i] = [n_nodes_local-halo]
     # print('[RANK %d] mask_send: ' %(RANK), mask_send)
     # print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
     # print('[RANK %d] x: ' %(RANK), data_local.x)
+   
+
+
+    # ~~~~ Create sender and receiver buffers : 
+    if DEVICE == 'gpu':
+        device_id = 'cuda:0'
+    else:
+        device_id = 'cpu'
+
+    # test_size = 2
+    # buff_send = torch.arange(test_size, device=device_id) + RANK * SIZE
+    # buff_send = list(buff_send.chunk(SIZE))
+    # buff_recv = list(torch.empty([test_size], dtype=torch.int64, device=device_id).chunk(SIZE))
+
+    if RANK == 0: 
+        #buff_send = [torch.empty([2], dtype=torch.float32, device=device_id), 
+        #            torch.tensor([843.0, 32.3], dtype=torch.float32, device=device_id)]
+        #buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
+        #            torch.empty([2], dtype=torch.float32, device=device_id)]
+        buff_send = [None, 
+                    torch.tensor([843.0, 32.3], dtype=torch.float32, device=device_id)]
+        buff_recv = [None, 
+                    torch.empty([2], dtype=torch.float32, device=device_id)]
+
+    if RANK == 1:
+        #buff_send = [torch.tensor([64.0, 123.2], dtype=torch.float32, device=device_id),
+        #            torch.empty([2], dtype=torch.float32, device=device_id)]
+        #buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
+        #            torch.empty([2], dtype=torch.float32, device=device_id)]
+        buff_send = [torch.tensor([64.0, 123.2], dtype=torch.float32, device=device_id),
+                    None]
+        buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
+                    None]
+
+    print('[RANK %d] buff_send: ' %(RANK), buff_send)
+    
+    req_send_list = []
+    for i in neighboring_procs[RANK]:
+        req_send = dist.isend(tensor=buff_send[i], dst=i)
+        req_send_list.append(req_send)
+    
+    req_recv_list = []
+    for i in neighboring_procs[RANK]:
+        req_recv = dist.irecv(tensor=buff_recv[i], src=i)
+        req_recv_list.append(req_recv)
+
+    for req_send in req_send_list:
+        req_send.wait()
+
+    for req_recv in req_recv_list:
+        req_recv.wait()
+
+    dist.barrier()
+
+    # ~~~~ All to all method:
+    # dist.all_to_all(buff_recv, buff_send)
+    
+    print('[RANK %d] buff_recv: ' %(RANK), buff_recv)
+
 
 
     #cleanup()
