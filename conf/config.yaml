@@ -1,6 +1,6 @@
 # @package _global_
 
-seed: 42
+seed: 12
 epochs: 200
 backend: nccl
 lr_init: 0.0001

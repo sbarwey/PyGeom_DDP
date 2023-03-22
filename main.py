@@ -175,6 +175,12 @@ def main(cfg: DictConfig) -> None:
     train(cfg)
 
 
+    if DEVICE == 'gpu':
+        device_id = 'cuda:0'
+    else:
+        device_id = 'cpu'
+
+
     # # Non-blocking point-to-point communication 
     # test_tensor = torch.zeros(10)
     # if DEVICE == 'gpu':
@@ -215,8 +221,7 @@ def main(cfg: DictConfig) -> None:
     edge_index = torch_geometric.utils.to_undirected(edge_index)
     n_edges_global = edge_index.shape[1]
     data = Data(x=x, edge_index=edge_index, pos=pos) 
-    if DEVICE == 'gpu':
-        data = data.to('cuda:0')
+    data = data.to(device_id)
 
     # ~~~~ Partition the simple 1d graph:
 
@@ -299,18 +304,11 @@ def main(cfg: DictConfig) -> None:
     #     print('\tei: ', data_local.edge_index.shape)
     #     print('\tnumber of internal nodes: ', n_nodes_internal) 
     #     print('\tnumber of halo nodes: ', n_nodes_halo) 
-    # if RANK == 1: 
-    #     print('Rank 1 graph attributes:') 
-    #     print('\tx: ', data_local.x.shape)
-    #     print('\tei: ', data_local.edge_index.shape)
-    #     print('\tnumber of internal nodes: ', n_nodes_internal) 
-    #     print('\tnumber of halo nodes: ', n_nodes_halo) 
 
 
     # ~~~~ Create sender and receiver mask:
     mask_send = [None] * SIZE
     mask_recv = [None] * SIZE
-
     for i in neighboring_procs[RANK]:
         if RANK == 0: 
             mask_send[i] = [n_nodes_local-halo-1]
@@ -325,45 +323,18 @@ def main(cfg: DictConfig) -> None:
             elif i == RANK + 1: # neighbor is on right  
                 mask_send[i] = [n_nodes_local-halo-1]
                 mask_recv[i] = [n_nodes_local-halo]
-    # print('[RANK %d] mask_send: ' %(RANK), mask_send)
-    # print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
-    # print('[RANK %d] x: ' %(RANK), data_local.x)
+    #print('[RANK %d] mask_send: ' %(RANK), mask_send)
+    #print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
+    print('[RANK %d] x: ' %(RANK), data_local.x)
    
-
-
     # ~~~~ Create sender and receiver buffers : 
-    if DEVICE == 'gpu':
-        device_id = 'cuda:0'
-    else:
-        device_id = 'cpu'
+    buff_send = [None] * SIZE
+    buff_recv = [None] * SIZE
+    for i in neighboring_procs[RANK]:
+        buff_send[i] = data_local.x[mask_send[i]]
+        buff_recv[i] = torch.empty([len(mask_recv[i]), n_features], dtype=torch.float32, device=device_id)
 
-    # test_size = 2
-    # buff_send = torch.arange(test_size, device=device_id) + RANK * SIZE
-    # buff_send = list(buff_send.chunk(SIZE))
-    # buff_recv = list(torch.empty([test_size], dtype=torch.int64, device=device_id).chunk(SIZE))
-
-    if RANK == 0: 
-        #buff_send = [torch.empty([2], dtype=torch.float32, device=device_id), 
-        #            torch.tensor([843.0, 32.3], dtype=torch.float32, device=device_id)]
-        #buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
-        #            torch.empty([2], dtype=torch.float32, device=device_id)]
-        buff_send = [None, 
-                    torch.tensor([843.0, 32.3], dtype=torch.float32, device=device_id)]
-        buff_recv = [None, 
-                    torch.empty([2], dtype=torch.float32, device=device_id)]
-
-    if RANK == 1:
-        #buff_send = [torch.tensor([64.0, 123.2], dtype=torch.float32, device=device_id),
-        #            torch.empty([2], dtype=torch.float32, device=device_id)]
-        #buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
-        #            torch.empty([2], dtype=torch.float32, device=device_id)]
-        buff_send = [torch.tensor([64.0, 123.2], dtype=torch.float32, device=device_id),
-                    None]
-        buff_recv = [torch.empty([2], dtype=torch.float32, device=device_id), 
-                    None]
-
-    print('[RANK %d] buff_send: ' %(RANK), buff_send)
-    
+    # ~~~~ Halo swap
     req_send_list = []
     for i in neighboring_procs[RANK]:
         req_send = dist.isend(tensor=buff_send[i], dst=i)
@@ -382,11 +353,18 @@ def main(cfg: DictConfig) -> None:
 
     dist.barrier()
 
-    # ~~~~ All to all method:
+    # All to all method:
     # dist.all_to_all(buff_recv, buff_send)
-    
+
+    print('[RANK %d] buff_send: ' %(RANK), buff_send)
     print('[RANK %d] buff_recv: ' %(RANK), buff_recv)
 
+
+    # ~~~~ Fill nodes 
+    for i in neighboring_procs[RANK]:
+        data_local.x[mask_recv[i]] = buff_recv[i]
+    print('[RANK %d] x: ' %(RANK), data_local.x)
+    print('\n')
 
 
     #cleanup()
