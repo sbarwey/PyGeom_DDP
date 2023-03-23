@@ -8,22 +8,77 @@ import torch_geometric.nn as tgnn
 from torch_geometric.nn.conv import MessagePassing
 from pooling import TopKPooling_Mod, avg_pool_mod, avg_pool_mod_no_x
 
-class GCN(torch.nn.Module):
-    def __init__(self):
+class Simple_MP_Layer(torch.nn.Module):
+    def __init__(self, hidden_channels):
         super().__init__()
-        num_node_features = 1
-        self.conv1 = tgnn.GCNConv(num_node_features, 16)
-        self.conv2 = tgnn.GCNConv(16, num_node_features)
+        self.edge_aggregator = EdgeAggregation() # EdgeAggregation() object (defined below)
+        self.hidden_channels = hidden_channels
+        self.n_mlp_layers = 2
+        self.act = F.elu 
 
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
+        # For edge feature update: 
+        self.edge_updater = torch.nn.ModuleList()
+        for j in range(self.n_mlp_layers):
+            if j == 0:
+                input_features = hidden_channels*3
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels
+                output_features = hidden_channels
+            self.edge_updater.append( nn.Linear(input_features, output_features, bias=False) )
 
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
+        # For node feature update: 
+        self.node_updater = torch.nn.ModuleList()
+        for j in range(self.n_mlp_layers):
+            if j == 0:
+                input_features = hidden_channels*2
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels
+                output_features = hidden_channels
+            self.node_updater.append( nn.Linear(input_features, output_features, bias=False) )
 
-        return F.log_softmax(x, dim=1)
+    def forward(
+            self, 
+            x: Tensor, 
+            edge_index: LongTensor) -> Tensor:
+
+        # concatenate edge + neighbor + owner into new edge_attr 
+        x_own = x[edge_index[0,:], :]
+        x_nei = x[edge_index[1,:], :]
+        edge_attr = (x_own - x_nei)
+        edge_attr_t = torch.cat((x_own, x_nei, edge_attr), axis=1)
+
+        # edge update mlp
+        for j in range(self.n_mlp_layers):
+            edge_attr_t = self.edge_updater[j](edge_attr_t) 
+            if j < self.n_mlp_layers - 1:
+                edge_attr_t = self.act(edge_attr_t)
+            else:
+                edge_attr_t = edge_attr_t
+
+        # edge residual connection
+        edge_attr = edge_attr + edge_attr_t
+       
+        # get the aggregate edge features as node features: mean aggregation 
+        edge_agg = self.edge_aggregator(x, edge_index, edge_attr)
+
+        # concatenate owner node + edge 
+        x_t = torch.cat((x, edge_agg), axis=1)
+
+        # node update mlp
+        for j in range(self.n_mlp_layers):
+            x_t = self.node_updater[j](x_t)
+            if j < self.n_mlp_layers - 1:
+                x_t = self.act(x_t) 
+            else:
+                x_t = x_t
+        
+        # node residual connection
+        x = x + x_t
+
+        return x 
+
 
 class Multiscale_MessagePassing_UNet(torch.nn.Module):
     def __init__(self, 
