@@ -265,12 +265,12 @@ class Trainer:
         """
         # ~~~~ Create simple 1d graph
         # number of nodes and edges
-        n_nodes_global = 16
+        n_nodes_global = 128
         n_edges_global = n_nodes_global - 1 
 
         # Node positions and attributes 
         pos = torch.linspace(0,1,n_nodes_global).reshape((n_nodes_global, 1)) 
-        n_features = 1
+        n_features = 4
         x = torch.rand(n_nodes_global,n_features)
 
         # Edge owner and neighbor 
@@ -392,7 +392,7 @@ def run_demo(demo_fn: Callable, world_size: int | str) -> None:
 def message_passing(cfg: DictConfig):
     trainer = Trainer(cfg)
     
-    n_mp = 2 # number of message passing steps 
+    n_mp = 10 # number of message passing steps 
     out = trainer.run_mp(n_mp) 
     #print('[RANK %d] out: ' %(RANK), out)
 
@@ -403,7 +403,13 @@ def message_passing(cfg: DictConfig):
     out_full = trainer.gather_node_tensor(input_tensor)
     if RANK == 0:
         out_full = torch.cat(out_full, dim=0)
-        print('out_full: ', out_full)
+        #print('out_full: ', out_full)
+
+        # save: 
+        out_full = out_full.numpy()
+        savepath = cfg.work_dir + '/outputs/halo_results/'
+        filename = 'nprocs_%d.npy' %(SIZE)
+        np.save(savepath + filename, out_full)
 
 
     
