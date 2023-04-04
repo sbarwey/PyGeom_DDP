@@ -155,29 +155,34 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:  
+if 1 == 1:  
     # Load model 
     a = torch.load('saved_models/model_single_scale.tar')
     b = torch.load('saved_models/model_multi_scale.tar')
-    #c = torch.load('saved_models/model_multi_scale_topk.tar')
+    c = torch.load('saved_models/model_multi_scale_topk.tar.old')
 
     # Plot losses:
     fig, ax = plt.subplots(1,3,sharey=True)
     ax[0].plot(a['loss_hist_train'])
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
-    ax[0].set_ylim([1e-3, 1e-1])
+    #ax[0].set_ylim([1e-3, 1e-1])
+    ax[0].set_ylabel('Loss')
+    ax[0].set_xlabel('Epochs')
+    ax[0].set_title('Single Scale')
 
     ax[1].plot(b['loss_hist_train'], label='train')
     ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
-    ax[1].set_ylim([1e-3, 1e-1])
+    ax[1].set_xlabel('Epochs')
+    ax[1].set_title('Multi Scale')
 
-    #ax[2].plot(c['loss_hist_train'])
-    #ax[2].plot(c['loss_hist_test'])
-    #ax[2].set_yscale('log')
-    #ax[2].set_xlim([0,150])
-    ax[1].legend()
+    ax[2].plot(c['loss_hist_train'])
+    ax[2].plot(c['loss_hist_test'])
+    ax[2].set_yscale('log')
+    ax[2].set_xlim([0,150])
+    ax[2].set_xlabel('Epochs')
+    ax[2].set_title('Multi Scale + Top-K')
 
     plt.show(block=False)
 
@@ -186,7 +191,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     modelpath = 'saved_models/model_multi_scale.tar'
     #modelpath = 'saved_models/model_single_scale.tar'
     p = torch.load(modelpath)
@@ -344,7 +349,7 @@ if 1 == 0:
 
 
 # ~~~~ Plot time evolution at the sensors
-if 1 == 1:
+if 1 == 0:
     #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
     case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
 
