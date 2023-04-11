@@ -403,8 +403,9 @@ def message_passing(cfg: DictConfig):
     out_full = trainer.gather_node_tensor(input_tensor)
     if RANK == 0:
         out_full = torch.cat(out_full, dim=0)
-        #print('out_full: ', out_full)
+        out_full = out_full.cpu()
 
+        print('out_full: ', out_full)
         # save: 
         out_full = out_full.numpy()
         savepath = cfg.work_dir + '/outputs/halo_results/'
