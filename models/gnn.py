@@ -1203,13 +1203,14 @@ class GNN_TopK(torch.nn.Module):
         self.n_mlp_mp = n_mlp_mp # number of MLP layers in node/edge update functions used in message passing
         self.n_mp_down_topk = n_mp_down_topk # number of message passing blocks in downsampling path 
         self.n_mp_up_topk = n_mp_up_topk # number of message passing blocks in upsampling path  
-        self.depth = len(n_mp_up_topk)
+        self.depth = len(n_mp_up_topk) - 1
         self.pool_ratios = pool_ratios
         self.param_sharing = param_sharing
         self.filter_lengthscale = filter_lengthscale
         self.name = name
         
-        assert(len(self.n_mp_down_topk) == len(self.n_mp_up_topk)+1), "size of n_mp_down_topk must be 1 greater than n_mp_up_topk"
+        #assert(len(self.n_mp_down_topk) == len(self.n_mp_up_topk)+1), "size of n_mp_down_topk must be 1 greater than n_mp_up_topk"
+        assert(len(self.n_mp_down_topk) == len(self.n_mp_up_topk)), "size of n_mp_down_topk must equal to n_mp_up_topk"
 
         # For multiscale gnn used in decoding stage  
         self.interp = interpolation_mode
@@ -1404,14 +1405,14 @@ class GNN_TopK(torch.nn.Module):
                 edge_indices += [edge_index]
                 edge_attrs += [edge_attr]
 
-        # # ~~~~ Upward message passing (decoder)
-        # # Initial message passing on coarse graph 
-        # m = 0
-        # for i in range(self.n_mp_up_topk[m]):
-        #     if not self.param_sharing:
-        #         x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
-        #     else:
-        #         x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
+        # ~~~~ Upward message passing (decoder)
+        # Initial message passing on coarse graph 
+        m = 0
+        for i in range(self.n_mp_up_topk[m]):
+            if not self.param_sharing:
+                x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+            else:
+                x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
         
         # upward cycle
         for m in range(self.depth):
@@ -1443,10 +1444,10 @@ class GNN_TopK(torch.nn.Module):
             x = up
 
             # Message passing on new upsampled graph
-            for i in range(self.n_mp_up_topk[m]):
+            for i in range(self.n_mp_up_topk[m+1]):
                 for r in range(1):
                     if not self.param_sharing:
-                        x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                        x = self.up_mps[m+1][i](x, edge_index, edge_attr, pos, batch=batch)
                     else:
                         x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
 
