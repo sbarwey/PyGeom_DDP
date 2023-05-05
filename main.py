@@ -31,6 +31,12 @@ Tensor = torch.Tensor
 # PyTorch Geometric
 import torch_geometric
 from torch_geometric.data import Data
+import torch_geometric.utils as utils
+import torch_geometric.nn as tgnn
+
+# Plotting
+import networkx as nx
+import matplotlib.pyplot as plt
 
 # Models
 import models.cnn as cnn
@@ -130,7 +136,8 @@ class Trainer:
 
         # ~~~~ Setup data 
         self.neighboring_procs = {}
-        self.data = self.setup_data()
+        self.data, self.data_gll = self.setup_data()
+
         self.n_nodes_internal_procs = list(torch.empty([1], dtype=torch.int64, device=DEVICE_ID)) * SIZE
         if WITH_CUDA:
             self.data.n_nodes_internal = self.data.n_nodes_internal.cuda()
@@ -141,28 +148,32 @@ class Trainer:
         self.mask_send, self.mask_recv = self.build_masks()
 
         # ~~~~ Initialize send/recv buffers on device (if applicable)
-        n_features_x = self.data.x.shape[1]
         n_features_pos = self.data.pos.shape[1]
-        self.x_buffer_send, self.x_buffer_recv = self.build_buffers(n_features_x)
         self.pos_buffer_send, self.pos_buffer_recv = self.build_buffers(n_features_pos)
 
         # ~~~~ Do a halo swap on position matrices 
+        #if RANK == 1: 
+        #    print('[RANK %d] -- pos before: ' %(RANK), self.data.pos)
         if WITH_CUDA:
             self.data.pos = self.data.pos.cuda()
         self.data.pos = self.halo_swap(self.data.pos, self.pos_buffer_send, self.pos_buffer_recv)
-        
+        #if RANK == 0: 
+        #    print('[RANK %d] -- pos after: ' %(RANK), self.data.pos)
+
         # ~~~~ Init model and move to gpu 
         self.model = self.build_model()
         if self.device == 'gpu':
             self.model.cuda()
 
-        # ~~~~ Wrap model in DDP
-        if WITH_DDP and SIZE > 1:
-            self.model = DDP(self.model)
+        # # ~~~~ Wrap model in DDP
+        # if WITH_DDP and SIZE > 1:
+        #     self.model = DDP(self.model)
 
     def build_model(self) -> nn.Module:
-        n_features = self.data.x.shape[1]
-        model = gnn.Simple_MP_Layer(hidden_channels=n_features)
+        input_channels = self.data.x.shape[1]
+        hidden_channels = input_channels
+        model = gnn.Simple_MP_Layer(input_channels=input_channels, 
+                                    hidden_channels=hidden_channels)
         return model
 
     def setup_torch(self):
@@ -175,17 +186,17 @@ class Trainer:
         """
         if SIZE > 1:
             # Fill send buffer
-            for i in self.neighboring_procs[RANK]:
+            for i in self.neighboring_procs:
                 buff_send[i] = input_tensor[self.mask_send[i]]
 
             # Perform swap
             req_send_list = []
-            for i in self.neighboring_procs[RANK]:
+            for i in self.neighboring_procs:
                 req_send = dist.isend(tensor=buff_send[i], dst=i)
                 req_send_list.append(req_send)
             
             req_recv_list = []
-            for i in self.neighboring_procs[RANK]:
+            for i in self.neighboring_procs:
                 req_recv = dist.irecv(tensor=buff_recv[i], src=i)
                 req_recv_list.append(req_recv)
 
@@ -198,7 +209,7 @@ class Trainer:
             dist.barrier()
 
             # Fill halo nodes 
-            for i in self.neighboring_procs[RANK]:
+            for i in self.neighboring_procs:
                 input_tensor[self.mask_recv[i]] = buff_recv[i]
         return input_tensor 
 
@@ -210,24 +221,21 @@ class Trainer:
         mask_recv = [None] * SIZE
         if SIZE > 1: 
             n_nodes_local = self.data.n_nodes_internal + self.data.n_nodes_halo
-            halo = self.data.halo
+            halo_info = self.data.halo_info
 
-            for i in self.neighboring_procs[RANK]:
-                if RANK == 0: 
-                    mask_send[i] = [n_nodes_local-halo-1]
-                    mask_recv[i] = [n_nodes_local-halo]
-                elif RANK == SIZE-1:
-                    mask_send[i] = [halo]
-                    mask_recv[i] = [0]
-                else:
-                    if i == RANK - 1: #neighbor is on left  
-                        mask_send[i] = [halo]
-                        mask_recv[i] = [0]
-                    elif i == RANK + 1: # neighbor is on right  
-                        mask_send[i] = [n_nodes_local-halo-1]
-                        mask_recv[i] = [n_nodes_local-halo]
-            #print('[RANK %d] mask_send: ' %(RANK), mask_send)
-            #print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
+            for i in self.neighboring_procs:
+                idx_i = self.data.halo_info[:,2] == i
+                # index of nodes to send to proc i 
+                mask_send[i] = self.data.halo_info[:,0][idx_i] 
+                #mask_send[i] = torch.unique(mask_send[i])
+                
+                # index of nodes to receive from proc i  
+                mask_recv[i] = self.data.halo_info[:,1][idx_i]
+                #mask_recv[i] = torch.unique(mask_recv[i])
+
+
+            print('[RANK %d] mask_send: ' %(RANK), mask_send)
+            print('[RANK %d] mask_recv: ' %(RANK), mask_recv)
 
         return mask_send, mask_recv 
 
@@ -235,7 +243,7 @@ class Trainer:
         buff_send = [None] * SIZE
         buff_recv = [None] * SIZE
         if SIZE > 1: 
-            for i in self.neighboring_procs[RANK]:
+            for i in self.neighboring_procs:
                 buff_send[i] = torch.empty([len(self.mask_send[i]), n_features], dtype=torch.float32, device=DEVICE_ID) 
                 buff_recv[i] = torch.empty([len(self.mask_recv[i]), n_features], dtype=torch.float32, device=DEVICE_ID)
         return buff_send, buff_recv 
@@ -247,16 +255,43 @@ class Trainer:
         n_internal_nodes can vary for each proc, but n_features must be the same 
         """
         # torch.distributed.gather(tensor, gather_list=None, dst=0, group=None, async_op=False)
-        n_features = input_tensor.shape[1]
+        n_nodes = torch.tensor(input_tensor.shape[0])
+        n_features = torch.tensor(input_tensor.shape[1])
+
+        n_nodes_procs = list(torch.empty([1], dtype=torch.int64, device=DEVICE_ID)) * SIZE
+        if WITH_CUDA:
+            n_nodes = n_nodes.cuda()
+        dist.all_gather(n_nodes_procs, n_nodes)
+
+
+
         gather_list = None
         if RANK == 0:
             gather_list = [None] * SIZE
             for i in range(SIZE):
-                gather_list[i] = torch.empty([self.n_nodes_internal_procs[i], n_features], 
+                gather_list[i] = torch.empty([n_nodes_procs[i], n_features], 
                                              dtype=dtype,
                                              device=DEVICE_ID)
         dist.gather(input_tensor, gather_list, dst=0)
         return gather_list
+
+    # def gather_node_tensor(self, input_tensor, dst=0, dtype=torch.float32):
+    #     """
+    #     Gathers node-based tensor into root proc. Shape is [n_internal_nodes, n_features] 
+    #     NOTE: input tensor on all ranks should correspond to INTERNAL nodes (exclude halo nodes) 
+    #     n_internal_nodes can vary for each proc, but n_features must be the same 
+    #     """
+    #     # torch.distributed.gather(tensor, gather_list=None, dst=0, group=None, async_op=False)
+    #     n_features = input_tensor.shape[1]
+    #     gather_list = None
+    #     if RANK == 0:
+    #         gather_list = [None] * SIZE
+    #         for i in range(SIZE):
+    #             gather_list[i] = torch.empty([self.n_nodes_internal_procs[i], n_features],
+    #                                          dtype=dtype,
+    #                                          device=DEVICE_ID)
+    #     dist.gather(input_tensor, gather_list, dst=0)
+    #     return gather_list 
         
     
     def setup_data(self):
@@ -264,106 +299,183 @@ class Trainer:
         Creates 1d graph which is partitioned to each proc  
         """
         # ~~~~ Create simple 1d graph
-        # number of nodes and edges
-        n_nodes_global = 128
-        n_edges_global = n_nodes_global - 1 
+        # paths:
+        main_path = self.cfg.data_dir + 'wall/data_halo/elements_32_poly_5_nproc_%d/' %(SIZE)
+        path_to_pos_elem = main_path + 'pos_element_proc_%d' %(RANK)
+        path_to_pos_gll = main_path + 'pos_node_proc_%d' %(RANK)
+        path_to_ei_elem = main_path + 'ei_element_proc_%d' %(RANK)
+        path_to_ei_gll2elem = main_path + 'ei_node2element_proc_%d' %(RANK)
+        path_to_sol_gll = main_path + 'u_node_proc_%d' %(RANK)
+        path_to_halo_info = main_path + 'halo_info_proc_%d' %(RANK)
 
-        # Node positions and attributes 
-        pos = torch.linspace(0,1,n_nodes_global).reshape((n_nodes_global, 1)) 
-        n_features = 4
-        x = torch.rand(n_nodes_global,n_features)
-
-        # Edge owner and neighbor 
-        edge_own = torch.arange(n_nodes_global - 1)
-        edge_nei = torch.arange(1, n_nodes_global)
-
-        # Edge index 
-        edge_index = torch.zeros((2, n_edges_global), dtype=torch.long)
-        edge_index[0,:] = edge_own
-        edge_index[1,:] = edge_nei
-
-        # Make undirected:
-        edge_index = torch_geometric.utils.to_undirected(edge_index)
-        n_edges_global = edge_index.shape[1]
-
-        idx_internal_nodes = list(range(n_nodes_global))
-        data = Data(x=x, edge_index=edge_index, pos=pos, 
-                    n_nodes_internal=torch.tensor(n_nodes_global, dtype=torch.int64), 
-                    n_nodes_halo=torch.tensor(0, dtype=torch.int64), 
-                    halo=torch.tensor(0, dtype=torch.int64),
-                    idx_internal_nodes = torch.tensor(idx_internal_nodes, dtype=torch.int64)) 
-        data = data.to(DEVICE_ID)
+        # Load
+        pos_elem = np.loadtxt(path_to_pos_elem, dtype=np.float32) # element positions
+        pos_gll = np.loadtxt(path_to_pos_gll, dtype=np.float32) # node positions 
+        ei_elem = np.loadtxt(path_to_ei_elem, dtype=np.int64).T 
+        ei_gll2elem = np.loadtxt(path_to_ei_gll2elem, dtype=np.int64).T
+        sol_gll = np.loadtxt(path_to_sol_gll, dtype=np.float32)
+        halo_info = np.loadtxt(path_to_halo_info, dtype=np.int64) 
+        print('[RANK %d] Halo info: ' %(RANK), halo_info.shape)
 
         if SIZE > 1: 
-            # ~~~~ Partition the 1d graph:
-            n_nodes_internal = n_nodes_global / SIZE
-            assert n_nodes_internal.is_integer(), "number of nodes must be divisible by number of processors!"
-            n_nodes_internal = int(n_nodes_internal)
+            # Get list of neighboring processors for each processor
+            self.neighboring_procs = np.unique(halo_info[:,2])
+            print('[RANK %d] neighboring procs: ' %(RANK), self.neighboring_procs)
 
-            # starting end ending indices per processor in the node attribute matrix:
-            start_index = RANK * n_nodes_internal # [int(i * nodes_local) for i in range(n_procs)]
-            end_index = start_index + n_nodes_internal
-
-            # List of neighboring processors for each processor
-            for i in range(SIZE):
-                if i == 0:
-                    self.neighboring_procs[i] = [1] 
-                elif i == SIZE - 1:
-                    self.neighboring_procs[i] = [SIZE - 2]
-                else:
-                    self.neighboring_procs[i] = [i - 1, i + 1]
-
-            # ~~~~ Create the local graphs 
-            halo = 1 
-            if RANK == 0: # Left boundary
-                n_nodes_halo = halo
-                n_nodes_local = n_nodes_internal + n_nodes_halo
-                x_local                     = torch.zeros((n_nodes_local, n_features))
-                pos_local                   = torch.zeros((n_nodes_local, n_features))
-                x_local[:-halo]           = data.x[start_index:end_index]
-                pos_local[:-halo]         = data.pos[start_index:end_index]
-                idx_internal_nodes = list(range(n_nodes_local - halo))
-            elif RANK == SIZE - 1: # right boundary
-                n_nodes_halo = halo
-                n_nodes_local = n_nodes_internal + n_nodes_halo
-                x_local                     = torch.zeros((n_nodes_local, n_features))
-                pos_local                   = torch.zeros((n_nodes_local, n_features))
-                x_local[halo:]            = data.x[start_index:end_index]
-                pos_local[halo:]          = data.pos[start_index:end_index]
-                idx_internal_nodes = list(range(halo,n_nodes_local))
-            else: # internal
-                n_nodes_halo = 2*halo
-                n_nodes_local = n_nodes_internal + n_nodes_halo
-                x_local                     = torch.zeros((n_nodes_local, n_features))
-                pos_local                   = torch.zeros((n_nodes_local, n_features))
-                x_local[halo:-halo]     = data.x[start_index:end_index]
-                pos_local[halo:-halo]   = data.pos[start_index:end_index]
-                idx_internal_nodes = list(range(halo, n_nodes_local - halo))
-            
-            # Local connectivities: 
-            edge_own_local = torch.arange(n_nodes_local - 1)
-            edge_nei_local = torch.arange(1, n_nodes_local)
-
-            # Edge index 
-            n_edges_local = n_nodes_local - 1 
-            edge_index_local = torch.zeros((2, n_edges_local), dtype=torch.long)
-            edge_index_local[0,:] = edge_own_local
-            edge_index_local[1,:] = edge_nei_local
-            edge_index_local = torch_geometric.utils.to_undirected(edge_index_local)
-            n_edges_local = edge_index_local.shape[1]
-
-            # Make local graph
-            data_local = Data(x=x_local, edge_index=edge_index_local, pos=pos_local, 
-                              n_nodes_internal=torch.tensor(n_nodes_internal, dtype=torch.int64),
-                              n_nodes_halo=torch.tensor(n_nodes_halo, dtype=torch.int64), 
-                              halo=torch.tensor(halo, dtype=torch.int64),
-                              idx_internal_nodes = torch.tensor(idx_internal_nodes, dtype=torch.int64)) 
-            data_local = data_local.to(DEVICE_ID)
+            # Get number of internal and halo nodes 
+            n_nodes_internal = pos_elem.shape[0]
+            n_nodes_halo = halo_info.shape[0]
+            n_nodes = n_nodes_internal + n_nodes_halo
+            idx_internal_nodes = list(range(n_nodes_internal))
+            idx_halo_nodes = list(range(n_nodes_internal, n_nodes))
+            #print('[RANK %d] idx_internal_nodess: ' %(RANK), idx_internal_nodes)
         else:
-            data_local = data
+            print('[RANK %d] neighboring procs: ' %(RANK), self.neighboring_procs)
 
-        return data_local
+            # Get number of internal and halo nodes 
+            n_nodes_internal = pos_elem.shape[0]
+            n_nodes_halo = 0
+            n_nodes = n_nodes_internal + n_nodes_halo
+            idx_internal_nodes = list(range(n_nodes_internal))
+            idx_halo_nodes = [] 
+            #print('[RANK %d] idx_internal_nodess: ' %(RANK), idx_internal_nodes)
 
+        # Get local node attribute matrix 
+        n_features = 3 
+        x = torch.zeros((n_nodes, n_features))
+        x[idx_internal_nodes] = torch.ones(n_nodes_internal, n_features)
+        pos = torch.zeros((n_nodes, pos_elem.shape[1]))
+        pos[idx_internal_nodes] = torch.tensor(pos_elem[:])
+
+        # set x = pos 
+        x[idx_internal_nodes] = pos[idx_internal_nodes]
+
+        # Make local graph -- element based 
+        data_local = Data(x=x, edge_index=torch.tensor(ei_elem), pos=pos, 
+                          n_nodes_internal=torch.tensor(n_nodes_internal, dtype=torch.int64),
+                          n_nodes_halo=torch.tensor(n_nodes_halo, dtype=torch.int64), 
+                          idx_internal_nodes = torch.tensor(idx_internal_nodes, dtype=torch.int64),
+                          idx_halo_nodes = torch.tensor(idx_halo_nodes, dtype=torch.int64),
+                          halo_info = torch.tensor(halo_info, dtype=torch.int64)) 
+        data_local = data_local.to(DEVICE_ID)
+
+
+        # Make local graph -- node based 
+        data_local_gll = Data(x = torch.tensor(sol_gll), 
+                              pos = torch.tensor(pos_gll), 
+                              cluster = torch.tensor(ei_gll2elem[1,:]))
+        data_local_gll = data_local_gll.to(DEVICE_ID)
+
+        # Create a nearest-neighbors graph, k = 3 
+        data_local_gll.edge_index = tgnn.knn_graph(data_local_gll.pos, k = 3)
+                              
+        print('cluster:', data_local_gll.cluster)
+
+        # Coalesce:
+        data_local.edge_index = utils.coalesce(data_local.edge_index)
+        data_local.edge_index = utils.to_undirected(data_local.edge_index)
+
+        return data_local, data_local_gll
+
+
+    def plot_graph(self, plot_3d=True):
+        data_element = Data(x = self.data.pos, edge_index = self.data.edge_index, pos = self.data.pos)
+        G_element = utils.to_networkx(data=data_element)
+
+        fig = plt.figure()
+        if plot_3d:
+            ax = fig.add_subplot(111, projection="3d")
+        else:
+            ax = fig.add_subplot(111) 
+
+        data = data_element
+        G = G_element
+        pos = dict(enumerate(np.array(data.pos)))
+
+        # Extract node and edge positions from the layout
+        node_xyz = np.array([pos[v] for v in sorted(G)])
+        edge_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges()])
+
+        # idx_internal: 
+        idx_internal = self.data.idx_internal_nodes
+        idx_halo = self.data.idx_halo_nodes
+
+        # Plot the nodes - alpha is scaled by "depth" automatically
+        if plot_3d:
+            ax.scatter(*node_xyz[idx_internal].T, s=100, ec="w", c='black')
+            ax.scatter(*node_xyz[idx_halo].T, s=100, ec="w", c='red')
+        
+            # Plot the edges
+            for vizedge in edge_xyz:
+                ax.plot(*vizedge.T, color="tab:gray")
+
+            # # Overlay the GLL points 
+            # gll = data_node.pos
+            # ax.scatter(*gll.T, s=5, color="red", alpha=0.2)
+
+        else:
+            ax.scatter(*node_xyz[idx_internal,:2].T, s=50, c='black')
+            ax.scatter(*node_xyz[idx_halo,:2].T, s=50, c='red')
+        
+            # Plot the edges
+            for vizedge in edge_xyz[:,:,:2]:
+                ax.plot(*vizedge.T, color="lime")
+
+            ## Overlay the GLL points 
+            #gll = data_node.pos[:,:2]
+            #ax.scatter(*gll.T, s=15, color="red")
+
+            ## Plot arrows from GLL points to element
+            #cluster = cluster_node_list[i][1,:]
+            #n_points = data_node.pos.shape[0]
+            #for p in range(n_points):
+            #    sample = gll[p]
+            #    centroid = data.pos[cluster[p]]
+            #    ax.arrow(sample[0], sample[1], centroid[0] - sample[0], centroid[1] - sample[1],
+            #             length_includes_head=True, width=0.01, head_width=0.1, color='black', zorder=0)
+        
+
+        lo = -np.pi - 0.1
+        hi = np.pi + 0.1
+        def _format_axes(ax):
+            """Visualization options for the 3D axes."""
+            # Turn gridlines off
+            ax.grid(False)
+            # Suppress tick labels
+            #for dim in (ax.xaxis, ax.yaxis, ax.zaxis):
+            #    dim.set_ticks([])
+            # Set axes labels
+            ax.set_xlabel("x")
+            ax.set_xlim([lo, hi])
+            ax.set_ylabel("y")
+            ax.set_ylim([lo, hi])
+            if plot_3d:
+                ax.set_zlabel("z")
+                ax.set_zlim([lo, hi])
+            else:
+                ax.set_aspect('equal')
+
+        _format_axes(ax)
+        fig.tight_layout()
+        save_dir = self.cfg.work_dir + '/outputs'
+        plt.savefig(save_dir + '/graph_proc_%d.png' %(RANK), dpi=800)
+        plt.close()
+
+        return 0
+
+
+    def plot_field(self, field, name='test'):
+
+        pos = self.data_gll.pos
+        fig, ax = plt.subplots()
+        ax.scatter(pos[:,0], pos[:,1], c=field, s=5) 
+        ax.set_aspect('equal')
+        save_dir = self.cfg.work_dir + '/outputs'
+        ax.grid(False)
+        plt.savefig(save_dir + '/%s_node_field_%d.png' %(name,RANK), dpi=800)
+        plt.close()
+
+        return
 
 
     def run_mp(self, n_mp):
@@ -374,13 +486,37 @@ class Trainer:
                 self.data.edge_index = self.data.edge_index.cuda()
                 self.data.pos = self.data.pos.cuda()
 
-            # run message passing 
-            x = self.data.x
+            # gll-to-element encoder: 
+            x = self.data_gll.x
+            ei_gll = self.data_gll.edge_index
+            cluster = self.data_gll.cluster
+            x = self.model.run_encoder(x = x, 
+                                       edge_index = ei_gll, 
+                                       cluster = cluster)
+            x = torch.concat((x, 
+                              torch.zeros(self.data.n_nodes_halo, self.model.hidden_channels)), axis=0)
+
+            #x = self.data.x
+            
+            # build buffers  
+            x_buffer_send, x_buffer_recv = self.build_buffers(self.model.hidden_channels)
+
+            # message passing loop:
             for i in range(n_mp):
-                x = self.halo_swap(x, self.x_buffer_send, self.x_buffer_recv)
-                x = self.model(x, self.data.edge_index)
+                #x = self.halo_swap(x, x_buffer_send, 
+                #                   x_buffer_recv)
+                x = self.model.run_messagepassing(x, 
+                                        self.data.edge_index)
 
+            ## element-to-gll decoder: 
+            #x = self.halo_swap(x, 
+            #                   x_buffer_send, 
+            #                   x_buffer_recv)
+            #x = self.model.run_decoder(x, 
+            #                           self.data.pos, 
+            #                           self.data_gll.pos)
 
+        
         return x  
 
 def run_demo(demo_fn: Callable, world_size: int | str) -> None:
@@ -391,24 +527,32 @@ def run_demo(demo_fn: Callable, world_size: int | str) -> None:
 
 def message_passing(cfg: DictConfig):
     trainer = Trainer(cfg)
+
+    # trainer.plot_graph(plot_3d=False)
+
+    # trainer.plot_field(trainer.data_gll.x[:,0], name='input')
     
     n_mp = 10 # number of message passing steps 
     out = trainer.run_mp(n_mp) 
-    #print('[RANK %d] out: ' %(RANK), out)
+
+    # trainer.plot_field(out[:,0], name='output')
 
     # gather node tensor 
-    input_tensor = out
-    halo = trainer.data.halo
+    input_tensor = out # trainer.data.pos
     input_tensor = input_tensor[trainer.data.idx_internal_nodes, :]
+    print('[RANK %d] input_tensor: ' %(RANK), input_tensor.shape)
     out_full = trainer.gather_node_tensor(input_tensor)
+
     if RANK == 0:
         out_full = torch.cat(out_full, dim=0)
-        #print('out_full: ', out_full)
+        out_full = out_full.cpu()
+        print('out_full: ', out_full)
 
         # save: 
         out_full = out_full.numpy()
         savepath = cfg.work_dir + '/outputs/halo_results/'
-        filename = 'nprocs_%d.npy' %(SIZE)
+        #filename = 'nprocs_%d.npy' %(SIZE)
+        filename = 'nprocs_%d_nohalo.npy' %(SIZE)
         np.save(savepath + filename, out_full)
 
 
