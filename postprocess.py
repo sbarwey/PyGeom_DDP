@@ -10,6 +10,7 @@ from typing import Optional, Union, Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 22})
 
 import time
 import torch
@@ -159,10 +160,12 @@ if 1 == 1:
     # Load model 
     a = torch.load('saved_models/model_single_scale.tar')
     b = torch.load('saved_models/model_multi_scale.tar')
-    c = torch.load('saved_models/model_multi_scale_topk.tar.old')
+    #c = torch.load('saved_models/model_multi_scale_topk.tar.old')
+    c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
+    
 
     # Plot losses:
-    fig, ax = plt.subplots(1,3,sharey=True)
+    fig, ax = plt.subplots(1,3,sharey=True, sharex=True)
     ax[0].plot(a['loss_hist_train'])
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
@@ -192,7 +195,8 @@ if 1 == 1:
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
-    modelpath = 'saved_models/model_multi_scale.tar'
+    modelpath = 'saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar'
+    #modelpath = 'saved_models/model_multi_scale.tar'
     #modelpath = 'saved_models/model_single_scale.tar'
     p = torch.load(modelpath)
 
@@ -202,20 +206,49 @@ if 1 == 0:
 
     input_dict = p['input_dict']
     print('input_dict: ', input_dict)
-    model = gnn.Multiscale_MessagePassing_UNet(
-                in_channels_node = input_dict['in_channels_node'],
-                in_channels_edge = input_dict['in_channels_edge'],
-                hidden_channels = input_dict['hidden_channels'],
-                n_mlp_encode = input_dict['n_mlp_encode'],
-                n_mlp_mp = input_dict['n_mlp_mp'],
-                n_mp_down = input_dict['n_mp_down'],
-                n_mp_up = input_dict['n_mp_up'],
-                n_repeat_mp_up = input_dict['n_repeat_mp_up'],
-                lengthscales = input_dict['lengthscales'],
-                bounding_box = input_dict['bounding_box'],
-                act = input_dict['act'],
-                interpolation_mode = input_dict['interpolation_mode'],
-                name = input_dict['name'])
+
+    
+    # With top-k:
+    model = gnn.GNN_TopK(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'], 
+            n_mlp_encode = input_dict['n_mlp_encode'], 
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'], 
+            n_mp_down_enc = input_dict['n_mp_down_enc'], 
+            n_mp_up_enc = input_dict['n_mp_up_enc'], 
+            n_mp_down_dec = input_dict['n_mp_down_dec'], 
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
+
+
+    # # Without top-k: 
+    # model = gnn.Multiscale_MessagePassing_UNet(
+    #             in_channels_node = input_dict['in_channels_node'],
+    #             in_channels_edge = input_dict['in_channels_edge'],
+    #             hidden_channels = input_dict['hidden_channels'],
+    #             n_mlp_encode = input_dict['n_mlp_encode'],
+    #             n_mlp_mp = input_dict['n_mlp_mp'],
+    #             n_mp_down = input_dict['n_mp_down'],
+    #             n_mp_up = input_dict['n_mp_up'],
+    #             n_repeat_mp_up = input_dict['n_repeat_mp_up'],
+    #             lengthscales = input_dict['lengthscales'],
+    #             bounding_box = input_dict['bounding_box'],
+    #             act = input_dict['act'],
+    #             interpolation_mode = input_dict['interpolation_mode'],
+    #             name = input_dict['name'])
+
 
     model.load_state_dict(p['state_dict'])
     model.eval()
@@ -277,6 +310,9 @@ if 1 == 0:
         x_src = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
         x_new_singlestep = data.x + x_src
 
+        # Get mask (single-step): 
+        print('\tMask single step...')
+        mask_singlestep = model.get_mask(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
 
         # Get rollout prediction
         print('\tRollout step...')
@@ -284,6 +320,9 @@ if 1 == 0:
         x_src = model.forward(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
         x_new = x_old + x_src
         target = data.y[0]
+
+        print('\tMask rollout step...')
+        mask_rollout = model.get_mask(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
 
         # unscale target and prediction 
         mean_i = data.data_scale[0].reshape((1,n_features))
@@ -331,6 +370,7 @@ if 1 == 0:
             scalar2openfoam(error_singlestep[:,f].numpy(), 
                             time_folder+'/%s' %(field_name), field_name, time_value)
 
+
         # # Velocity vector
         # u_vec_target[:,:2] = target[:,:]
         # u_vec_pred[:,:2] = pred[:,:]
@@ -342,16 +382,20 @@ if 1 == 0:
         # field_name = 'U_pred'
         # array2openfoam(u_vec_pred,  time_folder+'/%s' %(field_name), field_name, time_value)
 
-        # # mask
-        # field_name = 'mask'
-        # scalar2openfoam(mask.squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+        # mask singlestep
+        field_name = 'mask_singlestep'
+        scalar2openfoam(mask_singlestep.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
+        # mask rollout
+        field_name = 'mask_rollout'
+        scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
 
 # ~~~~ Plot time evolution at the sensors
 if 1 == 0:
     #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
     case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
+    #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0'
 
     sensor_dir = case_dir + '/postProcessing/probes1/'
 
