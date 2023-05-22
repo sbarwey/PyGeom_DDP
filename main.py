@@ -218,8 +218,32 @@ class Trainer:
         #        interpolation_mode = 'knn',
         #        name = 'model_multi_scale')
 
-        # MMP topk 
-        model = gnn.GNN_TopK(
+        # # MMP topk (no skip, same as AE arch)
+        # model = gnn.GNN_TopK(
+        #         in_channels_node = 2,
+        #         in_channels_edge = 3,
+        #         hidden_channels = 128,
+        #         out_channels = 2, 
+        #         n_mlp_encode = 3, 
+        #         n_mlp_mp = 2,
+        #         n_mp_down_topk = [1,1],
+        #         n_mp_up_topk = [1,1],
+        #         pool_ratios = [1./4.],
+        #         n_mp_down_enc = [4],
+        #         n_mp_up_enc = [],
+        #         n_mp_down_dec = [4,4,4],
+        #         n_mp_up_dec = [4,4], 
+        #         lengthscales_enc = [],
+        #         lengthscales_dec = [0.01, 0.02], 
+        #         bounding_box = bbox, 
+        #         interpolation_mode = 'knn',
+        #         act = F.elu,
+        #         param_sharing = False,
+        #         name = 'topk')
+
+
+        # MMP Topk Unet 
+        model = gnn.GNN_TopK_NoReduction(
                 in_channels_node = 2,
                 in_channels_edge = 3,
                 hidden_channels = 128,
@@ -227,19 +251,21 @@ class Trainer:
                 n_mlp_encode = 3, 
                 n_mlp_mp = 2,
                 n_mp_down_topk = [1,1],
-                n_mp_up_topk = [1,1],
+                n_mp_up_topk = [1],
                 pool_ratios = [1./4.],
-                n_mp_down_enc = [4],
-                n_mp_up_enc = [],
-                n_mp_down_dec = [4,4,4],
-                n_mp_up_dec = [4,4], 
-                lengthscales_enc = [],
+                n_mp_down_enc = [4,4,4],
+                n_mp_up_enc = [4,4],
+                n_mp_down_dec = [2,2,2],
+                n_mp_up_dec = [2,2], 
+                lengthscales_enc = [0.01, 0.02],
                 lengthscales_dec = [0.01, 0.02], 
                 bounding_box = bbox, 
                 interpolation_mode = 'knn',
                 act = F.elu,
                 param_sharing = False,
-                name = 'topk')
+                name = 'topk_unet')
+
+
 
 
         return model
@@ -497,6 +523,7 @@ def train(cfg: DictConfig):
     start = time.time()
     trainer = Trainer(cfg)
     epoch_times = []
+    
     for epoch in range(trainer.epoch_start, cfg.epochs+1):
         # ~~~~ Training step 
         t0 = time.time()
