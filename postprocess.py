@@ -92,24 +92,38 @@ model = gnn.Multiscale_MessagePassing_UNet(
             n_repeat_mp_up = input_dict['n_repeat_mp_up'],
             lengthscales = input_dict['lengthscales'],
             bounding_box = input_dict['bounding_box'],
-            act = input_dict['act'],
+            act = F.relu, #input_dict['act'],
             interpolation_mode = input_dict['interpolation_mode'],
             name = input_dict['name'])
+#model.cuda()
 model.eval()
-#model = torch.jit.script(model)
+model = torch.jit.script(model)
 
 
 # Make Prediction
-ic_index = 240 # 120
+ic_index = 1 # 120
 x_new = test_dataset[ic_index].x
+t_forward_list = []
 for i in range(ic_index,len(test_dataset)):
     print('[%d/%d]' %(i+1, len(test_dataset)))
     data = test_dataset[i]
-
+    print('\tphysical time = %g' %(data.t))
     # Get single step prediction
     t_forward = time.time()
     x_src = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
     t_forward = time.time() - t_forward 
-    print('\ttime = %g s' %(t_forward))
+    print('\tevaluation time = %g s' %(t_forward))
+    t_forward_list.append(t_forward)
     x_new_singlestep = data.x + x_src
+
+
+np.save('outputs/t_hc_%d.npy' %(input_dict['hidden_channels']), np.array(t_forward_list))
+
+
+
+
+    
+
+
+
 
