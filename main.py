@@ -242,7 +242,7 @@ class Trainer:
         #         name = 'topk')
 
 
-        # MMP Topk Unet 
+        # MMP unet + topk 
         model = gnn.GNN_TopK_NoReduction(
                 in_channels_node = 2,
                 in_channels_edge = 3,
