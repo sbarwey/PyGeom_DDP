@@ -156,12 +156,13 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:  
+if 1 == 0:  
     # Load model 
     a = torch.load('saved_models/model_single_scale.tar')
     b = torch.load('saved_models/model_multi_scale.tar')
     #c = torch.load('saved_models/model_multi_scale_topk.tar.old')
-    c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
+    #c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
+    c = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     
 
     # Plot losses:
@@ -486,6 +487,42 @@ if 1 == 0:
 
 
 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Test models 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 1:
+    bounding_box = test_dataset[0].bounding_box
+    bbox = [tnsr.item() for tnsr in bounding_box]
+    model = gnn.GNN_TopK_NoReduction(
+                in_channels_node = 2,
+                in_channels_edge = 3,
+                hidden_channels = 128,
+                out_channels = 2,
+                n_mlp_encode = 3,
+                n_mlp_mp = 2,
+                n_mp_down_topk = [2],
+                n_mp_up_topk = [],
+                pool_ratios = [1./4.],
+                n_mp_down_enc = [4,4,4],
+                n_mp_up_enc = [4,4],
+                n_mp_down_dec = [2,2,2],
+                n_mp_up_dec = [2,2],
+                lengthscales_enc = [0.01, 0.02],
+                lengthscales_dec = [0.01, 0.02],
+                bounding_box = bbox,
+                interpolation_mode = 'knn',
+                act = F.elu,
+                param_sharing = True,
+                name = 'topk_unet')
+
+
+
+    # Do a forward pass 
+    data = test_dataset[0]
+    print('Exec forward pass..')
+    x_src = model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+    
 
 
 
