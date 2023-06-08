@@ -1862,7 +1862,6 @@ class GNN_TopK_NoReduction(torch.nn.Module):
         m = 0 # level index 
         n_mp = self.n_mp_down_topk[m] # number of message passing blocks 
         for i in range(n_mp):
-            print('initial message passing on fine graph: MMP block %d' %(i))
             if not self.param_sharing: 
                 x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
             else:
