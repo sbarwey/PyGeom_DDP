@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function, annotations
 import os
 import socket
 import logging
+import copy 
 
 from typing import Optional, Union, Callable
 
@@ -492,6 +493,8 @@ if 1 == 0:
 # Test models 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 1:
+
+    # step 1: create model w/ shared params 
     bounding_box = test_dataset[0].bounding_box
     bbox = [tnsr.item() for tnsr in bounding_box]
     model = gnn.GNN_TopK_NoReduction(
@@ -506,8 +509,8 @@ if 1 == 1:
                 pool_ratios = [1./4.],
                 n_mp_down_enc = [4,4,4],
                 n_mp_up_enc = [4,4],
-                n_mp_down_dec = [2,2,2],
-                n_mp_up_dec = [2,2],
+                n_mp_down_dec = [4,4,4],
+                n_mp_up_dec = [4,4],
                 lengthscales_enc = [0.01, 0.02],
                 lengthscales_dec = [0.01, 0.02],
                 bounding_box = bbox,
@@ -522,7 +525,60 @@ if 1 == 1:
     data = test_dataset[0]
     print('Exec forward pass..')
     x_src = model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+
+
+    sd = model.state_dict()
+
+
+    # step 2: create model with unshared params 
+    model_2 = gnn.GNN_TopK_NoReduction(
+                in_channels_node = 2,
+                in_channels_edge = 3,
+                hidden_channels = 128,
+                out_channels = 2,
+                n_mlp_encode = 3,
+                n_mlp_mp = 2,
+                n_mp_down_topk = [1,1],
+                n_mp_up_topk = [1],
+                pool_ratios = [1./4.],
+                n_mp_down_enc = [4,4,4],
+                n_mp_up_enc = [4,4],
+                n_mp_down_dec = [4,4,4],
+                n_mp_up_dec = [4,4],
+                lengthscales_enc = [0.01, 0.02],
+                lengthscales_dec = [0.01, 0.02],
+                bounding_box = bbox,
+                interpolation_mode = 'knn',
+                act = F.elu,
+                param_sharing = False,
+                name = 'topk_unet_2')
+
+    #model_2.set_down_mmp_block(model.down_mps, 0)
+        
+    print('overwriting down_mps block')
+    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='down')
+    print('overwriting up_mps block')
+    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='up')
+
     
+    print('node/edge encode')
+    model_2.set_node_edge_encoder_decoder(model)
+
+    # node encode norm
+    
+    # edge encode norm 
+
+    # node decode 
+
+
+
+
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Fixing parameters - isolating impact of top-k 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
