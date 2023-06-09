@@ -157,14 +157,14 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:  
+if 1 == 1:  
     # Load model 
-    a = torch.load('saved_models/model_single_scale.tar')
-    b = torch.load('saved_models/model_multi_scale.tar')
+    #a = torch.load('saved_models/model_single_scale.tar')
+    a = torch.load('saved_models/model_multi_scale.tar')
     #c = torch.load('saved_models/model_multi_scale_topk.tar.old')
     #c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
+    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
     c = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    
 
     # Plot losses:
     fig, ax = plt.subplots(1,3,sharey=True, sharex=True)
@@ -174,18 +174,18 @@ if 1 == 0:
     #ax[0].set_ylim([1e-3, 1e-1])
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epochs')
-    ax[0].set_title('Single Scale')
+    ax[0].set_title('Multi Scale')
 
     ax[1].plot(b['loss_hist_train'], label='train')
     ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
     ax[1].set_xlabel('Epochs')
-    ax[1].set_title('Multi Scale')
+    ax[1].set_title('Multi Scale (Shared)')
 
     ax[2].plot(c['loss_hist_train'])
     ax[2].plot(c['loss_hist_test'])
     ax[2].set_yscale('log')
-    ax[2].set_xlim([0,150])
+    ax[2].set_xlim([0,200])
     ax[2].set_xlabel('Epochs')
     ax[2].set_title('Multi Scale + Top-K')
 
@@ -490,47 +490,44 @@ if 1 == 0:
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Test models 
+# Initialize MMP blocks from a pre-trained model 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
 
-    # step 1: create model w/ shared params 
-    bounding_box = test_dataset[0].bounding_box
-    bbox = [tnsr.item() for tnsr in bounding_box]
+    # Step 1: load model with shared parameters 
+    modelpath = 'saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar'
+    p = torch.load(modelpath)
+
+    input_dict = p['input_dict']
+    print('input_dict: ', input_dict)
+    
+    # With top-k:
     model = gnn.GNN_TopK_NoReduction(
-                in_channels_node = 2,
-                in_channels_edge = 3,
-                hidden_channels = 128,
-                out_channels = 2,
-                n_mlp_encode = 3,
-                n_mlp_mp = 2,
-                n_mp_down_topk = [2],
-                n_mp_up_topk = [],
-                pool_ratios = [1./4.],
-                n_mp_down_enc = [4,4,4],
-                n_mp_up_enc = [4,4],
-                n_mp_down_dec = [4,4,4],
-                n_mp_up_dec = [4,4],
-                lengthscales_enc = [0.01, 0.02],
-                lengthscales_dec = [0.01, 0.02],
-                bounding_box = bbox,
-                interpolation_mode = 'knn',
-                act = F.elu,
-                param_sharing = True,
-                name = 'topk_unet')
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'], 
+            n_mlp_encode = input_dict['n_mlp_encode'], 
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'], 
+            n_mp_down_enc = input_dict['n_mp_down_enc'], 
+            n_mp_up_enc = input_dict['n_mp_up_enc'], 
+            n_mp_down_dec = input_dict['n_mp_down_dec'], 
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
 
 
-
-    # Do a forward pass 
-    data = test_dataset[0]
-    print('Exec forward pass..')
-    x_src = model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
-
-
-    sd = model.state_dict()
-
-
-    # step 2: create model with unshared params 
+    # step 2: initialize model with unshared params 
+    bbox = input_dict['bounding_box']
     model_2 = gnn.GNN_TopK_NoReduction(
                 in_channels_node = 2,
                 in_channels_edge = 3,
@@ -553,27 +550,28 @@ if 1 == 1:
                 param_sharing = False,
                 name = 'topk_unet_2')
 
-    #model_2.set_down_mmp_block(model.down_mps, 0)
-        
-    print('overwriting down_mps block')
-    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='down')
-    print('overwriting up_mps block')
-    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='up')
 
+    # print number of params before over-writing: 
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
     
-    print('node/edge encode')
+    print('number of parameters before overwriting: ', count_parameters(model_2))
+    print('number of parameters before overwriting: ', count_parameters(model_2))
+    print('number of parameters before overwriting: ', count_parameters(model_2))
+    
+    # write params at level 0  
+    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='down')
+    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='up')
     model_2.set_node_edge_encoder_decoder(model)
 
-    # node encode norm
-    
-    # edge encode norm 
-
-    # node decode 
+    # write params at level 1 -- means we're only learning topk projection  
+    # model_2.set_mmp_layer(model.down_mps, 1, block_to_write='down')
 
 
-
-
-
+    # print number of params after over-writing:
+    print('number of parameters after overwriting: ', count_parameters(model_2))
+    print('number of parameters after overwriting: ', count_parameters(model_2))
+    print('number of parameters after overwriting: ', count_parameters(model_2))
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
