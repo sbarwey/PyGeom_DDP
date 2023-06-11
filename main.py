@@ -250,7 +250,7 @@ class Trainer:
                 out_channels = 2, 
                 n_mlp_encode = 3, 
                 n_mlp_mp = 2,
-                n_mp_down_topk = [2], # [1,1],
+                n_mp_down_topk = [1], # [1,1],
                 n_mp_up_topk = [], #[1],
                 pool_ratios = [1./4.],
                 n_mp_down_enc = [4,4,4],
@@ -262,7 +262,7 @@ class Trainer:
                 bounding_box = bbox, 
                 interpolation_mode = 'knn',
                 act = F.elu,
-                param_sharing = True,
+                param_sharing = False,
                 name = 'topk_unet')
 
         return model
