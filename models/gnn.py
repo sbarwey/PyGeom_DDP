@@ -1992,6 +1992,92 @@ class GNN_TopK_NoReduction(torch.nn.Module):
 
         return x
 
+    def get_mask(
+            self,
+            x: Tensor,
+            edge_index: LongTensor,
+            edge_attr: Tensor,
+            pos: Tensor,
+            batch: Optional[LongTensor] = None) -> Tensor:
+        if batch is None:
+            batch = edge_index.new_zeros(x.size(0))
+
+        mask = x.new_zeros(x.size(0))
+
+        # ~~~~ Node Encoder: 
+        for i in range(self.n_mlp_encode):
+            x = self.node_encode[i](x) 
+            if i < self.n_mlp_encode - 1:
+                x = self.act(x)
+            else:
+                x = x
+        x = self.node_encode_norm(x)
+
+        # ~~~~ Edge Encoder: 
+        for i in range(self.n_mlp_encode):
+            edge_attr = self.edge_encode[i](edge_attr)
+            if i < self.n_mlp_encode - 1:
+                edge_attr = self.act(edge_attr)
+            else:
+                edge_attr = edge_attr
+        edge_attr = self.edge_encode_norm(edge_attr)
+
+        # ~~~~ INITIAL MESSAGE PASSING ON FINE GRAPH (m = 0)
+        m = 0 # level index 
+        n_mp = self.n_mp_down_topk[m] # number of message passing blocks 
+        for i in range(n_mp):
+            if not self.param_sharing: 
+                x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+            else:
+                x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+
+        # ~~~~ Store level 0 embeddings in lists  
+        xs = [x] 
+        positions = [pos]
+        edge_indices = [edge_index]
+        edge_attrs = [edge_attr]
+        batches = [batch]
+        perms = []
+        edge_masks = []
+
+        # ~~~~ Downward message passing
+        for m in range(1, self.depth + 1):
+            # Pooling: returns new x and edge_index for coarser grid 
+            x, edge_index, edge_attr, batch, perm, edge_mask, _ = self.pools[m - 1](x, edge_index, edge_attr, batch)
+            pos = pos[perm]
+
+            # Append the permutation list for node upsampling
+            perms += [perm]
+
+            # Append the edge mask list for edge upsampling
+            edge_masks += [edge_mask]
+
+            # Append the positions list for upsampling
+            positions += [pos]
+
+            # append the batch list for upsampling
+            batches += [batch]
+
+            # Do message passing on coarse graph
+            for i in range(self.n_mp_down_topk[m]):
+                if not self.param_sharing:
+                    x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                else:
+                    x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+            
+            # If there are coarser levels, append the fine-level lists
+            if m < self.depth:
+                xs += [x]
+                edge_indices += [edge_index]
+                edge_attrs += [edge_attr]
+
+        perm_global = perms[0]
+        mask[perm_global] = 1
+        for i in range(1,self.depth):
+            perm_global = perm_global[perms[i]]
+            mask[perm_global] = i+1
+
+        return mask
 
     def set_mmp_layer(self, mmp_layer_read, level_id, block_to_write='down'):
         """

@@ -157,37 +157,52 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:  
+if 1 == 0:  
     # Load model 
-    #a = torch.load('saved_models/model_single_scale.tar')
-    a = torch.load('saved_models/model_multi_scale.tar')
-    #c = torch.load('saved_models/model_multi_scale_topk.tar.old')
-    #c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
-    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
-    c = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # #a = torch.load('saved_models/model_single_scale.tar')
+    # a = torch.load('saved_models/model_multi_scale.tar')
+    # #c = torch.load('saved_models/model_multi_scale_topk.tar.old')
+    # #c = torch.load('saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar')
+    # b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
+    # c = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+
+
+    # Effect of MMP blocks and parameter sharing 
+    a = torch.load('saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    c = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
+    d = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+
 
     # Plot losses:
-    fig, ax = plt.subplots(1,3,sharey=True, sharex=True)
+    fig, ax = plt.subplots(1,4,sharey=True, sharex=True, figsize=(14,6))
     ax[0].plot(a['loss_hist_train'])
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
     #ax[0].set_ylim([1e-3, 1e-1])
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epochs')
-    ax[0].set_title('Multi Scale')
+    ax[0].set_title('1x MMP')
 
     ax[1].plot(b['loss_hist_train'], label='train')
     ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
     ax[1].set_xlabel('Epochs')
-    ax[1].set_title('Multi Scale (Shared)')
+    ax[1].set_title('2x MMP (Unshared)')
 
     ax[2].plot(c['loss_hist_train'])
     ax[2].plot(c['loss_hist_test'])
     ax[2].set_yscale('log')
     ax[2].set_xlim([0,200])
     ax[2].set_xlabel('Epochs')
-    ax[2].set_title('Multi Scale + Top-K')
+    ax[2].set_title('2x MMP (Shared)')
+
+    ax[3].plot(d['loss_hist_train'])
+    ax[3].plot(d['loss_hist_test'])
+    ax[3].set_yscale('log')
+    ax[3].set_xlim([0,200])
+    ax[3].set_xlabel('Epochs')
+    ax[3].set_title('2x MMP + Top-K')
 
     plt.show(block=False)
 
@@ -196,10 +211,19 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
-    modelpath = 'saved_models/topk_down_topk_1_1_up_topk_1_1_factor_16_hc_128_down_enc_4_up_enc_down_dec_4_4_4_up_dec_4_4_param_sharing_0.tar'
+if 1 == 1:
     #modelpath = 'saved_models/model_multi_scale.tar'
     #modelpath = 'saved_models/model_single_scale.tar'
+
+    # 1x MMP 
+    # modelpath = 'saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+
+    # 2x MMP with sharing 
+    # modelpath = 'saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar'
+
+    # 2x MMP + Top-K (no sharing)
+    modelpath = 'saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
@@ -211,7 +235,49 @@ if 1 == 0:
 
     
     # With top-k:
-    model = gnn.GNN_TopK(
+    # model = gnn.GNN_TopK(
+    #         in_channels_node = input_dict['in_channels_node'],
+    #         in_channels_edge = input_dict['in_channels_edge'],
+    #         hidden_channels = input_dict['hidden_channels'],
+    #         out_channels = input_dict['out_channels'], 
+    #         n_mlp_encode = input_dict['n_mlp_encode'], 
+    #         n_mlp_mp = input_dict['n_mlp_mp'],
+    #         n_mp_down_topk = input_dict['n_mp_down_topk'],
+    #         n_mp_up_topk = input_dict['n_mp_up_topk'],
+    #         pool_ratios = input_dict['pool_ratios'], 
+    #         n_mp_down_enc = input_dict['n_mp_down_enc'], 
+    #         n_mp_up_enc = input_dict['n_mp_up_enc'], 
+    #         n_mp_down_dec = input_dict['n_mp_down_dec'], 
+    #         n_mp_up_dec = input_dict['n_mp_up_dec'], 
+    #         lengthscales_enc = input_dict['lengthscales_enc'],
+    #         lengthscales_dec = input_dict['lengthscales_dec'], 
+    #         bounding_box = input_dict['bounding_box'], 
+    #         interpolation_mode = input_dict['interp'], 
+    #         act = input_dict['act'], 
+    #         param_sharing = input_dict['param_sharing'],
+    #         filter_lengthscale = input_dict['filter_lengthscale'], 
+    #         name = input_dict['name'])
+
+
+    # # Without top-k: 
+    # model = gnn.Multiscale_MessagePassing_UNet(
+    #             in_channels_node = input_dict['in_channels_node'],
+    #             in_channels_edge = input_dict['in_channels_edge'],
+    #             hidden_channels = input_dict['hidden_channels'],
+    #             n_mlp_encode = input_dict['n_mlp_encode'],
+    #             n_mlp_mp = input_dict['n_mlp_mp'],
+    #             n_mp_down = input_dict['n_mp_down'],
+    #             n_mp_up = input_dict['n_mp_up'],
+    #             n_repeat_mp_up = input_dict['n_repeat_mp_up'],
+    #             lengthscales = input_dict['lengthscales'],
+    #             bounding_box = input_dict['bounding_box'],
+    #             act = input_dict['act'],
+    #             interpolation_mode = input_dict['interpolation_mode'],
+    #             name = input_dict['name'])
+
+
+    # with top-k, no reduction
+    model = gnn.GNN_TopK_NoReduction(
             in_channels_node = input_dict['in_channels_node'],
             in_channels_edge = input_dict['in_channels_edge'],
             hidden_channels = input_dict['hidden_channels'],
@@ -233,23 +299,6 @@ if 1 == 0:
             param_sharing = input_dict['param_sharing'],
             filter_lengthscale = input_dict['filter_lengthscale'], 
             name = input_dict['name'])
-
-
-    # # Without top-k: 
-    # model = gnn.Multiscale_MessagePassing_UNet(
-    #             in_channels_node = input_dict['in_channels_node'],
-    #             in_channels_edge = input_dict['in_channels_edge'],
-    #             hidden_channels = input_dict['hidden_channels'],
-    #             n_mlp_encode = input_dict['n_mlp_encode'],
-    #             n_mlp_mp = input_dict['n_mlp_mp'],
-    #             n_mp_down = input_dict['n_mp_down'],
-    #             n_mp_up = input_dict['n_mp_up'],
-    #             n_repeat_mp_up = input_dict['n_repeat_mp_up'],
-    #             lengthscales = input_dict['lengthscales'],
-    #             bounding_box = input_dict['bounding_box'],
-    #             act = input_dict['act'],
-    #             interpolation_mode = input_dict['interpolation_mode'],
-    #             name = input_dict['name'])
 
 
     model.load_state_dict(p['state_dict'])
@@ -274,9 +323,7 @@ if 1 == 0:
 
 
 
-
-
-if 1 == 0:
+if 1 == 1:
     model.eval()
     header = model.get_save_header()
 
@@ -287,6 +334,7 @@ if 1 == 0:
     # Update save directory with trajectory index. This is where openfoam cases will be saved. 
     save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/%s/' %(str_re)
 
+
     if not  os.path.exists(save_dir + '/' + header):
         os.makedirs(save_dir + '/' + header)
 
@@ -296,7 +344,6 @@ if 1 == 0:
     field_names = ['ux', 'uy']
     #u_vec_target = np.zeros((n_nodes,3))
     #u_vec_pred = np.zeros((n_nodes,3))
-
 
     ic_index = 240 # 120
     x_new = test_dataset[ic_index].x
