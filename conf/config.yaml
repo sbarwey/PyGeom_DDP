@@ -16,6 +16,7 @@ restart: False
 
 # Number of training rollout steps
 rollout_steps: 2
+use_rollout_schedule : True
 
 hydra:
   job:

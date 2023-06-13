@@ -143,6 +143,12 @@ class Trainer:
         if self.device == 'gpu':
             self.model.cuda()
 
+        # ~~~~ For rollout scheduling 
+        if self.cfg.use_rollout_schedule: 
+            self.current_rollout_steps = 1
+        else:
+            self.current_rollout_steps = self.cfg.rollout_steps
+
         # ~~~~ Set model and checkpoint savepaths:
         try:
             self.ckpt_path = cfg.ckpt_dir + self.model.get_save_header() + '.tar'
@@ -152,15 +158,18 @@ class Trainer:
             self.model_path = cfg.model_dir + 'model.tar'
 
         # ~~~~ Load model parameters if we are restarting from checkpoint
+        self.epoch = 0
         self.epoch_start = 1
         self.training_iter = 0
         if self.cfg.restart:
             ckpt = torch.load(self.ckpt_path)
             self.model.load_state_dict(ckpt['model_state_dict'])
             self.epoch_start = ckpt['epoch'] + 1
+            self.epoch = self.epoch_start
             self.training_iter = ckpt['training_iter']
             self.loss_hist_train = ckpt['loss_hist_train']
             self.loss_hist_test = ckpt['loss_hist_test']
+            self.current_rollout_steps = ckpt['current_rollout_steps']
 
             if len(self.loss_hist_train) < self.cfg.epochs:
                 loss_hist_train_new = np.zeros(self.cfg.epochs)
@@ -284,8 +293,22 @@ class Trainer:
         np.random.seed(self.cfg.seed)
 
     def get_rollout_steps(self) -> int:
-        if self.training_iter >= 0:
+        if self.cfg.use_rollout_schedule == False:
             L = self.cfg.rollout_steps
+        else: 
+            # Set the rollout schedule, in terms of epochs: 
+            rollout_schedule = [10, 50, 100, 150, 1e10]
+            epoch_switch = rollout_schedule[self.current_rollout_steps - 1]
+            if self.epoch >= epoch_switch:
+                # increment the rollout steps 
+                self.current_rollout_steps = self.current_rollout_steps + 1  
+
+                # set upper bound based on rollout steps specified in config file 
+                if self.current_rollout_steps > self.cfg.rollout_steps:
+                    self.current_rollout_steps = self.cfg.rollout_steps 
+
+            L = self.current_rollout_steps
+
         return L
 
     def setup_data(self):
@@ -448,6 +471,7 @@ class Trainer:
                     'dt': time.time() - start,
                     'batch_loss': loss.item(),
                     'running_loss': running_loss,
+                    'current_rollout_steps': self.current_rollout_steps
                 }
                 pre = [
                     f'[{RANK}]',
@@ -520,10 +544,11 @@ def train(cfg: DictConfig):
     start = time.time()
     trainer = Trainer(cfg)
     epoch_times = []
-    
+
     for epoch in range(trainer.epoch_start, cfg.epochs+1):
         # ~~~~ Training step 
         t0 = time.time()
+        trainer.epoch = epoch
         train_metrics = trainer.train_epoch(epoch)
         trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
         epoch_time = time.time() - t0
@@ -569,7 +594,8 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test}
+                        'loss_hist_test' : trainer.loss_hist_test, 
+                        'current_rollout_steps' : trainer.current_rollout_steps}
             else:
                 ckpt = {'epoch' : epoch, 
                         'training_iter' : trainer.training_iter,
@@ -577,7 +603,8 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test}
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'current_rollout_steps' : trainer.current_rollout_steps}
 
             torch.save(ckpt, trainer.ckpt_path)
         dist.barrier()
@@ -603,7 +630,8 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.module.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : trainer.training_iter
+                        'training_iter' : trainer.training_iter,
+                        'current_rollout_steps' : trainer.current_rollout_steps
                         }
         else:
             save_dict = {   
@@ -611,7 +639,8 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : trainer.training_iter
+                        'training_iter' : trainer.training_iter,
+                        'current_rollout_steps' : trainer.current_rollout_steps
                         }
 
         torch.save(save_dict, trainer.model_path)

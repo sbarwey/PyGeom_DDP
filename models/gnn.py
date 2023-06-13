@@ -1691,7 +1691,7 @@ class GNN_TopK_NoReduction(torch.nn.Module):
                  name: Optional[str] = 'name'):
 
         super().__init__()
-
+ 
         # For multilevel topk gnn
         self.edge_aggregator = EdgeAggregation() # message passing module that aggregates edge_attrs 
         self.in_channels_node = in_channels_node
@@ -2441,6 +2441,791 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             header+='_1'
        
         return header
+
+
+
+class GNN_TopK_NoReduction_Filtering(torch.nn.Module):
+    """
+    Structure: Encoder --> MMP -->--------- + --> MMP --> Decoder 
+                                |           |
+                                |           |
+                               TopK       Unpool
+                                |           |
+                                |--> FILTER -->|
+    """
+    def __init__(self, in_channels_node: int, 
+                 in_channels_edge: int, 
+                 hidden_channels: int, 
+                 out_channels: int, 
+                 n_mlp_encode: int, 
+                 n_mlp_mp: int, 
+                 n_mp_down_topk: List[int], 
+                 n_mp_up_topk: List[int], 
+                 pool_ratios: List[float],
+                 n_mp_down_enc: List[int], 
+                 n_mp_up_enc: List[int], 
+                 n_mp_down_dec: List[int],
+                 n_mp_up_dec: List[int], 
+                 lengthscales_enc: List[float], 
+                 lengthscales_dec: List[float],
+                 bounding_box: List[float], 
+                 interpolation_mode: Optional[str] = 'knn',
+                 act: Optional[Callable] = F.elu, 
+                 param_sharing: Optional[bool] = False,
+                 filter_lengthscale: Optional[float] = 0.1,
+                 name: Optional[str] = 'name'):
+
+        super().__init__()
+ 
+        # For multilevel topk gnn
+        self.edge_aggregator = EdgeAggregation() # message passing module that aggregates edge_attrs 
+        self.in_channels_node = in_channels_node
+        self.in_channels_edge = in_channels_edge
+        self.hidden_channels = hidden_channels
+        self.out_channels = out_channels
+        self.act = act
+        self.n_mlp_encode = n_mlp_encode    # number of MLP layers in node/edge encoding stage 
+        self.n_mlp_decode = self.n_mlp_encode
+        self.n_mlp_mp = n_mlp_mp # num  MLP layers in node/edge update used in message passing
+        self.n_mp_down_topk = n_mp_down_topk # number of message passing blocks in downsampling path 
+        self.n_mp_up_topk = n_mp_up_topk # number of message passing blocks in upsampling path  
+        #self.depth = len(n_mp_up_topk) - 1 # for AE arch 
+        self.depth = len(n_mp_up_topk)
+        self.pool_ratios = pool_ratios
+        self.param_sharing = param_sharing
+        self.filter_lengthscale = filter_lengthscale
+        self.name = name
+        
+        assert(len(self.n_mp_down_topk) == len(self.n_mp_up_topk)+1), "size of n_mp_down_topk must be 1 greater than n_mp_up_topk"
+
+        # For multiscale gnn used in decoding stage  
+        self.interp = interpolation_mode
+        self.n_mp_down_enc = n_mp_down_enc
+        self.n_mp_up_enc = n_mp_up_enc
+        self.n_mp_down_dec = n_mp_down_dec 
+        self.n_mp_up_dec = n_mp_up_dec 
+        self.lengthscales_enc = lengthscales_enc 
+        self.lengthscales_dec = lengthscales_dec 
+        self.bounding_box = bounding_box
+
+        # ~~~~ Node encoder
+        self.node_encode = torch.nn.ModuleList() 
+        for i in range(self.n_mlp_encode): 
+            if i == 0:
+                input_features = in_channels_node 
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels 
+                output_features = hidden_channels 
+            self.node_encode.append( nn.Linear(input_features, output_features) )
+        self.node_encode_norm = nn.LayerNorm(output_features)
+       
+        # ~~~~ Edge encoder 
+        self.edge_encode = torch.nn.ModuleList() 
+        for i in range(self.n_mlp_encode): 
+            if i == 0:
+                input_features = in_channels_edge
+                output_features = hidden_channels 
+            else:
+                input_features = hidden_channels 
+                output_features = hidden_channels 
+            self.edge_encode.append( nn.Linear(input_features, output_features) )
+        self.edge_encode_norm = nn.LayerNorm(output_features)
+
+        # ~~~~ DOWNWARD Message Passing
+        n_repeat_mp_up_enc = 1
+        if not self.param_sharing: 
+            self.down_mps = torch.nn.ModuleList() 
+            for m in range(len(n_mp_down_topk)):
+                # only add MMP layer when m = 0 (first level)
+                if m == 0:
+                    n_mp = n_mp_down_topk[m]
+                    down_mp = torch.nn.ModuleList()
+                    for i in range(n_mp): 
+                        down_mp.append(Multiscale_MessagePassing_Layer(self.hidden_channels,
+                                                                self.n_mlp_mp,
+                                                                self.n_mp_down_enc,
+                                                                self.n_mp_up_enc,
+                                                                n_repeat_mp_up_enc,
+                                                                self.lengthscales_enc,
+                                                                self.bounding_box,
+                                                                act=self.act,
+                                                                interpolation_mode=self.interp,
+                                                                name=self.name + '_down_mp_%d' %(i)))
+                    self.down_mps.append(down_mp)
+        else:
+            self.down_mps = Multiscale_MessagePassing_Layer(self.hidden_channels,
+                                                            self.n_mlp_mp,
+                                                            self.n_mp_down_enc,
+                                                            self.n_mp_up_enc,
+                                                            n_repeat_mp_up_enc,
+                                                            self.lengthscales_enc,
+                                                            self.bounding_box,
+                                                            act=self.act,
+                                                            interpolation_mode=self.interp,
+                                                            name=self.name + '_down_mp')
+        
+        # ~~~~ POOLING  
+        self.pools = torch.nn.ModuleList() # for pooling 
+        for i in range(self.depth):
+            self.pools.append(TopKPooling_Mod(hidden_channels, self.pool_ratios[i]))
+
+
+        # ~~~~ UPWARD Message Passing
+        n_repeat_mp_up_dec = 1
+        if not self.param_sharing: 
+            self.up_mps = torch.nn.ModuleList()
+            for m in range(len(n_mp_up_topk)):
+                n_mp = n_mp_up_topk[m]
+                up_mp = torch.nn.ModuleList()
+                for i in range(n_mp):
+                    up_mp.append(Multiscale_MessagePassing_Layer(self.hidden_channels,
+                                                            self.n_mlp_mp,
+                                                            self.n_mp_down_dec,
+                                                            self.n_mp_up_dec,
+                                                            n_repeat_mp_up_dec,
+                                                            self.lengthscales_dec,
+                                                            self.bounding_box,
+                                                            act=self.act,
+                                                            interpolation_mode=self.interp,
+                                                            name=self.name + '_up_mp_%d' %(i)))
+                self.up_mps.append(up_mp)
+        else:
+            self.up_mps = self.down_mps 
+            # self.up_mps = Multiscale_MessagePassing_Layer(self.hidden_channels,
+            #                                                 self.n_mlp_mp,
+            #                                                 self.n_mp_down_dec,
+            #                                                 self.n_mp_up_dec,
+            #                                                 n_repeat_mp_up_dec,
+            #                                                 self.lengthscales_dec,
+            #                                                 self.bounding_box,
+            #                                                 act=self.act,
+            #                                                 interpolation_mode=self.interp,
+            #                                                 name=self.name + '_up_mp')
+
+        # ~~~~ Node-wise decoder
+        self.node_decode = torch.nn.ModuleList() 
+        for i in range(self.n_mlp_decode): 
+            if i == self.n_mlp_decode - 1:
+                input_features = hidden_channels 
+                output_features = out_channels
+            else:
+                input_features = hidden_channels 
+                output_features = hidden_channels 
+            self.node_decode.append( nn.Linear(input_features, output_features) )
+
+        # ~~~~ Reset params upon initialization
+        self.reset_parameters()
+
+    def forward(
+            self,
+            x: Tensor,
+            edge_index: LongTensor,
+            edge_attr: Tensor,
+            pos: Tensor,
+            batch: Optional[LongTensor] = None) -> Tensor:
+        if batch is None:
+            batch = edge_index.new_zeros(x.size(0))
+
+        # ~~~~ Node Encoder: 
+        for i in range(self.n_mlp_encode):
+            x = self.node_encode[i](x) 
+            if i < self.n_mlp_encode - 1:
+                x = self.act(x)
+            else:
+                x = x
+        x = self.node_encode_norm(x)
+
+        # ~~~~ Edge Encoder: 
+        for i in range(self.n_mlp_encode):
+            edge_attr = self.edge_encode[i](edge_attr)
+            if i < self.n_mlp_encode - 1:
+                edge_attr = self.act(edge_attr)
+            else:
+                edge_attr = edge_attr
+        edge_attr = self.edge_encode_norm(edge_attr)
+
+        # ~~~~ INITIAL MESSAGE PASSING ON FINE GRAPH (m = 0)
+        m = 0 # level index 
+        n_mp = self.n_mp_down_topk[m] # number of message passing blocks 
+        for i in range(n_mp):
+            if not self.param_sharing: 
+                x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+            else:
+                x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+
+        # ~~~~ Store level 0 embeddings in lists  
+        xs = [x] 
+        positions = [pos]
+        edge_indices = [edge_index]
+        edge_attrs = [edge_attr]
+        batches = [batch]
+        perms = []
+        edge_masks = []
+
+        # ~~~~ Downward message passing
+        for m in range(1, self.depth + 1):
+            # Pooling: returns new x and edge_index for coarser grid 
+            x, edge_index, edge_attr, batch, perm, edge_mask, _ = self.pools[m - 1](x, edge_index, edge_attr, batch)
+            pos = pos[perm]
+
+            # Append the permutation list for node upsampling
+            perms += [perm]
+
+            # Append the edge mask list for edge upsampling
+            edge_masks += [edge_mask]
+
+            # Append the positions list for upsampling
+            positions += [pos]
+
+            # append the batch list for upsampling
+            batches += [batch]
+
+            # Filter on coarse graph
+            cluster = tgnn.voxel_grid(pos = pos,
+                                          size = self.filter_lengthscale,
+                                          batch = batch)
+            x, _, _, batch_coarse, pos_coarse, _, _ = avg_pool_mod(
+                                                                cluster, 
+                                                                x, 
+                                                                edge_index, 
+                                                                edge_attr,
+                                                                batch, 
+                                                                pos)
+            x = tgnn.knn_interpolate(x = x,
+                                     pos_x = pos_coarse,
+                                     pos_y = pos,
+                                     batch_x = batch_coarse,
+                                     batch_y = batch,
+                                     k = 4) 
+
+            # for i in range(self.n_mp_down_topk[m]):
+            #     if not self.param_sharing:
+            #         x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+            #     else:
+            #         x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+            
+            # If there are coarser levels, append the fine-level lists
+            if m < self.depth:
+                xs += [x]
+                edge_indices += [edge_index]
+                edge_attrs += [edge_attr]
+
+        # ~~~~ Upward message passing (decoder)
+        # # Initial message passing on coarse graph 
+        # m = 0
+        # for i in range(self.n_mp_up_topk[m]):
+        #     if not self.param_sharing:
+        #         x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+        #     else:
+        #         x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
+        
+        # upward cycle
+        for m in range(self.depth):
+            # Get the fine level index
+            fine = self.depth - 1 - m
+
+            # Get the batch
+            batch = batches[fine]
+
+            # Get node features and edge features on fine level
+            res = xs[fine]
+            pos = positions[fine]
+            res_edge = edge_attrs[fine]
+
+            # Get edge index on fine level
+            edge_index = edge_indices[fine]
+
+            # Upsample edge features
+            edge_mask = edge_masks[fine]
+            up_edge = torch.zeros_like(res_edge)
+            up_edge[edge_mask] = edge_attr
+            edge_attr = up_edge + res_edge 
+
+            # Upsample node features
+            # get node assignments on fine level
+            perm = perms[fine]
+            up = torch.zeros_like(res)
+            up[perm] = x
+            x = up + res
+
+            # Message passing on new upsampled graph
+            for i in range(self.n_mp_up_topk[m]):
+                for r in range(1):
+                    if not self.param_sharing:
+                        x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                    else:
+                        x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch) # re-use down_mps here 
+                        #x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
+
+            # for i in range(self.n_mp_up_topk[m+1]):
+            #     for r in range(1):
+            #         if not self.param_sharing:
+            #             x = self.up_mps[m+1][i](x, edge_index, edge_attr, pos, batch=batch)
+            #         else:
+            #             x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
+
+
+        # ~~~~ Node decoder
+        for i in range(self.n_mlp_decode):
+            x = self.node_decode[i](x) 
+            if i < self.n_mlp_decode - 1:
+                x = self.act(x)
+            else:
+                x = x
+
+        return x
+
+    def get_mask(
+            self,
+            x: Tensor,
+            edge_index: LongTensor,
+            edge_attr: Tensor,
+            pos: Tensor,
+            batch: Optional[LongTensor] = None) -> Tensor:
+        if batch is None:
+            batch = edge_index.new_zeros(x.size(0))
+
+        mask = x.new_zeros(x.size(0))
+
+        # ~~~~ Node Encoder: 
+        for i in range(self.n_mlp_encode):
+            x = self.node_encode[i](x) 
+            if i < self.n_mlp_encode - 1:
+                x = self.act(x)
+            else:
+                x = x
+        x = self.node_encode_norm(x)
+
+        # ~~~~ Edge Encoder: 
+        for i in range(self.n_mlp_encode):
+            edge_attr = self.edge_encode[i](edge_attr)
+            if i < self.n_mlp_encode - 1:
+                edge_attr = self.act(edge_attr)
+            else:
+                edge_attr = edge_attr
+        edge_attr = self.edge_encode_norm(edge_attr)
+
+        # ~~~~ INITIAL MESSAGE PASSING ON FINE GRAPH (m = 0)
+        m = 0 # level index 
+        n_mp = self.n_mp_down_topk[m] # number of message passing blocks 
+        for i in range(n_mp):
+            if not self.param_sharing: 
+                x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+            else:
+                x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+
+        # ~~~~ Store level 0 embeddings in lists  
+        xs = [x] 
+        positions = [pos]
+        edge_indices = [edge_index]
+        edge_attrs = [edge_attr]
+        batches = [batch]
+        perms = []
+        edge_masks = []
+
+        # ~~~~ Downward message passing
+        for m in range(1, self.depth + 1):
+            # Pooling: returns new x and edge_index for coarser grid 
+            x, edge_index, edge_attr, batch, perm, edge_mask, _ = self.pools[m - 1](x, edge_index, edge_attr, batch)
+            pos = pos[perm]
+
+            # Append the permutation list for node upsampling
+            perms += [perm]
+
+            # Append the edge mask list for edge upsampling
+            edge_masks += [edge_mask]
+
+            # Append the positions list for upsampling
+            positions += [pos]
+
+            # append the batch list for upsampling
+            batches += [batch]
+
+            # Do message passing on coarse graph
+            for i in range(self.n_mp_down_topk[m]):
+                if not self.param_sharing:
+                    x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                else:
+                    x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+            
+            # If there are coarser levels, append the fine-level lists
+            if m < self.depth:
+                xs += [x]
+                edge_indices += [edge_index]
+                edge_attrs += [edge_attr]
+
+        perm_global = perms[0]
+        mask[perm_global] = 1
+        for i in range(1,self.depth):
+            perm_global = perm_global[perms[i]]
+            mask[perm_global] = i+1
+
+        return mask
+
+    def set_mmp_layer(self, mmp_layer_read, level_id, block_to_write='down'):
+        """
+        This sets the downward MMP blocks on some target level 
+        """
+        
+        # # assert same number of parameters 
+        # for i in range(len(self.down_mps[level_id])):
+        #     n_params_model = sum(p.numel() for p in self.down_mps[level_id][i].parameters() if p.requires_grad)
+        #     n_params_in = sum(p.numel() for p in mmp_layer_read.parameters() if p.requires_grad)
+        #     assert(n_params_model == n_params_in), "number of parameters in self.down_mps[level_id] is not equal to number of parameters in input mmp_layer_read"
+
+        if block_to_write == 'down': 
+            for i in range(len(self.down_mps[level_id])):
+                mmp_layer_write = self.down_mps[level_id][i]
+
+                # edge_down_mps  
+                for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
+
+                # node down mps 
+                for mmp_level in range(len(mmp_layer_read.node_down_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
+
+                # edge up mps 
+                for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
+
+                # node up mps 
+                for mmp_level in range(len(mmp_layer_read.node_up_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
+
+                # edge down norms 
+                for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
+
+                # node down norms 
+                for mmp_level in range(len(mmp_layer_read.node_down_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
+
+                # edge up norms 
+                for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
+
+                # node up norms 
+                for mmp_level in range(len(mmp_layer_read.node_up_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
+
+
+        elif block_to_write == 'up': 
+            for i in range(len(self.up_mps[level_id])):
+                mmp_layer_write = self.up_mps[level_id][i]
+
+                # edge_down_mps  
+                for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
+
+                # node down mps 
+                for mmp_level in range(len(mmp_layer_read.node_down_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
+
+                # edge up mps 
+                for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
+
+                # node up mps 
+                for mmp_level in range(len(mmp_layer_read.node_up_mps)):
+                    for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
+                        for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
+                            r = mmp_level
+                            s = mp_block_index
+                            t = mlp_layer_index
+                            # weight :
+                            mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
+                            mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
+                            # bias : 
+                            mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
+                            mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
+
+                # edge down norms 
+                for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
+
+                # node down norms 
+                for mmp_level in range(len(mmp_layer_read.node_down_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
+
+                # edge up norms 
+                for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
+
+                # node up norms 
+                for mmp_level in range(len(mmp_layer_read.node_up_norms)):
+                    for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
+                        r = mmp_level
+                        s = mp_block_index
+                        # weight
+                        mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
+                        mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
+                        # bias 
+                        mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
+                        mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
+
+        return 
+
+
+    def set_node_edge_encoder_decoder(self, model_read):
+
+        # node encoder 
+        for mlp_layer_index in range(len(self.node_encode)):
+            t = mlp_layer_index
+            # weight :
+            self.node_encode[t].weight.requires_grad = False
+            self.node_encode[t].weight[:,:] = model_read.node_encode[t].weight.detach().clone()
+            # bias :
+            self.node_encode[t].bias.requires_grad = False
+            self.node_encode[t].bias[:] = model_read.node_encode[t].bias.detach().clone()
+
+        # node encoder norm
+        # weight
+        self.node_encode_norm.weight.requires_grad = False
+        self.node_encode_norm.weight[:] = model_read.node_encode_norm.weight.detach().clone()
+        # bias
+        self.node_encode_norm.bias.requires_grad = False
+        self.node_encode_norm.bias[:] = model_read.node_encode_norm.bias.detach().clone()
+
+        # edge encoder 
+        for mlp_layer_index in range(len(self.edge_encode)):
+            t = mlp_layer_index
+            # weight :
+            self.edge_encode[t].weight.requires_grad = False
+            self.edge_encode[t].weight[:,:] = model_read.edge_encode[t].weight.detach().clone()
+            # bias :
+            self.edge_encode[t].bias.requires_grad = False
+            self.edge_encode[t].bias[:] = model_read.edge_encode[t].bias.detach().clone()
+
+        # edge encoder norm
+        # weight
+        self.edge_encode_norm.weight.requires_grad = False
+        self.edge_encode_norm.weight[:] = model_read.edge_encode_norm.weight.detach().clone()
+        # bias
+        self.edge_encode_norm.bias.requires_grad = False
+        self.edge_encode_norm.bias[:] = model_read.edge_encode_norm.bias.detach().clone()
+
+        # node decoder 
+        for mlp_layer_index in range(len(self.node_decode)):
+            t = mlp_layer_index
+            # weight :
+            self.node_decode[t].weight.requires_grad = False
+            self.node_decode[t].weight[:,:] = model_read.node_decode[t].weight.detach().clone()
+            # bias :
+            self.node_decode[t].bias.requires_grad = False
+            self.node_decode[t].bias[:] = model_read.node_decode[t].bias.detach().clone()
+
+        return 
+
+    
+
+    def input_dict(self):
+        a = { 'edge_aggregator' : self.edge_aggregator, 
+                'in_channels_node' : self.in_channels_node, 
+                'in_channels_edge' : self.in_channels_edge,
+                'hidden_channels' : self.hidden_channels, 
+                'out_channels' : self.out_channels, 
+                'n_mlp_encode' : self.n_mlp_encode, 
+                'n_mlp_mp' : self.n_mlp_mp, 
+                'n_mp_down_topk' : self.n_mp_down_topk, 
+                'n_mp_up_topk' : self.n_mp_up_topk, 
+                'pool_ratios' : self.pool_ratios, 
+                'n_mp_down_enc' : self.n_mp_down_enc,
+                'n_mp_up_enc' : self.n_mp_up_enc,
+                'n_mp_down_dec' : self.n_mp_down_dec,
+                'n_mp_up_dec' : self.n_mp_up_dec,
+                'lengthscales_enc' : self.lengthscales_enc, 
+                'lengthscales_dec' : self.lengthscales_dec, 
+                'bounding_box' : self.bounding_box, 
+                'interp' : self.interp,
+                'depth' : self.depth, 
+                'act' : self.act, 
+                'param_sharing' : self.param_sharing,
+                'filter_lengthscale' : self.filter_lengthscale,
+                'name' : self.name }
+
+        return a
+
+    def reset_parameters(self):
+        # Node encoding
+        for module in self.node_encode:
+            module.reset_parameters()
+
+        # Edge encoding 
+        for module in self.edge_encode:
+            module.reset_parameters()
+
+        # Node decoder: 
+        for module in self.node_decode:
+            module.reset_parameters()
+
+        # Pooling: 
+        for module in self.pools:
+            module.reset_parameters()
+
+    def get_save_header(self):
+        header = '%s' %(self.name)
+        header += '_down_topk'
+        for i in self.n_mp_down_topk:
+            header += '_%d' %(i)
+        header += '_up_topk'
+        for i in self.n_mp_up_topk:
+            header += '_%d' %(i)
+       
+        factor = self.pool_ratios[0]
+        factor = int(1/factor)
+        header += '_factor_%d' %(factor) 
+        header += '_hc_%d' %(self.hidden_channels)
+
+        header += '_down_enc'
+        for i in self.n_mp_down_enc:
+            header += '_%d' %(i)
+        header += '_up_enc'
+        for i in self.n_mp_up_enc:
+            header += '_%d' %(i)
+ 
+        header += '_down_dec'
+        for i in self.n_mp_down_dec:
+            header += '_%d' %(i)
+        header += '_up_dec'
+        for i in self.n_mp_up_dec:
+            header += '_%d' %(i)
+       
+        header += '_param_sharing'
+        if not self.param_sharing:
+            header+='_0'
+        else:
+            header+='_1'
+       
+        return header
+
 
 
 
