@@ -15,8 +15,8 @@ fp16_allreduce: False
 restart: False
 
 # Number of training rollout steps
-rollout_steps: 2
-use_rollout_schedule : True
+rollout_steps: 1
+use_rollout_schedule : False
 
 hydra:
   job:
