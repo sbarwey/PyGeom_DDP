@@ -169,8 +169,9 @@ if 1 == 0:
 
     # Effect of MMP blocks and parameter sharing 
     a = torch.load('saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    c = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
+    #b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    c = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     d = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
 
@@ -182,20 +183,20 @@ if 1 == 0:
     #ax[0].set_ylim([1e-3, 1e-1])
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epochs')
-    ax[0].set_title('1x MMP')
+    ax[0].set_title('1x MMP (rollout = 2)')
 
     ax[1].plot(b['loss_hist_train'], label='train')
     ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
     ax[1].set_xlabel('Epochs')
-    ax[1].set_title('2x MMP (Unshared)')
+    ax[1].set_title('2x MMP (rollout = 2)')
 
     ax[2].plot(c['loss_hist_train'])
     ax[2].plot(c['loss_hist_test'])
     ax[2].set_yscale('log')
     ax[2].set_xlim([0,200])
     ax[2].set_xlabel('Epochs')
-    ax[2].set_title('2x MMP (Shared)')
+    ax[2].set_title('2x MMP (rollout = 1)')
 
     ax[3].plot(d['loss_hist_train'])
     ax[3].plot(d['loss_hist_test'])
@@ -211,7 +212,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     #modelpath = 'saved_models/model_multi_scale.tar'
     #modelpath = 'saved_models/model_single_scale.tar'
 
@@ -323,7 +324,7 @@ if 1 == 1:
 
 
 
-if 1 == 1:
+if 1 == 0:
     model.eval()
     header = model.get_save_header()
 
@@ -539,10 +540,10 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Initialize MMP blocks from a pre-trained model 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
 
     # Step 1: load model with shared parameters 
-    modelpath = 'saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar'
+    modelpath = 'saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
@@ -585,10 +586,10 @@ if 1 == 0:
                 n_mp_down_topk = [1,1],
                 n_mp_up_topk = [1],
                 pool_ratios = [1./4.],
-                n_mp_down_enc = [4,4,4],
-                n_mp_up_enc = [4,4],
-                n_mp_down_dec = [4,4,4],
-                n_mp_up_dec = [4,4],
+                n_mp_down_enc = [2,2,2],
+                n_mp_up_enc = [2,2],
+                n_mp_down_dec = [2,2,2],
+                n_mp_up_dec = [2,2],
                 lengthscales_enc = [0.01, 0.02],
                 lengthscales_dec = [0.01, 0.02],
                 bounding_box = bbox,
@@ -607,13 +608,9 @@ if 1 == 0:
     print('number of parameters before overwriting: ', count_parameters(model_2))
     
     # write params at level 0  
-    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='down')
-    model_2.set_mmp_layer(model.down_mps, 0, block_to_write='up')
+    model_2.set_mmp_layer(model.down_mps[0][0], model_2.down_mps[0][0])
+    model_2.set_mmp_layer(model.down_mps[0][1], model_2.up_mps[0][0])
     model_2.set_node_edge_encoder_decoder(model)
-
-    # write params at level 1 -- means we're only learning topk projection  
-    # model_2.set_mmp_layer(model.down_mps, 1, block_to_write='down')
-
 
     # print number of params after over-writing:
     print('number of parameters after overwriting: ', count_parameters(model_2))

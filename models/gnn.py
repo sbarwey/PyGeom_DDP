@@ -2079,7 +2079,7 @@ class GNN_TopK_NoReduction(torch.nn.Module):
 
         return mask
 
-    def set_mmp_layer(self, mmp_layer_read, level_id, block_to_write='down'):
+    def set_mmp_layer(self, mmp_layer_read, mmp_layer_write):
         """
         This sets the downward MMP blocks on some target level 
         """
@@ -2090,222 +2090,218 @@ class GNN_TopK_NoReduction(torch.nn.Module):
         #     n_params_in = sum(p.numel() for p in mmp_layer_read.parameters() if p.requires_grad)
         #     assert(n_params_model == n_params_in), "number of parameters in self.down_mps[level_id] is not equal to number of parameters in input mmp_layer_read"
 
-        if block_to_write == 'down': 
-            for i in range(len(self.down_mps[level_id])):
-                mmp_layer_write = self.down_mps[level_id][i]
+        # edge_down_mps  
+        for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
+            for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
+                for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
+                    r = mmp_level
+                    s = mp_block_index
+                    t = mlp_layer_index
+                    # weight :
+                    mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
+                    mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
+                    # bias : 
+                    mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
+                    mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
 
-                # edge_down_mps  
-                for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
+        # node down mps 
+        for mmp_level in range(len(mmp_layer_read.node_down_mps)):
+            for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
+                for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
+                    r = mmp_level
+                    s = mp_block_index
+                    t = mlp_layer_index
+                    # weight :
+                    mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
+                    mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
+                    # bias : 
+                    mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
+                    mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
 
-                # node down mps 
-                for mmp_level in range(len(mmp_layer_read.node_down_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
+        # edge up mps 
+        for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
+            for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
+                for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
+                    r = mmp_level
+                    s = mp_block_index
+                    t = mlp_layer_index
+                    # weight :
+                    mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
+                    mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
+                    # bias : 
+                    mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
+                    mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
 
-                # edge up mps 
-                for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
+        # node up mps 
+        for mmp_level in range(len(mmp_layer_read.node_up_mps)):
+            for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
+                for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
+                    r = mmp_level
+                    s = mp_block_index
+                    t = mlp_layer_index
+                    # weight :
+                    mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
+                    mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
+                    # bias : 
+                    mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
+                    mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
 
-                # node up mps 
-                for mmp_level in range(len(mmp_layer_read.node_up_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
+        # edge down norms 
+        for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
+            for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
+                r = mmp_level
+                s = mp_block_index
+                # weight
+                mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
+                mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
+                # bias 
+                mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
+                mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
 
-                # edge down norms 
-                for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
+        # node down norms 
+        for mmp_level in range(len(mmp_layer_read.node_down_norms)):
+            for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
+                r = mmp_level
+                s = mp_block_index
+                # weight
+                mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
+                mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
+                # bias 
+                mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
+                mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
 
-                # node down norms 
-                for mmp_level in range(len(mmp_layer_read.node_down_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
+        # edge up norms 
+        for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
+            for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
+                r = mmp_level
+                s = mp_block_index
+                # weight
+                mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
+                mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
+                # bias 
+                mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
+                mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
 
-                # edge up norms 
-                for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
-
-                # node up norms 
-                for mmp_level in range(len(mmp_layer_read.node_up_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
+        # node up norms 
+        for mmp_level in range(len(mmp_layer_read.node_up_norms)):
+            for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
+                r = mmp_level
+                s = mp_block_index
+                # weight
+                mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
+                mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
+                # bias 
+                mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
+                mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
 
 
-        elif block_to_write == 'up': 
-            for i in range(len(self.up_mps[level_id])):
-                mmp_layer_write = self.up_mps[level_id][i]
+        # ~~~~ # elif block_to_write == 'up': 
+        # ~~~~ #     for i in range(len(self.up_mps[level_id])):
+        # ~~~~ #         mmp_layer_write = self.up_mps[level_id][i]
 
-                # edge_down_mps  
-                for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
+        # ~~~~ #         # edge_down_mps  
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.edge_down_mps)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.edge_down_mps[mmp_level])):
+        # ~~~~ #                 for mlp_layer_index in range(len(mmp_layer_read.edge_down_mps[mmp_level][mp_block_index])):
+        # ~~~~ #                     r = mmp_level
+        # ~~~~ #                     s = mp_block_index
+        # ~~~~ #                     t = mlp_layer_index
+        # ~~~~ #                     # weight :
+        # ~~~~ #                     mmp_layer_write.edge_down_mps[r][s][t].weight.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.edge_down_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_down_mps[r][s][t].weight.detach().clone()
+        # ~~~~ #                     # bias : 
+        # ~~~~ #                     mmp_layer_write.edge_down_mps[r][s][t].bias.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.edge_down_mps[r][s][t].bias[:] = mmp_layer_read.edge_down_mps[r][s][t].bias.detach().clone()
 
-                # node down mps 
-                for mmp_level in range(len(mmp_layer_read.node_down_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
+        # ~~~~ #         # node down mps 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.node_down_mps)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.node_down_mps[mmp_level])):
+        # ~~~~ #                 for mlp_layer_index in range(len(mmp_layer_read.node_down_mps[mmp_level][mp_block_index])):
+        # ~~~~ #                     r = mmp_level
+        # ~~~~ #                     s = mp_block_index
+        # ~~~~ #                     t = mlp_layer_index
+        # ~~~~ #                     # weight :
+        # ~~~~ #                     mmp_layer_write.node_down_mps[r][s][t].weight.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.node_down_mps[r][s][t].weight[:,:] = mmp_layer_read.node_down_mps[r][s][t].weight.detach().clone()
+        # ~~~~ #                     # bias : 
+        # ~~~~ #                     mmp_layer_write.node_down_mps[r][s][t].bias.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.node_down_mps[r][s][t].bias[:] = mmp_layer_read.node_down_mps[r][s][t].bias.detach().clone()
 
-                # edge up mps 
-                for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
+        # ~~~~ #         # edge up mps 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.edge_up_mps)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.edge_up_mps[mmp_level])):
+        # ~~~~ #                 for mlp_layer_index in range(len(mmp_layer_read.edge_up_mps[mmp_level][mp_block_index])):
+        # ~~~~ #                     r = mmp_level
+        # ~~~~ #                     s = mp_block_index
+        # ~~~~ #                     t = mlp_layer_index
+        # ~~~~ #                     # weight :
+        # ~~~~ #                     mmp_layer_write.edge_up_mps[r][s][t].weight.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.edge_up_mps[r][s][t].weight[:,:] = mmp_layer_read.edge_up_mps[r][s][t].weight.detach().clone()
+        # ~~~~ #                     # bias : 
+        # ~~~~ #                     mmp_layer_write.edge_up_mps[r][s][t].bias.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.edge_up_mps[r][s][t].bias[:] = mmp_layer_read.edge_up_mps[r][s][t].bias.detach().clone()
 
-                # node up mps 
-                for mmp_level in range(len(mmp_layer_read.node_up_mps)):
-                    for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
-                        for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
-                            r = mmp_level
-                            s = mp_block_index
-                            t = mlp_layer_index
-                            # weight :
-                            mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
-                            mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
-                            # bias : 
-                            mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
-                            mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
+        # ~~~~ #         # node up mps 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.node_up_mps)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.node_up_mps[mmp_level])):
+        # ~~~~ #                 for mlp_layer_index in range(len(mmp_layer_read.node_up_mps[mmp_level][mp_block_index])):
+        # ~~~~ #                     r = mmp_level
+        # ~~~~ #                     s = mp_block_index
+        # ~~~~ #                     t = mlp_layer_index
+        # ~~~~ #                     # weight :
+        # ~~~~ #                     mmp_layer_write.node_up_mps[r][s][t].weight.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.node_up_mps[r][s][t].weight[:,:] = mmp_layer_read.node_up_mps[r][s][t].weight.detach().clone()
+        # ~~~~ #                     # bias : 
+        # ~~~~ #                     mmp_layer_write.node_up_mps[r][s][t].bias.requires_grad = False
+        # ~~~~ #                     mmp_layer_write.node_up_mps[r][s][t].bias[:] = mmp_layer_read.node_up_mps[r][s][t].bias.detach().clone()
 
-                # edge down norms 
-                for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
+        # ~~~~ #         # edge down norms 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.edge_down_norms)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.edge_down_norms[mmp_level])):
+        # ~~~~ #                 r = mmp_level
+        # ~~~~ #                 s = mp_block_index
+        # ~~~~ #                 # weight
+        # ~~~~ #                 mmp_layer_write.edge_down_norms[r][s].weight.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.edge_down_norms[r][s].weight[:] = mmp_layer_read.edge_down_norms[r][s].weight.detach().clone()
+        # ~~~~ #                 # bias 
+        # ~~~~ #                 mmp_layer_write.edge_down_norms[r][s].bias.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.edge_down_norms[r][s].bias[:] = mmp_layer_read.edge_down_norms[r][s].bias.detach().clone()
 
-                # node down norms 
-                for mmp_level in range(len(mmp_layer_read.node_down_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
+        # ~~~~ #         # node down norms 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.node_down_norms)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.node_down_norms[mmp_level])):
+        # ~~~~ #                 r = mmp_level
+        # ~~~~ #                 s = mp_block_index
+        # ~~~~ #                 # weight
+        # ~~~~ #                 mmp_layer_write.node_down_norms[r][s].weight.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.node_down_norms[r][s].weight[:] = mmp_layer_read.node_down_norms[r][s].weight.detach().clone()
+        # ~~~~ #                 # bias 
+        # ~~~~ #                 mmp_layer_write.node_down_norms[r][s].bias.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.node_down_norms[r][s].bias[:] = mmp_layer_read.node_down_norms[r][s].bias.detach().clone()
 
-                # edge up norms 
-                for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
+        # ~~~~ #         # edge up norms 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.edge_up_norms)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.edge_up_norms[mmp_level])):
+        # ~~~~ #                 r = mmp_level
+        # ~~~~ #                 s = mp_block_index
+        # ~~~~ #                 # weight
+        # ~~~~ #                 mmp_layer_write.edge_up_norms[r][s].weight.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.edge_up_norms[r][s].weight[:] = mmp_layer_read.edge_up_norms[r][s].weight.detach().clone()
+        # ~~~~ #                 # bias 
+        # ~~~~ #                 mmp_layer_write.edge_up_norms[r][s].bias.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.edge_up_norms[r][s].bias[:] = mmp_layer_read.edge_up_norms[r][s].bias.detach().clone()
 
-                # node up norms 
-                for mmp_level in range(len(mmp_layer_read.node_up_norms)):
-                    for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
-                        r = mmp_level
-                        s = mp_block_index
-                        # weight
-                        mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
-                        mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
-                        # bias 
-                        mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
-                        mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
+        # ~~~~ #         # node up norms 
+        # ~~~~ #         for mmp_level in range(len(mmp_layer_read.node_up_norms)):
+        # ~~~~ #             for mp_block_index in range(len(mmp_layer_read.node_up_norms[mmp_level])):
+        # ~~~~ #                 r = mmp_level
+        # ~~~~ #                 s = mp_block_index
+        # ~~~~ #                 # weight
+        # ~~~~ #                 mmp_layer_write.node_up_norms[r][s].weight.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.node_up_norms[r][s].weight[:] = mmp_layer_read.node_up_norms[r][s].weight.detach().clone()
+        # ~~~~ #                 # bias 
+        # ~~~~ #                 mmp_layer_write.node_up_norms[r][s].bias.requires_grad = False
+        # ~~~~ #                 mmp_layer_write.node_up_norms[r][s].bias[:] = mmp_layer_read.node_up_norms[r][s].bias.detach().clone()
 
         return 
 

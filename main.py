@@ -259,8 +259,8 @@ class Trainer:
                 out_channels = 2, 
                 n_mlp_encode = 3, 
                 n_mlp_mp = 2,
-                n_mp_down_topk = [2], # [1,1],
-                n_mp_up_topk = [], #[1],
+                n_mp_down_topk = [1,1],
+                n_mp_up_topk = [1],
                 pool_ratios = [1./4.],
                 n_mp_down_enc = [2,2,2], # [4,4,4],
                 n_mp_up_enc = [2,2], # [4,4],
@@ -273,6 +273,50 @@ class Trainer:
                 act = F.elu,
                 param_sharing = False,
                 name = 'topk_unet_rollout_%d' %(self.cfg.rollout_steps))
+
+        # read a trained model 
+        modelpath = self.cfg.work_dir + '/saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+        p = torch.load(modelpath)
+        input_dict = p['input_dict']
+        model_read = gnn.GNN_TopK_NoReduction(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'],
+            n_mlp_encode = input_dict['n_mlp_encode'],
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'],
+            n_mp_down_enc = input_dict['n_mp_down_enc'],
+            n_mp_up_enc = input_dict['n_mp_up_enc'],
+            n_mp_down_dec = input_dict['n_mp_down_dec'],
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
+
+        model_read.load_state_dict(p['state_dict'])
+
+
+        def count_parameters(mdl):
+            return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
+
+        if RANK == 0: 
+            print('number of parameters before overwriting: ', count_parameters(model))
+
+        # write parameters from trained model into new model 
+        model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
+        model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
+        model.set_node_edge_encoder_decoder(model_read)
+
+        if RANK == 0: 
+            print('number of parameters after overwriting: ', count_parameters(model))
 
         return model
 
@@ -545,105 +589,105 @@ def train(cfg: DictConfig):
     trainer = Trainer(cfg)
     epoch_times = []
 
-    for epoch in range(trainer.epoch_start, cfg.epochs+1):
-        # ~~~~ Training step 
-        t0 = time.time()
-        trainer.epoch = epoch
-        train_metrics = trainer.train_epoch(epoch)
-        trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
-        epoch_time = time.time() - t0
-        epoch_times.append(epoch_time)
+    # ~~~~ # for epoch in range(trainer.epoch_start, cfg.epochs+1):
+    # ~~~~ #     # ~~~~ Training step 
+    # ~~~~ #     t0 = time.time()
+    # ~~~~ #     trainer.epoch = epoch
+    # ~~~~ #     train_metrics = trainer.train_epoch(epoch)
+    # ~~~~ #     trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
+    # ~~~~ #     epoch_time = time.time() - t0
+    # ~~~~ #     epoch_times.append(epoch_time)
 
-        # ~~~~ Validation step
-        test_metrics = trainer.test()
-        trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
-        if RANK == 0:
-            astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
-            sepstr = '-' * len(astr)
-            log.info(sepstr)
-            log.info(astr)
-            log.info(sepstr)
-            summary = '  '.join([
-                '[TRAIN]',
-                f'loss={train_metrics["loss"]:.4e}', 
-                f'epoch_time={epoch_time:.4g} sec'
-            ])
-            log.info((sep := '-' * len(summary)))
-            log.info(summary)
-            log.info(sep)
+    # ~~~~ #     # ~~~~ Validation step
+    # ~~~~ #     test_metrics = trainer.test()
+    # ~~~~ #     trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+    # ~~~~ #     if RANK == 0:
+    # ~~~~ #         astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
+    # ~~~~ #         sepstr = '-' * len(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         log.info(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         summary = '  '.join([
+    # ~~~~ #             '[TRAIN]',
+    # ~~~~ #             f'loss={train_metrics["loss"]:.4e}', 
+    # ~~~~ #             f'epoch_time={epoch_time:.4g} sec'
+    # ~~~~ #         ])
+    # ~~~~ #         log.info((sep := '-' * len(summary)))
+    # ~~~~ #         log.info(summary)
+    # ~~~~ #         log.info(sep)
 
 
-        # ~~~~ Step scheduler based on validation loss
-        trainer.scheduler.step(test_metrics["loss"])
+    # ~~~~ #     # ~~~~ Step scheduler based on validation loss
+    # ~~~~ #     trainer.scheduler.step(test_metrics["loss"])
 
-        # ~~~~ Checkpointing step 
-        if epoch % cfg.ckptfreq == 0 and RANK == 0:
-            astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
-            sepstr = '-' * len(astr)
-            log.info(sepstr)
-            log.info(astr)
-            log.info(sepstr)
+    # ~~~~ #     # ~~~~ Checkpointing step 
+    # ~~~~ #     if epoch % cfg.ckptfreq == 0 and RANK == 0:
+    # ~~~~ #         astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
+    # ~~~~ #         sepstr = '-' * len(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         log.info(astr)
+    # ~~~~ #         log.info(sepstr)
 
-            if not os.path.exists(cfg.ckpt_dir):
-                os.makedirs(cfg.ckpt_dir)
-           
-            if WITH_DDP and SIZE > 1:
-                ckpt = {'epoch' : epoch, 
-                        'training_iter' : trainer.training_iter,
-                        'model_state_dict' : trainer.model.module.state_dict(), 
-                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test, 
-                        'current_rollout_steps' : trainer.current_rollout_steps}
-            else:
-                ckpt = {'epoch' : epoch, 
-                        'training_iter' : trainer.training_iter,
-                        'model_state_dict' : trainer.model.state_dict(), 
-                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test,
-                        'current_rollout_steps' : trainer.current_rollout_steps}
+    # ~~~~ #         if not os.path.exists(cfg.ckpt_dir):
+    # ~~~~ #             os.makedirs(cfg.ckpt_dir)
+    # ~~~~ #        
+    # ~~~~ #         if WITH_DDP and SIZE > 1:
+    # ~~~~ #             ckpt = {'epoch' : epoch, 
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'model_state_dict' : trainer.model.module.state_dict(), 
+    # ~~~~ #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+    # ~~~~ #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test, 
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps}
+    # ~~~~ #         else:
+    # ~~~~ #             ckpt = {'epoch' : epoch, 
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'model_state_dict' : trainer.model.state_dict(), 
+    # ~~~~ #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+    # ~~~~ #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test,
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps}
 
-            torch.save(ckpt, trainer.ckpt_path)
-        dist.barrier()
+    # ~~~~ #         torch.save(ckpt, trainer.ckpt_path)
+    # ~~~~ #     dist.barrier()
 
-    rstr = f'[{RANK}] ::'
-    log.info(' '.join([
-        rstr,
-        f'Total training time: {time.time() - start} seconds'
-    ]))
-    #log.info(' '.join([
-    #    rstr,
-    #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
-    #]))
+    # ~~~~ # rstr = f'[{RANK}] ::'
+    # ~~~~ # log.info(' '.join([
+    # ~~~~ #     rstr,
+    # ~~~~ #     f'Total training time: {time.time() - start} seconds'
+    # ~~~~ # ]))
+    # ~~~~ # #log.info(' '.join([
+    # ~~~~ # #    rstr,
+    # ~~~~ # #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
+    # ~~~~ # #]))
 
-    if RANK == 0:
-        if WITH_CUDA:  
-            trainer.model.to('cpu')
-        if not os.path.exists(cfg.model_dir):
-            os.makedirs(cfg.model_dir)
-        if WITH_DDP and SIZE > 1:
-            save_dict = {
-                        'state_dict' : trainer.model.module.state_dict(), 
-                        'input_dict' : trainer.model.module.input_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : trainer.training_iter,
-                        'current_rollout_steps' : trainer.current_rollout_steps
-                        }
-        else:
-            save_dict = {   
-                        'state_dict' : trainer.model.state_dict(), 
-                        'input_dict' : trainer.model.input_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test,
-                        'training_iter' : trainer.training_iter,
-                        'current_rollout_steps' : trainer.current_rollout_steps
-                        }
+    # ~~~~ # if RANK == 0:
+    # ~~~~ #     if WITH_CUDA:  
+    # ~~~~ #         trainer.model.to('cpu')
+    # ~~~~ #     if not os.path.exists(cfg.model_dir):
+    # ~~~~ #         os.makedirs(cfg.model_dir)
+    # ~~~~ #     if WITH_DDP and SIZE > 1:
+    # ~~~~ #         save_dict = {
+    # ~~~~ #                     'state_dict' : trainer.model.module.state_dict(), 
+    # ~~~~ #                     'input_dict' : trainer.model.module.input_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test,
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps
+    # ~~~~ #                     }
+    # ~~~~ #     else:
+    # ~~~~ #         save_dict = {   
+    # ~~~~ #                     'state_dict' : trainer.model.state_dict(), 
+    # ~~~~ #                     'input_dict' : trainer.model.input_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test,
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps
+    # ~~~~ #                     }
 
-        torch.save(save_dict, trainer.model_path)
+    # ~~~~ #     torch.save(save_dict, trainer.model_path)
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
