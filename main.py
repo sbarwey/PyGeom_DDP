@@ -274,7 +274,12 @@ class Trainer:
                 param_sharing = False,
                 name = 'pretrained_topk_unet_rollout_%d' %(self.cfg.rollout_steps))
 
-        # read a trained model 
+        # intermediate step: Load state dict using a previous top-k model
+        # -- this initializes the top-k vector and the MP layer on the first top-k level using the previously trained top-k model at the smaller rollout length
+        p = torch.load(self.cfg.work_dir + '/saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+        model.load_state_dict(p['state_dict'])
+
+        # read a trained model (a baseline model without top-k) 
         modelpath = self.cfg.work_dir + '/saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath)
         input_dict = p['input_dict']
@@ -309,7 +314,7 @@ class Trainer:
         if RANK == 0: 
             print('number of parameters before overwriting: ', count_parameters(model))
 
-        # write parameters from trained model into new model 
+        # write parameters from baseline trained model into new model 
         model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
         model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
         model.set_node_edge_encoder_decoder(model_read)
