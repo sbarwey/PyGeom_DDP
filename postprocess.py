@@ -157,7 +157,7 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')
     # a = torch.load('saved_models/model_multi_scale.tar')
@@ -240,99 +240,167 @@ if 1 == 1:
     modelpath_list.append('saved_models/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     modelpath_list.append('saved_models/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
-    for modelpath in modelpath_list:
-        p = torch.load(modelpath)
-        input_dict = p['input_dict']
-
-        # with top-k, no reduction
-        model = gnn.GNN_TopK_NoReduction(
-                in_channels_node = input_dict['in_channels_node'],
-                in_channels_edge = input_dict['in_channels_edge'],
-                hidden_channels = input_dict['hidden_channels'],
-                out_channels = input_dict['out_channels'], 
-                n_mlp_encode = input_dict['n_mlp_encode'], 
-                n_mlp_mp = input_dict['n_mlp_mp'],
-                n_mp_down_topk = input_dict['n_mp_down_topk'],
-                n_mp_up_topk = input_dict['n_mp_up_topk'],
-                pool_ratios = input_dict['pool_ratios'], 
-                n_mp_down_enc = input_dict['n_mp_down_enc'], 
-                n_mp_up_enc = input_dict['n_mp_up_enc'], 
-                n_mp_down_dec = input_dict['n_mp_down_dec'], 
-                n_mp_up_dec = input_dict['n_mp_up_dec'], 
-                lengthscales_enc = input_dict['lengthscales_enc'],
-                lengthscales_dec = input_dict['lengthscales_dec'], 
-                bounding_box = input_dict['bounding_box'], 
-                interpolation_mode = input_dict['interp'], 
-                act = input_dict['act'], 
-                param_sharing = input_dict['param_sharing'],
-                filter_lengthscale = input_dict['filter_lengthscale'], 
-                name = input_dict['name'])
 
 
-        model.load_state_dict(p['state_dict'])
-        model.to(device)
-        model.eval()
 
-        # ~~~~ Re-load data: 
-        rollout_eval = 5 # where to evaluate the RMSE  
-        vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-        path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
-        path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
-        path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
-        device_for_loading = device
+    # Load rmse data: 
+    if 1 == 1:
+        rmse_path = './outputs/postproc/rmse_data/'
 
-        dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data_radius(
-                        vtk_file_test, 
-                        path_to_ei, 
-                        path_to_ea,
-                        path_to_pos, 
-                        device_for_loading, 
-                        time_lag = rollout_eval,
-                        scaling = [data_mean, data_std],
-                        features_to_keep = [1,2], 
-                        fraction_valid = 0, 
-                        multiple_cases = False)
-
-        # Remove first snapshot
-        test_dataset.pop(0)
-
-        # Loop through test snapshots 
-        N = len(dataset_eval_rmse)
-
-        # populate RMSE versus time plot 
-        rmse_data = []
-        for i in range(rollout_eval):
-            rmse_data.append(np.zeros((N,2))) # 2 components for ux, uy
-
-        for i in range(N): 
-            print('Snapshot %d/%d' %(i+1, N))
-            data = dataset_eval_rmse[i]
-            x_new = data.x
-            for t in range(rollout_eval):
-                print('\tRollout %d/%d' %(t+1, rollout_eval))
-                x_old = torch.clone(x_new)
-                x_src = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-                x_new = x_old + x_src
-
-                # Accumulate loss 
-                target = data.y[t]
-
-                # compute rmse 
-                rmse_data[t][i][0] = torch.sqrt(F.mse_loss(x_new[0], target[0]))
-                rmse_data[t][i][1] = torch.sqrt(F.mse_loss(x_new[1], target[1]))
+        rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_topk1 = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_topk2 = np.load(rmse_path + 'pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_topk3 = np.load(rmse_path + 'pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_topk4 = np.load(rmse_path + 'pretrained_topk_unet_rollout_4_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_topk5 = np.load(rmse_path + 'pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
 
 
-        # Save rmse_data
-        print('SAVING...')
-        print('SAVING...')
-        print('SAVING...')
-        savepath = './outputs/postproc/rmse_data'
-        if not os.path.exists(savepath):
-            os.mkdir(savepath)
+        # compute average rmse:
+        rmse_baseline_mean = np.mean(rmse_baseline, axis=1)
+        rmse_baseline_max = np.max(rmse_baseline, axis=1)
+        rmse_baseline_min = np.min(rmse_baseline, axis=1)
 
-        np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
+        rmse_topk1_mean = np.mean(rmse_topk1, axis=1)
+        rmse_topk2_mean = np.mean(rmse_topk2, axis=1)
+        rmse_topk3_mean = np.mean(rmse_topk3, axis=1)
+        rmse_topk4_mean = np.mean(rmse_topk4, axis=1)
+        rmse_topk5_mean = np.mean(rmse_topk5, axis=1)
 
-        
+        rollout_steps = np.arange(1,rmse_baseline.shape[0] + 1)
+
+
+
+
+        # Fig, ax 
+
+        fig, ax = plt.subplots(1,2, figsize=(10,5))
+
+        # ux: 
+        ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline')
+        ax[0].plot(rollout_steps, rmse_topk1_mean[:,0], label='TopK, R=1')
+        ax[0].plot(rollout_steps, rmse_topk2_mean[:,0], label='TopK, R=2')
+        ax[0].plot(rollout_steps, rmse_topk3_mean[:,0], label='TopK, R=3')
+        ax[0].plot(rollout_steps, rmse_topk4_mean[:,0], label='TopK, R=4')
+        ax[0].plot(rollout_steps, rmse_topk5_mean[:,0], label='TopK, R=5')
+        ax[0].set_xlabel('Rollout Steps') 
+        ax[0].set_ylabel('RMSE')
+
+        # uy:
+        ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline')
+        ax[1].plot(rollout_steps, rmse_topk1_mean[:,1], label='TopK, R=1')
+        ax[1].plot(rollout_steps, rmse_topk2_mean[:,1], label='TopK, R=2')
+        ax[1].plot(rollout_steps, rmse_topk3_mean[:,1], label='TopK, R=3')
+        ax[1].plot(rollout_steps, rmse_topk4_mean[:,1], label='TopK, R=4')
+        ax[1].plot(rollout_steps, rmse_topk5_mean[:,1], label='TopK, R=5')
+        ax[1].set_xlabel('Rollout Steps') 
+        ax[1].set_ylabel('RMSE')
+
+        ax[0].legend()
+        ax[1].legend()
+        plt.show(block=False)
+
+        asdf
+
+
+
+
+
+
+    # Write data: 
+    if 1 == 0: 
+        for modelpath in modelpath_list:
+            p = torch.load(modelpath)
+            input_dict = p['input_dict']
+
+            # with top-k, no reduction
+            model = gnn.GNN_TopK_NoReduction(
+                    in_channels_node = input_dict['in_channels_node'],
+                    in_channels_edge = input_dict['in_channels_edge'],
+                    hidden_channels = input_dict['hidden_channels'],
+                    out_channels = input_dict['out_channels'], 
+                    n_mlp_encode = input_dict['n_mlp_encode'], 
+                    n_mlp_mp = input_dict['n_mlp_mp'],
+                    n_mp_down_topk = input_dict['n_mp_down_topk'],
+                    n_mp_up_topk = input_dict['n_mp_up_topk'],
+                    pool_ratios = input_dict['pool_ratios'], 
+                    n_mp_down_enc = input_dict['n_mp_down_enc'], 
+                    n_mp_up_enc = input_dict['n_mp_up_enc'], 
+                    n_mp_down_dec = input_dict['n_mp_down_dec'], 
+                    n_mp_up_dec = input_dict['n_mp_up_dec'], 
+                    lengthscales_enc = input_dict['lengthscales_enc'],
+                    lengthscales_dec = input_dict['lengthscales_dec'], 
+                    bounding_box = input_dict['bounding_box'], 
+                    interpolation_mode = input_dict['interp'], 
+                    act = input_dict['act'], 
+                    param_sharing = input_dict['param_sharing'],
+                    filter_lengthscale = input_dict['filter_lengthscale'], 
+                    name = input_dict['name'])
+
+
+            model.load_state_dict(p['state_dict'])
+            model.to(device)
+            model.eval()
+
+            # ~~~~ Re-load data: 
+            rollout_eval = 5 # where to evaluate the RMSE  
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+            path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+            path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+            device_for_loading = device
+
+            dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data_radius(
+                            vtk_file_test, 
+                            path_to_ei, 
+                            path_to_ea,
+                            path_to_pos, 
+                            device_for_loading, 
+                            time_lag = rollout_eval,
+                            scaling = [data_mean, data_std],
+                            features_to_keep = [1,2], 
+                            fraction_valid = 0, 
+                            multiple_cases = False)
+
+            # Remove first snapshot
+            test_dataset.pop(0)
+
+            # Loop through test snapshots 
+            N = len(dataset_eval_rmse)
+
+            # populate RMSE versus time plot 
+            rmse_data = []
+            for i in range(rollout_eval):
+                rmse_data.append(np.zeros((N,2))) # 2 components for ux, uy
+
+            for i in range(N): 
+                print('Snapshot %d/%d' %(i+1, N))
+                data = dataset_eval_rmse[i]
+                x_new = data.x
+                for t in range(rollout_eval):
+                    print('\tRollout %d/%d' %(t+1, rollout_eval))
+                    x_old = torch.clone(x_new)
+                    x_src = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_new = x_old + x_src
+
+                    # Accumulate loss 
+                    target = data.y[t]
+
+                    # compute rmse 
+                    rmse_data[t][i][0] = torch.sqrt(F.mse_loss(x_new[0], target[0]))
+                    rmse_data[t][i][1] = torch.sqrt(F.mse_loss(x_new[1], target[1]))
+
+
+            # Save rmse_data
+            print('SAVING...')
+            print('SAVING...')
+            print('SAVING...')
+            savepath = './outputs/postproc/rmse_data'
+            if not os.path.exists(savepath):
+                os.mkdir(savepath)
+
+            np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
+
+            
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
