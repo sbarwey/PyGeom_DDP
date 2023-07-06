@@ -13,10 +13,10 @@ ckptfreq: 5
 batch_size: 2
 test_batch_size: 1
 fp16_allreduce: False
-restart: False
+restart: True
 
 # Number of training rollout steps
-rollout_steps: 2
+rollout_steps: 5
 use_rollout_schedule : False
 
 hydra:
