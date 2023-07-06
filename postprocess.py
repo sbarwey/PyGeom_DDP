@@ -298,6 +298,7 @@ if 1 == 1:
         data = dataset_eval_rmse[i]
         x_new = data.x
         for t in range(rollout_eval):
+            print('\tRollout %d/%d' %(t+1, rollout_eval))
             x_old = torch.clone(x_new)
             x_src = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
             x_new = x_old + x_src
@@ -308,6 +309,7 @@ if 1 == 1:
             # compute rmse 
             rmse_data[t][i] = torch.sqrt(F.mse_loss(x_new, target))
 
+        asdf
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
