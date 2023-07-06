@@ -155,9 +155,9 @@ test_dataset, _ = bfs.get_pygeom_dataset_cell_data_radius(
 test_dataset.pop(0)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Postprocess losses 
+# Postprocess training losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:  
+if 1 == 1: 
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')
     # a = torch.load('saved_models/model_multi_scale.tar')
@@ -166,47 +166,147 @@ if 1 == 0:
     # b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar')
     # c = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
+    # # Effect of MMP blocks and parameter sharing 
+    # a = torch.load('saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # #b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # c = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # d = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
-    # Effect of MMP blocks and parameter sharing 
-    a = torch.load('saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    #b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    b = torch.load('saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    c = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    d = torch.load('saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # # Effect of RK2
+    # a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # b = torch.load('/Users/sbarwey/Files/ml/DDP_PyGeom_testing/saved_models/topk_unet_rollout_1_rk2_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
 
+    # Effect of transfer learning
+    a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    b = torch.load('saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    c = torch.load('saved_models/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    d = torch.load('saved_models/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+
+    
     # Plot losses:
-    fig, ax = plt.subplots(1,4,sharey=True, sharex=True, figsize=(14,6))
+    #fig, ax = plt.subplots(1,2,sharey=True, sharex=True, figsize=(14,6))
+    fig, ax = plt.subplots(1,4,sharey=False, sharex=True, figsize=(14,6))
     ax[0].plot(a['loss_hist_train'])
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
     #ax[0].set_ylim([1e-3, 1e-1])
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epochs')
-    ax[0].set_title('1x MMP (rollout = 2)')
+    #ax[0].set_title('1x MMP (rollout = 2)')
+    ax[0].set_title('Baseline (rollout = 1)')
 
     ax[1].plot(b['loss_hist_train'], label='train')
     ax[1].plot(b['loss_hist_test'], label='valid')
     ax[1].set_yscale('log')
     ax[1].set_xlabel('Epochs')
-    ax[1].set_title('2x MMP (rollout = 2)')
+    #ax[1].set_title('2x MMP (rollout = 2)')
+    ax[1].set_title('Baseline + TopK (rollout = 1)')
 
     ax[2].plot(c['loss_hist_train'])
     ax[2].plot(c['loss_hist_test'])
     ax[2].set_yscale('log')
     ax[2].set_xlim([0,200])
     ax[2].set_xlabel('Epochs')
-    ax[2].set_title('2x MMP (rollout = 1)')
+    ax[2].set_title('Baseline + TopK (rollout = 2)')
 
     ax[3].plot(d['loss_hist_train'])
     ax[3].plot(d['loss_hist_test'])
     ax[3].set_yscale('log')
     ax[3].set_xlim([0,200])
     ax[3].set_xlabel('Epochs')
-    ax[3].set_title('2x MMP + Top-K')
+    ax[3].set_title('Baseline + TopK (rollout = 3)')
 
     plt.show(block=False)
 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Postprocess testing losses 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 1: 
+    print('postprocess testing losses.')
+
+
+    # Load model: 
+    modelpath = 'saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+
+    p = torch.load(modelpath)
+    input_dict = p['input_dict']
+
+    # with top-k, no reduction
+    model = gnn.GNN_TopK_NoReduction(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'], 
+            n_mlp_encode = input_dict['n_mlp_encode'], 
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'], 
+            n_mp_down_enc = input_dict['n_mp_down_enc'], 
+            n_mp_up_enc = input_dict['n_mp_up_enc'], 
+            n_mp_down_dec = input_dict['n_mp_down_dec'], 
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
+
+
+    model.load_state_dict(p['state_dict'])
+    model.eval()
+
+    # ~~~~ Re-load data: 
+    rollout_eval = 5 # where to evaluate the RMSE  
+    vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+    path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+    path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+    path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+    device_for_loading = 'cpu'
+
+    dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data_radius(
+                    vtk_file_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    time_lag = rollout_eval,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+
+    # Remove first snapshot
+    test_dataset.pop(0)
+
+    # Loop through test snapshots 
+    N = len(dataset_eval_rmse)
+
+    # populate RMSE versus time plot 
+    rmse_data = []
+    for i in range(rollout_eval):
+        rmse_data.append(np.zeros(N))
+
+    for i in range(N): 
+        print('Snapshot %d/%d' %(i+1, N))
+        data = dataset_eval_rmse[i]
+        x_new = data.x
+        for t in range(rollout_eval):
+            x_old = torch.clone(x_new)
+            x_src = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_new = x_old + x_src
+
+            # Accumulate loss 
+            target = data.y[t]
+
+            # compute rmse 
+            rmse_data[t][i] = torch.sqrt(F.mse_loss(x_new, target))
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -540,64 +640,45 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Initialize MMP blocks from a pre-trained model 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
 
-    # Step 1: load model with shared parameters 
-    modelpath = 'saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    # Step 1: Load previous top-k model
+    modelpath = 'saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
     print('input_dict: ', input_dict)
     
-    # With top-k:
-    model = gnn.GNN_TopK_NoReduction(
-            in_channels_node = input_dict['in_channels_node'],
-            in_channels_edge = input_dict['in_channels_edge'],
-            hidden_channels = input_dict['hidden_channels'],
-            out_channels = input_dict['out_channels'], 
-            n_mlp_encode = input_dict['n_mlp_encode'], 
-            n_mlp_mp = input_dict['n_mlp_mp'],
-            n_mp_down_topk = input_dict['n_mp_down_topk'],
-            n_mp_up_topk = input_dict['n_mp_up_topk'],
-            pool_ratios = input_dict['pool_ratios'], 
-            n_mp_down_enc = input_dict['n_mp_down_enc'], 
-            n_mp_up_enc = input_dict['n_mp_up_enc'], 
-            n_mp_down_dec = input_dict['n_mp_down_dec'], 
-            n_mp_up_dec = input_dict['n_mp_up_dec'], 
-            lengthscales_enc = input_dict['lengthscales_enc'],
-            lengthscales_dec = input_dict['lengthscales_dec'], 
-            bounding_box = input_dict['bounding_box'], 
-            interpolation_mode = input_dict['interp'], 
-            act = input_dict['act'], 
-            param_sharing = input_dict['param_sharing'],
-            filter_lengthscale = input_dict['filter_lengthscale'], 
-            name = input_dict['name'])
-
-
-    # step 2: initialize model with unshared params 
+    # Step 2: load new top-k model
     bbox = input_dict['bounding_box']
     model_2 = gnn.GNN_TopK_NoReduction(
-                in_channels_node = 2,
-                in_channels_edge = 3,
-                hidden_channels = 128,
-                out_channels = 2,
-                n_mlp_encode = 3,
-                n_mlp_mp = 2,
-                n_mp_down_topk = [1,1],
-                n_mp_up_topk = [1],
-                pool_ratios = [1./4.],
-                n_mp_down_enc = [2,2,2],
-                n_mp_up_enc = [2,2],
-                n_mp_down_dec = [2,2,2],
-                n_mp_up_dec = [2,2],
-                lengthscales_enc = [0.01, 0.02],
-                lengthscales_dec = [0.01, 0.02],
-                bounding_box = bbox,
-                interpolation_mode = 'knn',
-                act = F.elu,
-                param_sharing = False,
-                name = 'topk_unet_2')
+              in_channels_node = input_dict['in_channels_node'],
+              in_channels_edge = input_dict['in_channels_edge'],
+              hidden_channels = input_dict['hidden_channels'],
+              out_channels = input_dict['out_channels'], 
+              n_mlp_encode = input_dict['n_mlp_encode'], 
+              n_mlp_mp = input_dict['n_mlp_mp'],
+              n_mp_down_topk = input_dict['n_mp_down_topk'],
+              n_mp_up_topk = input_dict['n_mp_up_topk'],
+              pool_ratios = input_dict['pool_ratios'], 
+              n_mp_down_enc = input_dict['n_mp_down_enc'], 
+              n_mp_up_enc = input_dict['n_mp_up_enc'], 
+              n_mp_down_dec = input_dict['n_mp_down_dec'], 
+              n_mp_up_dec = input_dict['n_mp_up_dec'], 
+              lengthscales_enc = input_dict['lengthscales_enc'],
+              lengthscales_dec = input_dict['lengthscales_dec'], 
+              bounding_box = input_dict['bounding_box'], 
+              interpolation_mode = input_dict['interp'], 
+              act = input_dict['act'], 
+              param_sharing = input_dict['param_sharing'],
+              filter_lengthscale = input_dict['filter_lengthscale'], 
+              name = 'gnn_topk_2')
 
+    # Load state dict from the previous top-k model
+    model_2.load_state_dict(p['state_dict'])
+
+
+    # Freeze all params except the top-k and the MMP param
 
     # print number of params before over-writing: 
     def count_parameters(model):
@@ -607,10 +688,10 @@ if 1 == 1:
     print('number of parameters before overwriting: ', count_parameters(model_2))
     print('number of parameters before overwriting: ', count_parameters(model_2))
     
-    # write params at level 0  
-    model_2.set_mmp_layer(model.down_mps[0][0], model_2.down_mps[0][0])
-    model_2.set_mmp_layer(model.down_mps[0][1], model_2.up_mps[0][0])
-    model_2.set_node_edge_encoder_decoder(model)
+    # Write params 
+    model_2.set_mmp_layer(model_2.down_mps[0][0], model_2.down_mps[0][0])
+    model_2.set_mmp_layer(model_2.up_mps[0][0], model_2.up_mps[0][0])
+        
 
     # print number of params after over-writing:
     print('number of parameters after overwriting: ', count_parameters(model_2))
