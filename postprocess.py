@@ -157,7 +157,7 @@ test_dataset.pop(0)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')
     # a = torch.load('saved_models/model_multi_scale.tar')
@@ -186,8 +186,8 @@ if 1 == 1:
 
     
     # Plot losses:
-    #fig, ax = plt.subplots(1,2,sharey=True, sharex=True, figsize=(14,6))
-    fig, ax = plt.subplots(1,4,sharey=False, sharex=True, figsize=(14,6))
+    fig, ax = plt.subplots(1,2,sharey=False, sharex=True, figsize=(14,6))
+    #fig, ax = plt.subplots(1,4,sharey=False, sharex=True, figsize=(14,6))
     ax[0].plot(a['loss_hist_train'])
     ax[0].plot(a['loss_hist_test'])
     ax[0].set_yscale('log')
@@ -204,19 +204,19 @@ if 1 == 1:
     #ax[1].set_title('2x MMP (rollout = 2)')
     ax[1].set_title('Baseline + TopK (rollout = 1)')
 
-    ax[2].plot(c['loss_hist_train'])
-    ax[2].plot(c['loss_hist_test'])
-    ax[2].set_yscale('log')
-    ax[2].set_xlim([0,200])
-    ax[2].set_xlabel('Epochs')
-    ax[2].set_title('Baseline + TopK (rollout = 2)')
+    # ax[2].plot(c['loss_hist_train'])
+    # ax[2].plot(c['loss_hist_test'])
+    # ax[2].set_yscale('log')
+    # ax[2].set_xlim([0,200])
+    # ax[2].set_xlabel('Epochs')
+    # ax[2].set_title('Baseline + TopK (rollout = 2)')
 
-    ax[3].plot(d['loss_hist_train'])
-    ax[3].plot(d['loss_hist_test'])
-    ax[3].set_yscale('log')
-    ax[3].set_xlim([0,200])
-    ax[3].set_xlabel('Epochs')
-    ax[3].set_title('Baseline + TopK (rollout = 3)')
+    # ax[3].plot(d['loss_hist_train'])
+    # ax[3].plot(d['loss_hist_test'])
+    # ax[3].set_yscale('log')
+    # ax[3].set_xlim([0,200])
+    # ax[3].set_xlabel('Epochs')
+    # ax[3].set_title('Baseline + TopK (rollout = 3)')
 
     plt.show(block=False)
 
@@ -243,8 +243,9 @@ if 1 == 1:
     modelpath_list.append('saved_models/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
     # Load rmse data: 
-    if 1 == 0:
-        rmse_path = './outputs/postproc/rmse_data/'
+    if 1 == 1:
+        #rmse_path = './outputs/postproc/rmse_data/Re_26214/'
+        rmse_path = './outputs/postproc/rmse_data/Re_32564/'
 
         rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
         rmse_topk1 = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
@@ -268,34 +269,39 @@ if 1 == 1:
         rollout_steps = np.arange(1,rmse_baseline.shape[0] + 1)
 
 
-
-
         # Fig, ax 
-
-        fig, ax = plt.subplots(1,2, figsize=(10,5))
+        lw = 2
+        ms = 1
+        mew = 1
+        fig, ax = plt.subplots(1,2, figsize=(14,5))
 
         # ux: 
-        ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline')
-        ax[0].plot(rollout_steps, rmse_topk1_mean[:,0], label='TopK, R=1')
-        ax[0].plot(rollout_steps, rmse_topk2_mean[:,0], label='TopK, R=2')
-        ax[0].plot(rollout_steps, rmse_topk3_mean[:,0], label='TopK, R=3')
-        ax[0].plot(rollout_steps, rmse_topk4_mean[:,0], label='TopK, R=4')
-        ax[0].plot(rollout_steps, rmse_topk5_mean[:,0], label='TopK, R=5')
+        ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline', lw=lw)
+        ax[0].plot(rollout_steps, rmse_topk1_mean[:,0], label='TopK, R=1', lw=lw)
+        ax[0].plot(rollout_steps, rmse_topk2_mean[:,0], label='TopK, R=2', lw=lw)
+        ax[0].plot(rollout_steps, rmse_topk3_mean[:,0], label='TopK, R=3', lw=lw)
+        ax[0].plot(rollout_steps, rmse_topk4_mean[:,0], label='TopK, R=4', lw=lw)
+        ax[0].plot(rollout_steps, rmse_topk5_mean[:,0], label='TopK, R=5', lw=lw)
         ax[0].set_xlabel('Rollout Steps') 
         ax[0].set_ylabel('RMSE')
+        ax[0].set_title('Ux')
 
         # uy:
-        ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline')
-        ax[1].plot(rollout_steps, rmse_topk1_mean[:,1], label='TopK, R=1')
-        ax[1].plot(rollout_steps, rmse_topk2_mean[:,1], label='TopK, R=2')
-        ax[1].plot(rollout_steps, rmse_topk3_mean[:,1], label='TopK, R=3')
-        ax[1].plot(rollout_steps, rmse_topk4_mean[:,1], label='TopK, R=4')
-        ax[1].plot(rollout_steps, rmse_topk5_mean[:,1], label='TopK, R=5')
+        ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline', lw=lw)
+        ax[1].plot(rollout_steps, rmse_topk1_mean[:,1], label='TopK, R=1', lw=lw)
+        ax[1].plot(rollout_steps, rmse_topk2_mean[:,1], label='TopK, R=2', lw=lw)
+        ax[1].plot(rollout_steps, rmse_topk3_mean[:,1], label='TopK, R=3', lw=lw)
+        ax[1].plot(rollout_steps, rmse_topk4_mean[:,1], label='TopK, R=4', lw=lw)
+        ax[1].plot(rollout_steps, rmse_topk5_mean[:,1], label='TopK, R=5', lw=lw)
         ax[1].set_xlabel('Rollout Steps') 
         ax[1].set_ylabel('RMSE')
+        ax[1].set_title('Uy')
 
-        ax[0].legend()
-        ax[1].legend()
+        ax[0].set_ylim([1e-3, 1e-1])
+        ax[1].set_ylim([1e-3, 1e-1])
+        ax[0].set_yscale('log')
+        ax[1].set_yscale('log')
+        ax[0].legend(framealpha=1, fancybox=False, edgecolor='black', prop={'size': 14})
         plt.show(block=False)
 
         asdf
@@ -306,7 +312,7 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -400,9 +406,6 @@ if 1 == 1:
 
             np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
 
-            
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -410,24 +413,16 @@ if 1 == 0:
     #modelpath = 'saved_models/model_multi_scale.tar'
     #modelpath = 'saved_models/model_single_scale.tar'
 
-    # 1x MMP 
-    # modelpath = 'saved_models/topk_unet_down_topk_1_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-
-    # 2x MMP with sharing 
-    # modelpath = 'saved_models/topk_unet_down_topk_2_up_topk_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_1.tar'
-
-    # 2x MMP + Top-K (no sharing)
-    modelpath = 'saved_models/topk_unet_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_4_4_4_up_enc_4_4_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    #modelpath = 'saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    #modelpath = 'saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    #modelpath = 'saved_models/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    #modelpath = 'saved_models/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    #modelpath = 'saved_models/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
 
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
     print('input_dict: ', input_dict)
-    p = torch.load(modelpath)
-
-    input_dict = p['input_dict']
-    print('input_dict: ', input_dict)
-
     
     # With top-k:
     # model = gnn.GNN_TopK(
@@ -495,7 +490,6 @@ if 1 == 0:
             filter_lengthscale = input_dict['filter_lengthscale'], 
             name = input_dict['name'])
 
-
     model.load_state_dict(p['state_dict'])
     model.eval()
 
@@ -528,7 +522,6 @@ if 1 == 0:
 
     # Update save directory with trajectory index. This is where openfoam cases will be saved. 
     save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/%s/' %(str_re)
-
 
     if not  os.path.exists(save_dir + '/' + header):
         os.makedirs(save_dir + '/' + header)
