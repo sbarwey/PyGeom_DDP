@@ -39,4 +39,4 @@ mpiexec \
 	--ppn $NGPUS_PER_NODE \
 	--hostfile="${PBS_NODEFILE}" \
     --cpu-bind none \
-	./set_affinity_gpu_polaris.sh python3 main.py
+	./set_affinity_gpu_polaris.sh python3 main.py seed=$SEED
