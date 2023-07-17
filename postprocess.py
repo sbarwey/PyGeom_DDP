@@ -264,9 +264,30 @@ if 1 == 0:
     plt.show(block=False)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Overwrite some model names: 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 0:
+    print('Overwrite some model names...')
+    seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
+                 42, 65, 82]
+
+    for seed in seed_list:
+        b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        model_name = b['input_dict']['name']
+        if 'seed' not in model_name: 
+            print('\tcorrecting name for model of seed ', seed)
+            rollout_steps = 1
+            model_name_new = 'pretrained_topk_unet_rollout_%d_seed_%d' %(rollout_steps, seed)
+            b['input_dict']['name'] = model_name_new
+            
+            torch.save(b, 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+
+        
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: FOCUS ON EFFECT OF SEEDING 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
 
     # baseline:
     a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
@@ -296,7 +317,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -337,9 +358,11 @@ if 1 == 1:
 
         seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
                  42, 65, 82]
-        seed_list = [105]
 
         for seed in seed_list:
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print('SEED %d' %(seed))
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             modelpath_topk = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
             p = torch.load(modelpath_topk)
             input_dict = p['input_dict']
@@ -371,8 +394,8 @@ if 1 == 1:
 
             # ~~~~ Re-load data: 
             rollout_eval = 1 # where to evaluate the RMSE  
-            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
@@ -438,7 +461,6 @@ if 1 == 1:
                     mse_mask[t][i][0] = mse_mask_0 
                     mse_mask[t][i][1] = mse_mask_1 
 
-
             # Save mse data
             print('SAVING...')
             print('SAVING...')
@@ -450,12 +472,10 @@ if 1 == 1:
             np.save(savepath + '/mse_full_%s.npy' %(model_topk.get_save_header()), mse_full)
             np.save(savepath + '/mse_mask_%s.npy' %(model_topk.get_save_header()), mse_mask)
 
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -464,18 +484,23 @@ if 1 == 0:
     else:
         device = 'cpu'
 
-    # Load model: 
+    # # Load models: effect of rollout length 
+    # modelpath_list = []
+    # modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_4_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+
+    # Load models: effect of seed for R = 1
     modelpath_list = []
     modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_4_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    #seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
+    seed_list = [192, 202, 212, 222, 42, 65, 82]
+    for seed in seed_list:
+        modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
-
-    modelpath_list = []
-    modelpath_list.append('saved_models/pretrained_seed_2/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
 
     # Load rmse data: 
     if 1 == 0:
@@ -540,7 +565,7 @@ if 1 == 0:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -620,8 +645,8 @@ if 1 == 0:
                     target = data.y[t]
 
                     # compute rmse 
-                    rmse_data[t][i][0] = torch.sqrt(F.mse_loss(x_new[0], target[0]))
-                    rmse_data[t][i][1] = torch.sqrt(F.mse_loss(x_new[1], target[1]))
+                    rmse_data[t][i][0] = torch.sqrt(F.mse_loss(x_new[:,0], target[:,0]))
+                    rmse_data[t][i][1] = torch.sqrt(F.mse_loss(x_new[:,1], target[:,1]))
 
 
             # Save rmse_data
@@ -633,6 +658,7 @@ if 1 == 0:
                 os.mkdir(savepath)
 
             np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
+            print('Saved at: %s' %(savepath + '/%s.npy' %(model.get_save_header())))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Load models and Plot losses 
