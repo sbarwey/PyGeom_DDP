@@ -317,19 +317,14 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
         device = 'cpu'
 
-
-    # Read and plot data: 
-    if 1 == 1:
-
-
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         # Load baseline model 
         modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath_baseline)
@@ -398,8 +393,8 @@ if 1 == 0:
 
             # ~~~~ Re-load data: 
             rollout_eval = 1 # where to evaluate the RMSE  
-            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
