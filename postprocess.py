@@ -117,7 +117,6 @@ def scalar2openfoam(image_vec, filename, objectname, time_value):
     time_write = time.time() - time_write 
     print('%s: \t\t\t%.5e s' %(filename, time_write))
 
-
 seed = 42
 torch.set_grad_enabled(False)
 
@@ -154,10 +153,13 @@ test_dataset, _ = bfs.get_pygeom_dataset_cell_data_radius(
 # Remove first snapshot
 test_dataset.pop(0)
 
+seed_list = None
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0: 
+    print('Postprocess training losses (original)')
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')
     # a = torch.load('saved_models/model_multi_scale.tar')
@@ -282,24 +284,36 @@ if 1 == 0:
             
             torch.save(b, 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
-        
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: FOCUS ON EFFECT OF SEEDING 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
-
+if 1 == 1: 
+    print('Postprocess training losses: focus on effect of seeding.')
     # baseline:
     a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     a_label = 'Baseline (rollout = 1)'
 
-    # seed list:
-    seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
-                 42, 65, 82]
+    seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
+                 42, 65, 82])
+
+    topk_models_converged_loss = []
     topk_models = []
     for seed in seed_list:
         b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
+        topk_models_converged_loss.append(b['loss_hist_train'][-1])
+
+    # Re-order based on converged loss
+    _, sort_idx = torch.sort(torch.tensor(topk_models_converged_loss))
+    seed_list = seed_list[sort_idx] 
+    
+    # Re-read: 
+    topk_models_converged_loss = []
+    topk_models = []
+    for seed in seed_list:
+        b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        topk_models.append(b) 
+        topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
     # Combined loss plot 
     baseline_loss = np.mean(a['loss_hist_train'][-10:])
@@ -323,8 +337,67 @@ if 1 == 1:
     else:
         device = 'cpu'
 
+
+    # Read data: 
+    if 1 == 1:
+        modelname_list = []
+        #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
+
+        # If seed_list has not already been initialized:
+        if seed_list == None:
+            seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
+                 42, 65, 82])
+        mse_mask_list = []
+        mse_full_list = []
+        for seed in seed_list:
+            mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask_list.append(mse_mask)
+
+            mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full_list.append(mse_full)
+        
+        rollout_id = 0
+
+        # Percentage: 
+        fig, ax = plt.subplots(3,5, figsize=(16,8), sharex=True, sharey=False)
+        for r in range(3):
+            for c in range(5):
+                seed_id = r*5 + c
+                for comp in range(2):
+                    mse_full = mse_full_list[seed_id][rollout_id,:,comp]
+                    mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
+                    mse_not_mask = mse_full - mse_mask
+                    percent_mask = (mse_mask/mse_full)*100
+                    percent_not_mask = (mse_not_mask/mse_full)*100
+                    ax[r,c].plot(percent_mask)
+                    #ax[r,c].plot(percent_not_mask, color='black')
+                ax[r,c].set_title('Seed = %d' %(seed_list[seed_id]))
+                ax[r,c].set_ylim([0,100])
+        
+        #ax.set_ylabel('MSE Budget [%]')
+        #ax.set_xlabel('Time')
+        plt.show(block=False)
+
+
+        # Just plot one 
+        seed_id = 5
+        fig, ax = plt.subplots()
+        for comp in range(2):
+            mse_full = mse_full_list[seed_id][rollout_id,:,comp]
+            mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
+            mse_not_mask = mse_full - mse_mask
+            percent_mask = (mse_mask/mse_full)*100
+            percent_not_mask = (mse_not_mask/mse_full)*100
+            ax.plot(percent_mask)
+        ax.set_title('Seed = %d' %(seed_list[seed_id]))
+        ax.set_ylim([0,100])
+        ax.set_ylabel('MSE Budget [%]')
+        ax.set_xlabel('Time Step')
+        plt.show(block=False)
+
+
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         # Load baseline model 
         modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath_baseline)
@@ -495,16 +568,65 @@ if 1 == 0:
     # Load models: effect of seed for R = 1
     modelpath_list = []
     modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    #seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
-    seed_list = [192, 202, 212, 222, 42, 65, 82]
+    
+    if seed_list == None:
+        seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
+                 42, 65, 82]
     for seed in seed_list:
         modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
+    # Load rmse data -- effect of seed: 
+    if 1 == 1:
+        rmse_path = './outputs/postproc/rmse_data/Re_26214/'
+        #rmse_path = './outputs/postproc/rmse_data/Re_32564/'
 
-    # Load rmse data: 
+        rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+       
+        rmse_topk_mean = []
+        for seed in seed_list:
+            rmse_topk_seed = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            rmse_topk_mean.append(np.mean(rmse_topk_seed, axis=1))
+
+        # compute average rmse:
+        rmse_baseline_mean = np.mean(rmse_baseline, axis=1)
+        rmse_baseline_max = np.max(rmse_baseline, axis=1)
+        rmse_baseline_min = np.min(rmse_baseline, axis=1)
+        
+        rollout_steps = np.arange(1,rmse_baseline.shape[0] + 1)
+
+        # Fig, ax 
+        lw = 2
+        ms = 1
+        mew = 1
+        fig, ax = plt.subplots(1,2, figsize=(14,5))
+
+        # ux: 
+        ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline', lw=lw, color='black')
+        for seed_id in range(len(seed_list)):
+            ax[0].plot(rollout_steps, rmse_topk_mean[seed_id][:,0], lw=lw, color='red', zorder=-1)
+        ax[0].set_xlabel('Rollout Steps') 
+        ax[0].set_ylabel('RMSE')
+        ax[0].set_title('Ux')
+
+        # uy:
+        ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline', lw=lw, color='black')
+        for seed_id in range(len(seed_list)):
+            ax[1].plot(rollout_steps, rmse_topk_mean[seed_id][:,1], lw=lw, color='red', zorder=-1)
+        ax[1].set_xlabel('Rollout Steps') 
+        ax[1].set_ylabel('RMSE')
+        ax[1].set_title('Uy')
+
+        #ax[0].set_ylim([1e-3, 1e-1])
+        #ax[1].set_ylim([1e-3, 1e-1])
+        #ax[0].set_yscale('log')
+        #ax[1].set_yscale('log')
+        #ax[0].legend(framealpha=1, fancybox=False, edgecolor='black', prop={'size': 14})
+        plt.show(block=False)
+
+    # Load rmse data -- effect of rollout length (no seed): 
     if 1 == 0:
-        #rmse_path = './outputs/postproc/rmse_data/Re_26214/'
-        rmse_path = './outputs/postproc/rmse_data/Re_32564/'
+        rmse_path = './outputs/postproc/rmse_data/Re_26214/'
+        #rmse_path = './outputs/postproc/rmse_data/Re_32564/'
 
         rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
         rmse_topk1 = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
@@ -564,7 +686,7 @@ if 1 == 0:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -660,7 +782,7 @@ if 1 == 0:
             print('Saved at: %s' %(savepath + '/%s.npy' %(model.get_save_header())))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Load models and Plot losses 
+# Write model predictions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
     #modelpath = 'saved_models/model_multi_scale.tar'
@@ -672,52 +794,14 @@ if 1 == 0:
     #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
     #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
 
+
+    seed = 182
+    modelpath = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
+
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
     print('input_dict: ', input_dict)
-    
-    # With top-k:
-    # model = gnn.GNN_TopK(
-    #         in_channels_node = input_dict['in_channels_node'],
-    #         in_channels_edge = input_dict['in_channels_edge'],
-    #         hidden_channels = input_dict['hidden_channels'],
-    #         out_channels = input_dict['out_channels'], 
-    #         n_mlp_encode = input_dict['n_mlp_encode'], 
-    #         n_mlp_mp = input_dict['n_mlp_mp'],
-    #         n_mp_down_topk = input_dict['n_mp_down_topk'],
-    #         n_mp_up_topk = input_dict['n_mp_up_topk'],
-    #         pool_ratios = input_dict['pool_ratios'], 
-    #         n_mp_down_enc = input_dict['n_mp_down_enc'], 
-    #         n_mp_up_enc = input_dict['n_mp_up_enc'], 
-    #         n_mp_down_dec = input_dict['n_mp_down_dec'], 
-    #         n_mp_up_dec = input_dict['n_mp_up_dec'], 
-    #         lengthscales_enc = input_dict['lengthscales_enc'],
-    #         lengthscales_dec = input_dict['lengthscales_dec'], 
-    #         bounding_box = input_dict['bounding_box'], 
-    #         interpolation_mode = input_dict['interp'], 
-    #         act = input_dict['act'], 
-    #         param_sharing = input_dict['param_sharing'],
-    #         filter_lengthscale = input_dict['filter_lengthscale'], 
-    #         name = input_dict['name'])
-
-
-    # # Without top-k: 
-    # model = gnn.Multiscale_MessagePassing_UNet(
-    #             in_channels_node = input_dict['in_channels_node'],
-    #             in_channels_edge = input_dict['in_channels_edge'],
-    #             hidden_channels = input_dict['hidden_channels'],
-    #             n_mlp_encode = input_dict['n_mlp_encode'],
-    #             n_mlp_mp = input_dict['n_mlp_mp'],
-    #             n_mp_down = input_dict['n_mp_down'],
-    #             n_mp_up = input_dict['n_mp_up'],
-    #             n_repeat_mp_up = input_dict['n_repeat_mp_up'],
-    #             lengthscales = input_dict['lengthscales'],
-    #             bounding_box = input_dict['bounding_box'],
-    #             act = input_dict['act'],
-    #             interpolation_mode = input_dict['interpolation_mode'],
-    #             name = input_dict['name'])
-
 
     # with top-k, no reduction
     model = gnn.GNN_TopK_NoReduction(
@@ -746,6 +830,7 @@ if 1 == 0:
     model.load_state_dict(p['state_dict'])
     model.eval()
 
+    # Plot the losses:
     fig, ax = plt.subplots()
     colors = ['black','blue','red']
     ax.plot(p['loss_hist_train'], label='train', lw=2, color='black')
@@ -763,9 +848,7 @@ if 1 == 0:
     ax.set_ylabel('MSE')
     plt.show(block=False)
 
-
-
-if 1 == 0:
+    # Set to eval mode
     model.eval()
     header = model.get_save_header()
 
@@ -775,10 +858,6 @@ if 1 == 0:
 
     # Update save directory with trajectory index. This is where openfoam cases will be saved. 
     save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/%s/' %(str_re)
-
-    
-    #header += '_seed_2'
-    asdf
 
     if not  os.path.exists(save_dir + '/' + header):
         os.makedirs(save_dir + '/' + header)
