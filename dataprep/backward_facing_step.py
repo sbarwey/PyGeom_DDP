@@ -129,29 +129,29 @@ def get_pygeom_dataset_cell_data_radius(
 
     # Edge attributes and index, and node positions 
     #print('Reading edge index and node positions...')
-    edge_index = np.loadtxt(path_to_ei, dtype=np.long).T
+    edge_index = torch.tensor(np.loadtxt(path_to_ei, dtype=np.long).T)
     #edge_attr = np.loadtxt(path_to_ea, dtype=np.float32)
-    pos = np.loadtxt(path_to_pos, dtype=np.float32)
+    pos = torch.tensor(np.loadtxt(path_to_pos, dtype=np.float32))
   
     # Distance field
     distance = np.array(mesh.cell_data['distance'], dtype=np.float32)
     distance = np.reshape(distance, (n_cells, 1), order='F')
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Create radius graph
-    # -- outputs are edge_index and edge_attr
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    #print('Creating radius graph...')
-    # Create initial Knn
-    pos = torch.tensor(pos)
-    radius = 0.001 # m
-    self_loops = False
-    max_num_neighbors = 30 
-    edge_index_rad = tgnn.radius_graph(pos, r=radius, max_num_neighbors=max_num_neighbors)
+    # ~~~~ # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~ # # Create radius graph
+    # ~~~~ # # -- outputs are edge_index and edge_attr
+    # ~~~~ # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~ # #print('Creating radius graph...')
+    # ~~~~ # # Create initial Knn
+    # ~~~~ # pos = torch.tensor(pos)
+    # ~~~~ # radius = 0.001 # m
+    # ~~~~ # self_loops = False
+    # ~~~~ # max_num_neighbors = 30 
+    # ~~~~ # edge_index_rad = tgnn.radius_graph(pos, r=radius, max_num_neighbors=max_num_neighbors)
+    # ~~~~ # # Concatenate
+    # ~~~~ # edge_index = torch.concat((edge_index_rad, torch.tensor(edge_index)), axis=1)
 
-    # Concatenate
-    edge_index = torch.concat((edge_index_rad, torch.tensor(edge_index)), axis=1)
-
+    # ~~~~ Populate edge_attr and coalesce edge_index
     data_ref = Data( pos = pos, edge_index = edge_index )
     cart = transforms.Cartesian(norm=False, max_value = None, cat = False)
     dist = transforms.Distance(norm = False, max_value = None, cat = True)
@@ -169,7 +169,6 @@ def get_pygeom_dataset_cell_data_radius(
     # change back to numpy 
     pos = np.array(pos)
     edge_attr = np.array(edge_attr)
-
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Create Time Lagged Data
