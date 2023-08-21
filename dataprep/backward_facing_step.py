@@ -354,12 +354,13 @@ def get_pygeom_dataset_cell_data(
             data_temp = data_temp.to(device_for_loading)
             data_valid_list.append(data_temp)
 
-    #print('\n\tTraining samples: ', len(data_train_list))
-    #print('\tValidation samples: ', len(data_valid_list))
-    #print('\tN_nodes: ', data_train_list[0].x.shape[0])
-    #print('\tN_edges: ', data_train_list[0].edge_index.shape[1])
-    #print('\tN_features: ', data_train_list[0].x.shape[1])
-    #print('\n')
+    print('\n\tTraining samples: ', len(data_train_list))
+    print('\tValidation samples: ', len(data_valid_list))
+    print('\tN_nodes: ', data_train_list[0].x.shape[0])
+    print('\tN_edges: ', data_train_list[0].edge_index.shape[1])
+    print('\tN_features: ', data_train_list[0].x.shape[1])
+    print('\thas_self_loops: ', data_train_list[0].has_self_loops())
+    print('\n')
 
     return data_train_list, data_valid_list
 

@@ -6,7 +6,7 @@
 #seed: 105
 seed: 122
 epochs: 300
-backend: nccl
+backend: gloo
 #lr_init: 0.0001
 lr_init: 0.00001
 # momentum: 0.5

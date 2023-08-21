@@ -252,6 +252,12 @@ class Trainer:
 
 
         # MMP unet + topk 
+        preamble = '' 
+        if self.cfg.use_radius:
+            preamble = '' 
+        else:
+            preamble = 'NO_RADIUS_LR_1em5_'
+
         modelname = 'topk_unet_rollout_%d' %(self.cfg.rollout_steps) # baseline
         #modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
         model = gnn.GNN_TopK_NoReduction(
@@ -274,7 +280,7 @@ class Trainer:
                 interpolation_mode = 'knn',
                 act = F.elu,
                 param_sharing = False,
-                name = 'NO_RADIUS_LR_1em5' + modelname)
+                name = preamble + modelname)
 
         # ~~~~ # # ~~~~ FINE-TUNING: 
         # ~~~~ # # intermediate step: Load state dict using a previous top-k model
@@ -600,105 +606,105 @@ def train(cfg: DictConfig):
     trainer = Trainer(cfg)
     epoch_times = []
 
-    # for epoch in range(trainer.epoch_start, cfg.epochs+1):
-    #     # ~~~~ Training step 
-    #     t0 = time.time()
-    #     trainer.epoch = epoch
-    #     train_metrics = trainer.train_epoch(epoch)
-    #     trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
-    #     epoch_time = time.time() - t0
-    #     epoch_times.append(epoch_time)
+    for epoch in range(trainer.epoch_start, cfg.epochs+1):
+        # ~~~~ Training step 
+        t0 = time.time()
+        trainer.epoch = epoch
+        train_metrics = trainer.train_epoch(epoch)
+        trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
+        epoch_time = time.time() - t0
+        epoch_times.append(epoch_time)
 
-    #     # ~~~~ Validation step
-    #     test_metrics = trainer.test()
-    #     trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
-    #     if RANK == 0:
-    #         astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
-    #         sepstr = '-' * len(astr)
-    #         log.info(sepstr)
-    #         log.info(astr)
-    #         log.info(sepstr)
-    #         summary = '  '.join([
-    #             '[TRAIN]',
-    #             f'loss={train_metrics["loss"]:.4e}', 
-    #             f'epoch_time={epoch_time:.4g} sec'
-    #         ])
-    #         log.info((sep := '-' * len(summary)))
-    #         log.info(summary)
-    #         log.info(sep)
+        # ~~~~ Validation step
+        test_metrics = trainer.test()
+        trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+        if RANK == 0:
+            astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
+            sepstr = '-' * len(astr)
+            log.info(sepstr)
+            log.info(astr)
+            log.info(sepstr)
+            summary = '  '.join([
+                '[TRAIN]',
+                f'loss={train_metrics["loss"]:.4e}', 
+                f'epoch_time={epoch_time:.4g} sec'
+            ])
+            log.info((sep := '-' * len(summary)))
+            log.info(summary)
+            log.info(sep)
 
 
-    #     # ~~~~ Step scheduler based on validation loss
-    #     trainer.scheduler.step(test_metrics["loss"])
+        # ~~~~ Step scheduler based on validation loss
+        trainer.scheduler.step(test_metrics["loss"])
 
-    #     # ~~~~ Checkpointing step 
-    #     if epoch % cfg.ckptfreq == 0 and RANK == 0:
-    #         astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
-    #         sepstr = '-' * len(astr)
-    #         log.info(sepstr)
-    #         log.info(astr)
-    #         log.info(sepstr)
+        # ~~~~ Checkpointing step 
+        if epoch % cfg.ckptfreq == 0 and RANK == 0:
+            astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
+            sepstr = '-' * len(astr)
+            log.info(sepstr)
+            log.info(astr)
+            log.info(sepstr)
 
-    #         if not os.path.exists(cfg.ckpt_dir):
-    #             os.makedirs(cfg.ckpt_dir)
-    #        
-    #         if WITH_DDP and SIZE > 1:
-    #             ckpt = {'epoch' : epoch, 
-    #                     'training_iter' : trainer.training_iter,
-    #                     'model_state_dict' : trainer.model.module.state_dict(), 
-    #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-    #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test, 
-    #                     'current_rollout_steps' : trainer.current_rollout_steps}
-    #         else:
-    #             ckpt = {'epoch' : epoch, 
-    #                     'training_iter' : trainer.training_iter,
-    #                     'model_state_dict' : trainer.model.state_dict(), 
-    #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-    #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test,
-    #                     'current_rollout_steps' : trainer.current_rollout_steps}
+            if not os.path.exists(cfg.ckpt_dir):
+                os.makedirs(cfg.ckpt_dir)
+           
+            if WITH_DDP and SIZE > 1:
+                ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
+                        'model_state_dict' : trainer.model.module.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test, 
+                        'current_rollout_steps' : trainer.current_rollout_steps}
+            else:
+                ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
+                        'model_state_dict' : trainer.model.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'current_rollout_steps' : trainer.current_rollout_steps}
 
-    #         torch.save(ckpt, trainer.ckpt_path)
-    #     dist.barrier()
+            torch.save(ckpt, trainer.ckpt_path)
+        dist.barrier()
 
-    # rstr = f'[{RANK}] ::'
-    # log.info(' '.join([
-    #     rstr,
-    #     f'Total training time: {time.time() - start} seconds'
-    # ]))
-    # #log.info(' '.join([
-    # #    rstr,
-    # #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
-    # #]))
+    rstr = f'[{RANK}] ::'
+    log.info(' '.join([
+        rstr,
+        f'Total training time: {time.time() - start} seconds'
+    ]))
+    #log.info(' '.join([
+    #    rstr,
+    #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
+    #]))
 
-    # if RANK == 0:
-    #     if WITH_CUDA:  
-    #         trainer.model.to('cpu')
-    #     if not os.path.exists(cfg.model_dir):
-    #         os.makedirs(cfg.model_dir)
-    #     if WITH_DDP and SIZE > 1:
-    #         save_dict = {
-    #                     'state_dict' : trainer.model.module.state_dict(), 
-    #                     'input_dict' : trainer.model.module.input_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test,
-    #                     'training_iter' : trainer.training_iter,
-    #                     'current_rollout_steps' : trainer.current_rollout_steps
-    #                     }
-    #     else:
-    #         save_dict = {   
-    #                     'state_dict' : trainer.model.state_dict(), 
-    #                     'input_dict' : trainer.model.input_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test,
-    #                     'training_iter' : trainer.training_iter,
-    #                     'current_rollout_steps' : trainer.current_rollout_steps
-    #                     }
+    if RANK == 0:
+        if WITH_CUDA:  
+            trainer.model.to('cpu')
+        if not os.path.exists(cfg.model_dir):
+            os.makedirs(cfg.model_dir)
+        if WITH_DDP and SIZE > 1:
+            save_dict = {
+                        'state_dict' : trainer.model.module.state_dict(), 
+                        'input_dict' : trainer.model.module.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : trainer.training_iter,
+                        'current_rollout_steps' : trainer.current_rollout_steps
+                        }
+        else:
+            save_dict = {   
+                        'state_dict' : trainer.model.state_dict(), 
+                        'input_dict' : trainer.model.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : trainer.training_iter,
+                        'current_rollout_steps' : trainer.current_rollout_steps
+                        }
 
-    #     torch.save(save_dict, trainer.model_path)
+        torch.save(save_dict, trainer.model_path)
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
