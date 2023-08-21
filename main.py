@@ -392,14 +392,26 @@ class Trainer:
         test_dataset = []
         for f in filenames: 
             path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/%s' %(f)
-            train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data_radius(
-                path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
-                self.cfg.path_to_pos, device_for_loading, 
-                time_lag = self.cfg.rollout_steps,
-                scaling = [data_mean, data_std],
-                features_to_keep = [1,2], 
-                fraction_valid = 0.1, 
-                multiple_cases = False)
+
+            if self.cfg.use_radius: 
+                train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data_radius(
+                    path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
+                    self.cfg.path_to_pos, device_for_loading, 
+                    time_lag = self.cfg.rollout_steps,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0.1, 
+                    multiple_cases = False)
+            else: 
+                train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data_no_radius(
+                    path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea,
+                    self.cfg.path_to_pos, device_for_loading, 
+                    time_lag = self.cfg.rollout_steps,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0.1, 
+                    multiple_cases = False)
+
             train_dataset = train_dataset + train_dataset_temp
             test_dataset = test_dataset + test_dataset_temp
 

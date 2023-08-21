@@ -158,7 +158,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses (original)')
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')

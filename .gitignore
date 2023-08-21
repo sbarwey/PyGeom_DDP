@@ -11,9 +11,6 @@ datasets/
 ckpt/
 saved_models/
 
-# Postprocess scripts 
-postprocess.py
-
 *.swp
 .DS_Store
 
