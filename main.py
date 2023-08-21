@@ -274,7 +274,7 @@ class Trainer:
                 interpolation_mode = 'knn',
                 act = F.elu,
                 param_sharing = False,
-                name = 'NO_RADIUS_' + modelname)
+                name = 'NO_RADIUS_LR_1em5' + modelname)
 
         # ~~~~ # # ~~~~ FINE-TUNING: 
         # ~~~~ # # intermediate step: Load state dict using a previous top-k model
