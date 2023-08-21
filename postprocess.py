@@ -158,7 +158,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('Postprocess training losses (original)')
     # Load model 
     # #a = torch.load('saved_models/model_single_scale.tar')
@@ -200,21 +200,24 @@ if 1 == 0:
     a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     a_label = 'Baseline (rollout = 1)'
 
-    seed = 42
-    b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-    b_label = 'TopK: Seed 1'
-    
-    seed = 65
-    c = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-    c_label = 'TopK: Seed 2'
+    b = torch.load('saved_models/NO_RADIUS_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    b_label = 'Baseline, No Radius (rollout = 1)'
 
-    seed = 82
-    d = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-    d_label = 'TopK: Seed 3'
+    # seed = 42
+    # b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+    # b_label = 'TopK: Seed 1'
+    # 
+    # seed = 65
+    # c = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+    # c_label = 'TopK: Seed 2'
 
-    seed = 105
-    e = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-    e_label = 'TopK: Seed 4'
+    # seed = 82
+    # d = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+    # d_label = 'TopK: Seed 3'
+
+    # seed = 105
+    # e = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+    # e_label = 'TopK: Seed 4'
 
     # Plot losses:
     fig, ax = plt.subplots(1,4,sharey=False, sharex=True, figsize=(14,6))
@@ -253,7 +256,8 @@ if 1 == 0:
 
     # Combined loss plot 
     baseline_loss = np.mean(a['loss_hist_train'][-10:])
-    combined = [b,c,d,e]
+    #combined = [b,c,d,e]
+    combined = [b]
 
     fig, ax = plt.subplots()
     ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
@@ -287,7 +291,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: FOCUS ON EFFECT OF SEEDING 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses: focus on effect of seeding.')
     # baseline:
     a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
@@ -331,7 +335,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -576,7 +580,7 @@ if 1 == 0:
         modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
     # Load rmse data -- effect of seed: 
-    if 1 == 1:
+    if 1 == 0:
         rmse_path = './outputs/postproc/rmse_data/Re_26214/'
         #rmse_path = './outputs/postproc/rmse_data/Re_32564/'
 
@@ -686,7 +690,7 @@ if 1 == 0:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -715,10 +719,11 @@ if 1 == 0:
                     filter_lengthscale = input_dict['filter_lengthscale'], 
                     name = input_dict['name'])
 
-
             model.load_state_dict(p['state_dict'])
             model.to(device)
             model.eval()
+
+            asdf
 
             # ~~~~ Re-load data: 
             rollout_eval = 10 # where to evaluate the RMSE  
@@ -1120,6 +1125,144 @@ if 1 == 0:
     print('number of parameters after overwriting: ', count_parameters(model_2))
     print('number of parameters after overwriting: ', count_parameters(model_2))
     print('number of parameters after overwriting: ', count_parameters(model_2))
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Gradient tests
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 0:
+    
+    # Read-in the graph
+    vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+    path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+    path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+    path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+    path_to_edge_sign = 'datasets/BACKWARD_FACING_STEP/edge_sign'
+    path_to_interp_weights = 'datasets/BACKWARD_FACING_STEP/interp_weights'
+    path_to_pos_face = 'datasets/BACKWARD_FACING_STEP/pos_face'
+    path_to_vol = 'datasets/BACKWARD_FACING_STEP/cell_volume'
+    path_to_sf = 'datasets/BACKWARD_FACING_STEP/sf_normal'
+    path_to_node_type = 'datasets/BACKWARD_FACING_STEP/node_type'
+    device_for_loading = 'cpu'
+        
+
+    import pyvista as pv
+    mesh = pv.read(vtk_file_test)
+    data_full_temp = np.array(mesh.cell_data['x']) # [N_nodes x (N_features x N_snaps)]
+    field_names = np.array(mesh.field_data['field_list'])
+    time_vec = np.array(mesh.field_data['time'])
+    n_cells = mesh.n_cells
+    n_features = len(field_names)
+    n_snaps = len(time_vec)
+    data_full_temp = np.reshape(data_full_temp, (n_cells, n_features, n_snaps), order='F')
+
+    # Do a dumb reshape
+    data_full = np.zeros((n_snaps, n_cells, n_features), dtype=np.float32)
+    for i in range(n_snaps):
+        data_full[i,:,:] = data_full_temp[:,:,i]
+
+    # Edge attributes and index, and node positions 
+      
+
+    time_lag = 0
+    n_snaps = data_full.shape[0] - time_lag
+    data_x = []
+    data_y = []
+    for i in range(n_snaps):
+        data_x.append([data_full[i]])
+        if time_lag == 0:
+            y_temp = [data_full[i]]
+        else:
+            y_temp = []
+            for t in range(1, time_lag+1):
+                y_temp.append(data_full[i+t])
+        data_y.append(y_temp)
+
+    data_x = np.array(data_x) # shape: [n_snaps, 1, n_nodes, n_features]
+    data_y = np.array(data_y) # shape: [n_snaps, time_lag, n_nodes, n_features]
+
+    # data = Data( x = data_x, pos = pos, edge_index = edge_index )
+
+    # Load the other stuff 
+    edge_index = torch.tensor(np.loadtxt(path_to_ei, dtype=np.long).T)
+    pos = torch.tensor(np.loadtxt(path_to_pos, dtype=np.float32))
+    edge_sign = torch.tensor(np.loadtxt(path_to_edge_sign, dtype=np.float32))
+    interp_weights = torch.tensor(np.loadtxt(path_to_interp_weights, dtype=np.float32))
+    pos_face = torch.tensor(np.loadtxt(path_to_pos_face, dtype=np.float32))
+    vol = torch.tensor(np.loadtxt(path_to_vol, dtype=np.float32))
+    sf = torch.tensor(np.loadtxt(path_to_sf, dtype=np.float32))
+    node_type = torch.tensor(np.loadtxt(path_to_node_type, dtype=np.float32))
+
+
+    # ~~~~ Step 1: node-to-edge interpolation 
+    # Get the data to interpolate
+    #phi = torch.tensor(data_x[10, 0, :, 0]) # 10th snapshot, pressure field
+    phi = torch.tensor(data_x[10, 0, :, 1]) # 10th snapshot, ux field
+    #phi = torch.tensor(data_x[10, 0, :, 2]) # 10th snapshot, uy field
+    
+    # Get the owner nodes 
+    n_edges = edge_index.shape[1]
+
+    # Get node indices 
+    node_nei = edge_index[0,:]
+    node_own = edge_index[1,:]
+
+    # Get node values for these indices  
+    pos_nei = pos[node_nei]
+    pos_own = pos[node_own]
+
+    phi_nei = phi[node_nei].view(-1,1)
+    phi_own = phi[node_own].view(-1,1)
+
+
+    # Get face position 
+    pos_e = pos_face[:,:2]
+
+    # # Re-compute weights 
+    # w = (pos_e - pos_nei)/(pos_own - pos_nei)
+
+    # Interpolate the position 
+    # interp = w_limiter_pos * (surf_own[j] - surf_nei[j]) + surf_nei[j]
+    test = interp_weights.view(-1,1) * (pos_own - pos_nei) + pos_nei 
+    phi_f = interp_weights.view(-1,1) * (phi_own - phi_nei) + phi_nei
+
+    # ~~~~ Step 2: Do the surface integration  
+    # -- GRAD = ( 1 / vol ) * \sum phi_f * S_f * n_f [INCREASES DIMENSIONALITY] -- there should be no gradient in z 
+    edge_attr = phi_f * (sf * edge_sign.view(-1,1))
+   
+    # sum the edge attributes 
+    surface_int = gnn.EdgeAggregation(aggr='add')
+    gradient = (1.0/vol.view(-1,1))*surface_int(pos, edge_index, edge_attr) 
+    #gradient = surface_int(pos, edge_index, edge_attr) 
+
+    # Zero the boundary gradients 
+    gradient = gradient * node_type.view(-1,1)
+
+    # plot 
+    idx_plot = node_type == 1
+
+    
+    vmax = 1e4 # ux 
+    #vmax = 5e3 # uy 
+    vmin = -vmax
+    ms = 5
+    fig,ax = plt.subplots(1,3,figsize=(18,5), sharex=True, sharey=True)
+    ax[0].scatter(pos[idx_plot,0], pos[idx_plot,1], c=phi[idx_plot], vmin=-30, vmax=30, s=ms)
+    ax[1].scatter(pos[idx_plot,0], pos[idx_plot,1], c=gradient[idx_plot,0], vmin=vmin, vmax=vmax, s=ms)
+    ax[2].scatter(pos[idx_plot,0], pos[idx_plot,1], c=gradient[idx_plot,1], vmin=vmin, vmax=vmax, s=ms)
+
+    ax[0].set_aspect('equal')
+    ax[1].set_aspect('equal')
+    ax[2].set_aspect('equal')
+    plt.show(block=False)
+    
+
+
+    # ~~~~ Other option: edge-based total variation
+    edge_variation = torch.abs(phi_own - phi_nei)
+    total_variation = torch.sum(edge_variation) 
+
+
 
 
 
