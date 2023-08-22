@@ -481,14 +481,22 @@ class Trainer:
             else:
                 x_old = torch.clone(x_new)
 
-            x_src = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
             x_new = x_old + x_src
 
             # Accumulate loss 
             target = data.y[t]
             if WITH_CUDA:
                 target = target.cuda()
-            loss += loss_scale * self.loss_fn(x_new, target)
+
+            if self.cfg.mask_regularization:
+                non_mask = 1 - mask
+                non_mask = non_mask[:, None]
+                lam = 1.0
+                loss += loss_scale * ( self.loss_fn(x_new, target) + lam*self.loss_fn(non_mask*x_new, non_mask*target) )
+            else:
+                loss += loss_scale * self.loss_fn(x_new, target)
+
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()

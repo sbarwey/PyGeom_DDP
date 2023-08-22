@@ -1836,9 +1836,11 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             edge_index: LongTensor,
             edge_attr: Tensor,
             pos: Tensor,
-            batch: Optional[LongTensor] = None) -> Tensor:
+            batch: Optional[LongTensor] = None) -> Tuple[Tensor, Tensor]:
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
+
+        mask = x.new_zeros(x.size(0))
 
         # ~~~~ Node Encoder: 
         for i in range(self.n_mlp_encode):
@@ -1906,6 +1908,15 @@ class GNN_TopK_NoReduction(torch.nn.Module):
                 xs += [x]
                 edge_indices += [edge_index]
                 edge_attrs += [edge_attr]
+
+        # ~~~~ populate mask 
+        if self.depth > 0:
+            perm_global = perms[0]
+            mask[perm_global] = 1
+            for i in range(1,self.depth):
+                perm_global = perm_global[perms[i]]
+                mask[perm_global] = i+1
+
 
         # ~~~~ Upward message passing (decoder)
         # # Initial message passing on coarse graph 
@@ -1990,7 +2001,7 @@ class GNN_TopK_NoReduction(torch.nn.Module):
                 x = x
 
 
-        return x
+        return x, mask
 
     def get_mask(
             self,

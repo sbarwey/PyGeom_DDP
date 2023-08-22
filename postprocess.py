@@ -138,12 +138,14 @@ path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
 path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
 device_for_loading = 'cpu'
 
-test_dataset, _ = bfs.get_pygeom_dataset_cell_data_radius(
+use_radius = True
+test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
                 vtk_file_test, 
                 path_to_ei, 
                 path_to_ea,
                 path_to_pos, 
                 device_for_loading, 
+                use_radius,
                 time_lag = 2,
                 scaling = [data_mean, data_std],
                 features_to_keep = [1,2], 
@@ -734,7 +736,7 @@ if 1 == 0:
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
             device_for_loading = device
 
-            dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data_radius(
+            dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data(
                             vtk_file_test, 
                             path_to_ei, 
                             path_to_ea,
@@ -1263,6 +1265,102 @@ if 1 == 0:
     total_variation = torch.sum(edge_variation) 
 
 
+
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Developing the mask loss function
+# GOAL :
+# We want to minimize the error outside of the mask! 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 1: 
+    if torch.cuda.is_available():
+        device = 'cuda:0'
+    else:
+        device = 'cpu'
+
+
+    seed = 105 
+    modelpath_topk = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
+    p = torch.load(modelpath_topk)
+    input_dict = p['input_dict']
+    model_topk = gnn.GNN_TopK_NoReduction(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'], 
+            n_mlp_encode = input_dict['n_mlp_encode'], 
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'], 
+            n_mp_down_enc = input_dict['n_mp_down_enc'], 
+            n_mp_up_enc = input_dict['n_mp_up_enc'], 
+            n_mp_down_dec = input_dict['n_mp_down_dec'], 
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
+    model_topk.load_state_dict(p['state_dict'])
+    model_topk.to(device)
+    model_topk.eval()
+
+    # ~~~~ Re-load data: 
+    rollout_eval = 1 # where to evaluate the RMSE  
+    use_radius = True
+    #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+    vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+    path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+    path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+    path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+    device_for_loading = device
+
+    dataset_eval, _ = bfs.get_pygeom_dataset_cell_data(
+                    vtk_file_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    use_radius,
+                    time_lag = rollout_eval,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+
+    # Loss 
+    loss_fn = nn.MSELoss()
+
+
+
+    # Get a prediction and its target  
+    data = dataset_eval[0]
+    
+    rollout_length = rollout_eval 
+    loss = torch.tensor([0.0])
+    loss_scale = torch.tensor([1.0/rollout_length])
+
+    # Rollout prediction: 
+    x_new = data.x
+    for t in range(rollout_length):
+        x_old = torch.clone(x_new)
+        x_src, mask = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+        x_new = x_old + x_src
+
+        # Evaluate the non-mask regularization
+        non_mask = 1 - mask     
+        non_mask = non_mask[:, None]
+        lam = 1.0
+
+        # Accumulate loss 
+        target = data.y[t]
+        loss += loss_scale * ( loss_fn(x_new, target) + lam*loss_fn(non_mask*x_new, non_mask*target) )
 
 
 

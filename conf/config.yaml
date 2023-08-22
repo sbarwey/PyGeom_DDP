@@ -6,7 +6,7 @@
 #seed: 105
 seed: 122
 epochs: 300
-backend: gloo
+backend: nccl
 #lr_init: 0.0001
 lr_init: 0.00001
 # momentum: 0.5
@@ -20,12 +20,10 @@ test_batch_size: 1
 fp16_allreduce: False
 restart: False
 
-# Number of training rollout steps
+# Loss function parameters 
 rollout_steps: 1
 use_rollout_schedule : False
-
-# Loss settings 
-mask_budget_loss : True
+mask_regularization : False
 
 hydra:
   job:
