@@ -318,7 +318,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -326,7 +326,7 @@ if 1 == 1:
 
 
     # Read data: 
-    if 1 == 0:
+    if 1 == 1:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -360,9 +360,12 @@ if 1 == 1:
                         percent_mask = (mse_mask/mse_full)*100
                         percent_not_mask = (mse_not_mask/mse_full)*100
                         ax[r,c].plot(percent_mask)
+                        #ax[r,c].plot(mse_mask)
                         #ax[r,c].plot(percent_not_mask, color='black')
                     ax[r,c].set_title('Seed = %d' %(seed_list[seed_id]))
                     ax[r,c].set_ylim([0,100])
+                    # ax[r,c].set_ylim([1e-5, 1e-2])
+                    # ax[r,c].set_yscale('log')
         
         #ax.set_ylabel('MSE Budget [%]')
         #ax.set_xlabel('Time')
@@ -387,7 +390,7 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         # Load baseline model 
         # modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         modelpath_baseline = './saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
@@ -537,7 +540,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -558,7 +561,7 @@ if 1 == 0:
     # Load models: effect of seed for R = 1
     modelpath_list = []
     #modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/NO_RADIUS_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     
     if seed_list == None:
         seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
