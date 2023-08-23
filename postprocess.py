@@ -362,10 +362,12 @@ if 1 == 1:
         mse_mask_list = []
         mse_full_list = []
         for seed in seed_list:
-            mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_mask_list.append(mse_mask)
 
-            mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_full_list.append(mse_full)
         
         rollout_id = 0
@@ -375,16 +377,17 @@ if 1 == 1:
         for r in range(3):
             for c in range(5):
                 seed_id = r*5 + c
-                for comp in range(2):
-                    mse_full = mse_full_list[seed_id][rollout_id,:,comp]
-                    mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
-                    mse_not_mask = mse_full - mse_mask
-                    percent_mask = (mse_mask/mse_full)*100
-                    percent_not_mask = (mse_not_mask/mse_full)*100
-                    ax[r,c].plot(percent_mask)
-                    #ax[r,c].plot(percent_not_mask, color='black')
-                ax[r,c].set_title('Seed = %d' %(seed_list[seed_id]))
-                ax[r,c].set_ylim([0,100])
+                if seed_id < len(mse_full_list):
+                    for comp in range(2):
+                        mse_full = mse_full_list[seed_id][rollout_id,:,comp]
+                        mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
+                        mse_not_mask = mse_full - mse_mask
+                        percent_mask = (mse_mask/mse_full)*100
+                        percent_not_mask = (mse_not_mask/mse_full)*100
+                        ax[r,c].plot(percent_mask)
+                        #ax[r,c].plot(percent_not_mask, color='black')
+                    ax[r,c].set_title('Seed = %d' %(seed_list[seed_id]))
+                    ax[r,c].set_ylim([0,100])
         
         #ax.set_ylabel('MSE Budget [%]')
         #ax.set_xlabel('Time')
@@ -524,10 +527,14 @@ if 1 == 1:
 
                     # Get prediction from baseline 
                     x_old = torch.clone(x_new)
-                    x_src, mask = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src, _ = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
+                    
+                    # Get mask from topk
+                    mask = model_topk.get_mask(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
 
                     target = data.y[t]
+
 
                     # Compute MSE budget
                     n_nodes = target.shape[0]
