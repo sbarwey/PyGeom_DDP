@@ -351,7 +351,7 @@ if 1 == 1:
 
 
     # Read data: 
-    if 1 == 1:
+    if 1 == 0:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -409,9 +409,10 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         # Load baseline model 
-        modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+        # modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+        modelpath_baseline = './saved_models/NO_RADIUS_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath_baseline)
         input_dict = p['input_dict']
         model_baseline = gnn.GNN_TopK_NoReduction(
@@ -440,14 +441,15 @@ if 1 == 1:
         model_baseline.to(device)
         model_baseline.eval()
 
-        seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
-                 42, 65, 82]
+        # seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 42, 65, 82]
+        seed_list = [105, 122, 142, 152, 162, 172, 182, 192, 42, 65, 82]
 
         for seed in seed_list:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('SEED %d' %(seed))
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            modelpath_topk = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
+            # modelpath_topk = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
+            modelpath_topk = 'saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
             p = torch.load(modelpath_topk)
             input_dict = p['input_dict']
             model_topk = gnn.GNN_TopK_NoReduction(
@@ -478,19 +480,22 @@ if 1 == 1:
 
             # ~~~~ Re-load data: 
             rollout_eval = 1 # where to evaluate the RMSE  
-            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
             device_for_loading = device
+            use_radius = False
+            print('NOTE: USE_RADIUS = ', use_radius)
 
-            dataset_eval, _ = bfs.get_pygeom_dataset_cell_data_radius(
+            dataset_eval, _ = bfs.get_pygeom_dataset_cell_data(
                             vtk_file_test, 
                             path_to_ei, 
                             path_to_ea,
                             path_to_pos, 
                             device_for_loading, 
+                            use_radius,
                             time_lag = rollout_eval,
                             scaling = [data_mean, data_std],
                             features_to_keep = [1,2], 
@@ -519,14 +524,8 @@ if 1 == 1:
 
                     # Get prediction from baseline 
                     x_old = torch.clone(x_new)
-                    x_src = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src, mask = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
-
-                    # Get mask from topk
-                    mask = model_topk.get_mask(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-                    # fig, ax = plt.subplots()
-                    # ax.scatter(data.pos[:,0], data.pos[:,1], c=mask)
-                    # plt.show(block=False)
 
                     target = data.y[t]
 
@@ -549,7 +548,7 @@ if 1 == 1:
             print('SAVING...')
             print('SAVING...')
             print('SAVING...')
-            savepath = './outputs/postproc/mse_mask_budget_data'
+            savepath = './outputs/postproc/mse_mask_budget_data_no_radius'
             if not os.path.exists(savepath):
                 os.mkdir(savepath)
 
