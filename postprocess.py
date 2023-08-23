@@ -130,31 +130,6 @@ data_mean, data_std = bfs.get_data_statistics(
         multiple_cases = True)
 
 
-
-# ~~~~ Load test data
-vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
-path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
-path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
-device_for_loading = 'cpu'
-
-use_radius = True
-test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
-                vtk_file_test, 
-                path_to_ei, 
-                path_to_ea,
-                path_to_pos, 
-                device_for_loading, 
-                use_radius,
-                time_lag = 2,
-                scaling = [data_mean, data_std],
-                features_to_keep = [1,2], 
-                fraction_valid = 0, 
-                multiple_cases = False)
-
-# Remove first snapshot
-test_dataset.pop(0)
-
 seed_list = None
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -343,7 +318,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -351,7 +326,7 @@ if 1 == 1:
 
 
     # Read data: 
-    if 1 == 0:
+    if 1 == 1:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -412,7 +387,7 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         # Load baseline model 
         # modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         modelpath_baseline = './saved_models/NO_RADIUS_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
@@ -505,9 +480,6 @@ if 1 == 1:
                             fraction_valid = 0, 
                             multiple_cases = False)
 
-            # Remove first snapshot
-            test_dataset.pop(0)
-
             # Loop through test snapshots 
             N = len(dataset_eval)
 
@@ -565,7 +537,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -585,13 +557,15 @@ if 1 == 0:
 
     # Load models: effect of seed for R = 1
     modelpath_list = []
-    modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    #modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    modelpath_list.append('saved_models/NO_RADIUS_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     
     if seed_list == None:
         seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
                  42, 65, 82]
     for seed in seed_list:
-        modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
     # Load rmse data -- effect of seed: 
     if 1 == 0:
@@ -737,8 +711,6 @@ if 1 == 0:
             model.to(device)
             model.eval()
 
-            asdf
-
             # ~~~~ Re-load data: 
             rollout_eval = 10 # where to evaluate the RMSE  
             #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
@@ -747,6 +719,8 @@ if 1 == 0:
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
             device_for_loading = device
+            use_radius = False
+            print('NOTE: USE_RADIUS = ', use_radius)
 
             dataset_eval_rmse, _ = bfs.get_pygeom_dataset_cell_data(
                             vtk_file_test, 
@@ -754,14 +728,13 @@ if 1 == 0:
                             path_to_ea,
                             path_to_pos, 
                             device_for_loading, 
+                            use_radius,
                             time_lag = rollout_eval,
                             scaling = [data_mean, data_std],
                             features_to_keep = [1,2], 
                             fraction_valid = 0, 
                             multiple_cases = False)
 
-            # Remove first snapshot
-            test_dataset.pop(0)
 
             # Loop through test snapshots 
             N = len(dataset_eval_rmse)
@@ -778,7 +751,7 @@ if 1 == 0:
                 for t in range(rollout_eval):
                     print('\tRollout %d/%d' %(t+1, rollout_eval))
                     x_old = torch.clone(x_new)
-                    x_src = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src,mask = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
 
                     # Accumulate loss 
@@ -793,7 +766,7 @@ if 1 == 0:
             print('SAVING...')
             print('SAVING...')
             print('SAVING...')
-            savepath = './outputs/postproc/rmse_data'
+            savepath = './outputs/postproc/rmse_data_no_radius'
             if not os.path.exists(savepath):
                 os.mkdir(savepath)
 
