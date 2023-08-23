@@ -461,8 +461,8 @@ if 1 == 1:
 
             # ~~~~ Re-load data: 
             rollout_eval = 1 # where to evaluate the RMSE  
-            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
