@@ -318,7 +318,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -326,7 +326,7 @@ if 1 == 0:
 
 
     # Read data: 
-    if 1 == 1:
+    if 1 == 0:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -390,7 +390,7 @@ if 1 == 0:
 
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         # Load baseline model 
         # modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         modelpath_baseline = './saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
@@ -502,7 +502,8 @@ if 1 == 0:
 
                     # Get prediction from baseline 
                     x_old = torch.clone(x_new)
-                    x_src, _ = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    #x_src, _ = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src, _ = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
                     
                     # Get mask from topk
@@ -530,7 +531,7 @@ if 1 == 0:
             print('SAVING...')
             print('SAVING...')
             print('SAVING...')
-            savepath = './outputs/postproc/mse_mask_budget_data_no_radius'
+            savepath = './outputs/postproc/mse_mask_budget_data_no_radius_full_model'
             if not os.path.exists(savepath):
                 os.mkdir(savepath)
 
@@ -540,7 +541,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('postprocess testing losses.')
 
     # set device 
@@ -571,15 +572,17 @@ if 1 == 1:
         modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
     # Load rmse data -- effect of seed: 
-    if 1 == 0:
-        rmse_path = './outputs/postproc/rmse_data/Re_26214/'
-        #rmse_path = './outputs/postproc/rmse_data/Re_32564/'
+    if 1 == 1:
+        #rmse_path = './outputs/postproc/rmse_data/Re_26214/'
+        rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
 
-        rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        #rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
        
         rmse_topk_mean = []
         for seed in seed_list:
-            rmse_topk_seed = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            #rmse_topk_seed = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
             rmse_topk_mean.append(np.mean(rmse_topk_seed, axis=1))
 
         # compute average rmse:
@@ -599,6 +602,8 @@ if 1 == 1:
         ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline', lw=lw, color='black')
         for seed_id in range(len(seed_list)):
             ax[0].plot(rollout_steps, rmse_topk_mean[seed_id][:,0], lw=lw, color='red', zorder=-1)
+            if seed_id == 0:
+                ax[0].plot(rollout_steps, rmse_topk_mean[seed_id][:,0], lw=lw+2, color='lime', zorder=-1)
         ax[0].set_xlabel('Rollout Steps') 
         ax[0].set_ylabel('RMSE')
         ax[0].set_title('Ux')
@@ -607,6 +612,9 @@ if 1 == 1:
         ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline', lw=lw, color='black')
         for seed_id in range(len(seed_list)):
             ax[1].plot(rollout_steps, rmse_topk_mean[seed_id][:,1], lw=lw, color='red', zorder=-1)
+            if seed_id == 0:
+                ax[1].plot(rollout_steps, rmse_topk_mean[seed_id][:,1], lw=lw+2, color='lime', zorder=-1)
+
         ax[1].set_xlabel('Rollout Steps') 
         ax[1].set_ylabel('RMSE')
         ax[1].set_title('Uy')
@@ -681,7 +689,7 @@ if 1 == 1:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
