@@ -1841,6 +1841,7 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             batch = edge_index.new_zeros(x.size(0))
 
         mask = x.new_zeros(x.size(0))
+        x_baseline = None
 
         # ~~~~ Node Encoder: 
         for i in range(self.n_mlp_encode):
@@ -1965,6 +1966,18 @@ class GNN_TopK_NoReduction(torch.nn.Module):
                         x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch) # re-use down_mps here 
                         #x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
 
+            # Evaluate the baseline error as well: 
+            if m == self.depth - 1: # if we're on the 0 level 
+                x_baseline = res.clone()  
+                edge_attr_baseline = res_edge.clone()
+                for i in range(self.n_mp_up_topk[m]):
+                    for r in range(1):
+                        if not self.param_sharing:
+                            x_baseline = self.up_mps[m][i](x_baseline, edge_index, edge_attr_baseline, pos, batch=batch)
+                        else:
+                            x_baseline = self.down_mps(x_baseline, edge_index, edge_attr_baseline, pos, batch=batch) # re-use down_mps here 
+                            #x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
+
             # for i in range(self.n_mp_up_topk[m+1]):
             #     for r in range(1):
             #         if not self.param_sharing:
@@ -1997,11 +2010,18 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             x = self.node_decode[i](x) 
             if i < self.n_mlp_decode - 1:
                 x = self.act(x)
-            else:
-                x = x
 
 
-        return x, mask
+        # ~~~~ Node decoder on baseline x 
+        if x_baseline is not None:
+            for i in range(self.n_mlp_decode):
+                x_baseline = self.node_decode[i](x_baseline) 
+                if i < self.n_mlp_decode - 1:
+                    x_baseline = self.act(x_baseline)
+
+
+        return x, mask, x_baseline
+
 
     def get_mask(
             self,

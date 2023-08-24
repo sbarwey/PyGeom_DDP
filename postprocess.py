@@ -271,7 +271,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: FOCUS ON EFFECT OF SEEDING 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses: focus on effect of seeding.')
     # baseline:
     # a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
@@ -318,7 +318,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -326,7 +326,7 @@ if 1 == 1:
 
 
     # Read data: 
-    if 1 == 0:
+    if 1 == 1:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -338,11 +338,11 @@ if 1 == 1:
         mse_full_list = []
         for seed in seed_list:
             #mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius_full_model/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_mask_list.append(mse_mask)
 
             #mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius_full_model/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_full_list.append(mse_full)
         
         rollout_id = 0
@@ -390,7 +390,7 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         # Load baseline model 
         # modelpath_baseline = './saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         modelpath_baseline = './saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
@@ -1068,16 +1068,16 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
 
-    # Step 1: Load previous top-k model
-    modelpath = 'saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    # Step 1: Create model  
+    modelpath = 'saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
     p = torch.load(modelpath)
 
     input_dict = p['input_dict']
     print('input_dict: ', input_dict)
     
-    # Step 2: load new top-k model
+    # Step 2: create new top-k baseline model
     bbox = input_dict['bounding_box']
-    model_2 = gnn.GNN_TopK_NoReduction(
+    model_baseline = gnn.GNN_TopK_NoReduction(
               in_channels_node = input_dict['in_channels_node'],
               in_channels_edge = input_dict['in_channels_edge'],
               hidden_channels = input_dict['hidden_channels'],
@@ -1098,11 +1098,39 @@ if 1 == 0:
               act = input_dict['act'], 
               param_sharing = input_dict['param_sharing'],
               filter_lengthscale = input_dict['filter_lengthscale'], 
-              name = 'gnn_topk_2')
+              name = 'gnn_baseline')
 
     # Load state dict from the previous top-k model
-    model_2.load_state_dict(p['state_dict'])
+    model_baseline.load_state_dict(p['state_dict'])
 
+    # Step 3: create topk finetune model 
+    modelpath = 'saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_42_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' 
+    p = torch.load(modelpath)
+    input_dict = p['input_dict']
+
+    bbox = input_dict['bounding_box']
+    model_topk = gnn.GNN_TopK_NoReduction(
+              in_channels_node = input_dict['in_channels_node'],
+              in_channels_edge = input_dict['in_channels_edge'],
+              hidden_channels = input_dict['hidden_channels'],
+              out_channels = input_dict['out_channels'],
+              n_mlp_encode = input_dict['n_mlp_encode'],
+              n_mlp_mp = input_dict['n_mlp_mp'],
+              n_mp_down_topk = input_dict['n_mp_down_topk'],
+              n_mp_up_topk = input_dict['n_mp_up_topk'],
+              pool_ratios = input_dict['pool_ratios'],
+              n_mp_down_enc = input_dict['n_mp_down_enc'],
+              n_mp_up_enc = input_dict['n_mp_up_enc'],
+              n_mp_down_dec = input_dict['n_mp_down_dec'],
+              n_mp_up_dec = input_dict['n_mp_up_dec'],
+              lengthscales_enc = input_dict['lengthscales_enc'],
+              lengthscales_dec = input_dict['lengthscales_dec'],
+              bounding_box = input_dict['bounding_box'],
+              interpolation_mode = input_dict['interp'],
+              act = input_dict['act'],
+              param_sharing = input_dict['param_sharing'],
+              filter_lengthscale = input_dict['filter_lengthscale'],
+              name = 'gnn_baseline')
 
     # Freeze all params except the top-k and the MMP param
 
@@ -1110,19 +1138,50 @@ if 1 == 0:
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     
-    print('number of parameters before overwriting: ', count_parameters(model_2))
-    print('number of parameters before overwriting: ', count_parameters(model_2))
-    print('number of parameters before overwriting: ', count_parameters(model_2))
+    print('number of parameters before overwriting: ', count_parameters(model_topk))
+    print('number of parameters before overwriting: ', count_parameters(model_topk))
+    print('number of parameters before overwriting: ', count_parameters(model_topk))
     
     # Write params 
-    model_2.set_mmp_layer(model_2.down_mps[0][0], model_2.down_mps[0][0])
-    model_2.set_mmp_layer(model_2.up_mps[0][0], model_2.up_mps[0][0])
+    model_topk.set_mmp_layer(model_baseline.down_mps[0][0], model_topk.down_mps[0][0])
+    model_topk.set_mmp_layer(model_baseline.down_mps[0][1], model_topk.up_mps[0][0])
+    model_topk.set_node_edge_encoder_decoder(model_baseline)
         
 
     # print number of params after over-writing:
-    print('number of parameters after overwriting: ', count_parameters(model_2))
-    print('number of parameters after overwriting: ', count_parameters(model_2))
-    print('number of parameters after overwriting: ', count_parameters(model_2))
+    print('number of parameters after overwriting: ', count_parameters(model_topk))
+    print('number of parameters after overwriting: ', count_parameters(model_topk))
+    print('number of parameters after overwriting: ', count_parameters(model_topk))
+
+
+
+    # Get the number of parameters of each component.
+    print('\n\n\n\n\n')
+    # 1) MMP layer:
+    n_param_mmp = count_parameters(model_baseline.down_mps[0][0])
+    print('number of parameters in mmp layer: ', n_param_mmp)
+
+    n_param_node_encode = count_parameters(model_baseline.node_encode)
+    print('number of parameters in node encoder: ', n_param_node_encode)
+
+    n_param_node_encode_norm = count_parameters(model_baseline.node_encode_norm)
+    print('number of paramters in node encode norm: ', n_param_node_encode_norm)
+
+    n_param_node_decode = count_parameters(model_baseline.node_decode)
+    print('number of parameters in node decoder: ', n_param_node_decode)
+
+    n_param_edge_encode = count_parameters(model_baseline.edge_encode)
+    print('number of parameters in edge encode: ', n_param_edge_encode)
+
+    n_param_edge_encode_norm = count_parameters(model_baseline.edge_encode_norm)
+    print('number of parameters in edge encode norm: ', n_param_edge_encode_norm)
+
+    n_param_topk = count_parameters(model_topk.pools)
+    print('number of parameters in topk layer: ', n_param_topk)
+
+
+    n_param_finetune = n_param_mmp + n_param_topk
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1270,15 +1329,46 @@ if 1 == 0:
 # GOAL :
 # We want to minimize the error outside of the mask! 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
         device = 'cpu'
 
+    # Load the baseline model
+    modelpath_baseline = 'saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    p = torch.load(modelpath_baseline)
+    input_dict = p['input_dict']
+    model_baseline = gnn.GNN_TopK_NoReduction(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'], 
+            n_mlp_encode = input_dict['n_mlp_encode'], 
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'], 
+            n_mp_down_enc = input_dict['n_mp_down_enc'], 
+            n_mp_up_enc = input_dict['n_mp_up_enc'], 
+            n_mp_down_dec = input_dict['n_mp_down_dec'], 
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
+    model_baseline.load_state_dict(p['state_dict'])
+    model_baseline.to(device)
+    model_baseline.eval()
 
+
+    # Load the top-k model 
     seed = 105 
-    modelpath_topk = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
+    modelpath_topk = 'saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed) 
     p = torch.load(modelpath_topk)
     input_dict = p['input_dict']
     model_topk = gnn.GNN_TopK_NoReduction(
@@ -1309,7 +1399,7 @@ if 1 == 0:
 
     # ~~~~ Re-load data: 
     rollout_eval = 1 # where to evaluate the RMSE  
-    use_radius = True
+    use_radius = False
     #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
     vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
     path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
@@ -1330,13 +1420,12 @@ if 1 == 0:
                     fraction_valid = 0, 
                     multiple_cases = False)
 
+
     # Loss 
     loss_fn = nn.MSELoss()
 
-
-
     # Get a prediction and its target  
-    data = dataset_eval[0]
+    data = dataset_eval[10]
     
     rollout_length = rollout_eval 
     loss = torch.tensor([0.0])
@@ -1346,8 +1435,14 @@ if 1 == 0:
     x_new = data.x
     for t in range(rollout_length):
         x_old = torch.clone(x_new)
-        x_src, mask = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-        x_new = x_old + x_src
+
+        # Top-K 
+        x_src_topk, mask, x_src_bl = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+        x_new = x_old + x_src_topk
+        x_new_bl = x_old + x_src_bl
+
+        # Baseline: 
+        x_src_bl_truth, _, _ = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
 
         # Evaluate the non-mask regularization
         non_mask = 1 - mask     
@@ -1356,7 +1451,7 @@ if 1 == 0:
 
         # Accumulate loss 
         target = data.y[t]
-        loss += loss_scale * ( loss_fn(x_new, target) + lam*loss_fn(non_mask*x_new, non_mask*target) )
+        loss += loss_scale * ( loss_fn(x_new, target) + lam*loss_fn(non_mask*x_new_bl, non_mask*target) )
 
 
 
