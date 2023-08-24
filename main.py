@@ -24,7 +24,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torchvision import datasets, transforms
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch.nn.parallel import DistributedDataParallel as DDP
 Tensor = torch.Tensor
 
@@ -326,7 +326,7 @@ class Trainer:
         if RANK == 0: 
             print('number of parameters before overwriting: ', count_parameters(model))
 
-        # write parameters from baseline trained model into new model 
+        # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
         model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
         model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
         model.set_node_edge_encoder_decoder(model_read)
@@ -484,7 +484,7 @@ class Trainer:
             else:
                 x_old = torch.clone(x_new)
 
-            x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
             x_new = x_old + x_src
 
             # Accumulate loss 
@@ -493,9 +493,10 @@ class Trainer:
                 target = target.cuda()
 
             if self.cfg.mask_regularization:
+                x_new_bl = x_old + x_src_bl # the baseline prediction 
                 non_mask = 1 - mask
                 non_mask = non_mask[:, None]
-                loss += loss_scale * ( self.loss_fn(x_new, target) + self.loss_fn(non_mask*x_new, non_mask*target) )
+                loss += loss_scale*( self.loss_fn(x_new, target) + self.loss_fn(non_mask*x_new_bl, non_mask*target) )
             else:
                 loss += loss_scale * self.loss_fn(x_new, target)
 
@@ -589,7 +590,7 @@ class Trainer:
                 x_new = data.x
                 for t in range(rollout_length):
                     x_old = torch.clone(x_new)
-                    x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
 
                     # Accumulate loss 
@@ -598,9 +599,10 @@ class Trainer:
                         target = target.cuda()
                     
                     if self.cfg.mask_regularization:
+                        x_new_bl = x_old + x_src_bl # the baseline prediction
                         non_mask = 1 - mask
                         non_mask = non_mask[:, None]
-                        loss += loss_scale * ( self.loss_fn(x_new, target) + self.loss_fn(non_mask*x_new, non_mask*target) )
+                        loss += loss_scale * ( self.loss_fn(x_new, target) + self.loss_fn(non_mask*x_new_bl, non_mask*target) )
                     else:
                         loss += loss_scale * self.loss_fn(x_new, target)
 
@@ -727,6 +729,13 @@ def train(cfg: DictConfig):
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
     print('Rank %d, local rank %d, which has device %s. Sees %d devices. Seed = %d' %(RANK,int(LOCAL_RANK),DEVICE,torch.cuda.device_count(), cfg.seed))
+
+    if RANK == 0:
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('INPUTS:')
+        print(OmegaConf.to_yaml(cfg)) 
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+
     train(cfg)
     cleanup()
 
