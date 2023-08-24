@@ -258,6 +258,9 @@ class Trainer:
         else:
             preamble = 'NO_RADIUS_LR_1em5_'
 
+        if self.cfg.mask_regularization:
+            preamble += 'MASK_REG_'
+
         #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps) # baseline
         modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
         model = gnn.GNN_TopK_NoReduction(
