@@ -271,7 +271,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: FOCUS ON EFFECT OF SEEDING 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('Postprocess training losses: focus on effect of seeding.')
     # baseline:
     # a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
@@ -279,13 +279,15 @@ if 1 == 0:
     a_label = 'Baseline (rollout = 1)'
 
     #seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 42, 65, 82])
-    seed_list = torch.tensor([105, 122, 142, 152, 162, 172, 182, 192, 42, 65, 82])
+    #seed_list = torch.tensor([105, 122, 142, 152, 162, 172, 182, 192, 42, 65, 82])
+    seed_list = torch.tensor([42, 65, 82, 105, 122, 132, 142, 152, 162, 172])
 
     topk_models_converged_loss = []
     topk_models = []
     for seed in seed_list:
         # b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        # b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        b = torch.load('saved_models/NO_RADIUS_LR_1em5_MASK_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -298,7 +300,8 @@ if 1 == 0:
     topk_models = []
     for seed in seed_list:
         # b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        # b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        b = torch.load('saved_models/NO_RADIUS_LR_1em5_MASK_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -338,11 +341,11 @@ if 1 == 0:
         mse_full_list = []
         for seed in seed_list:
             #mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius_full_model/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_mask_list.append(mse_mask)
 
             #mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius_full_model/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_full_list.append(mse_full)
         
         rollout_id = 0
@@ -1329,7 +1332,7 @@ if 1 == 0:
 # GOAL :
 # We want to minimize the error outside of the mask! 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -1452,6 +1455,114 @@ if 1 == 1:
         # Accumulate loss 
         target = data.y[t]
         loss += loss_scale * ( loss_fn(x_new, target) + lam*loss_fn(non_mask*x_new_bl, non_mask*target) )
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Plotting graph 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 0: 
+    print('Plotting graph')
+
+    device = 'cpu'
+
+    # ~~~~ Re-load data: 
+    rollout_eval = 1 # where to evaluate the RMSE  
+    #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+    vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+    path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+    path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+    path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+    device_for_loading = device
+
+    dataset_eval_no_radius, _ = bfs.get_pygeom_dataset_cell_data(
+                    vtk_file_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    use_radius = False,
+                    time_lag = rollout_eval,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+
+    dataset_eval_radius, _ = bfs.get_pygeom_dataset_cell_data(
+                    vtk_file_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    use_radius = True,
+                    time_lag = rollout_eval,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+
+
+
+    # ~~~~ Plot graph
+    import torch_geometric.utils as utils
+
+
+
+
+    lw_edge = 1
+    lw_marker = 1
+    ms = 15
+    fig, ax = plt.subplots(1,2,sharex=True, sharey=True, figsize=(14,6))
+
+    data = dataset_eval_no_radius[0]
+    G = utils.to_networkx(data=data)
+    # Extract node and edge positions from the layout
+    pos = dict(enumerate(np.array(data.pos)))
+    node_xyz = np.array([pos[v] for v in sorted(G)])
+    edge_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges()])
+
+    for vizedge in edge_xyz:
+        ax[0].plot(*vizedge.T, color="black", lw=lw_edge, alpha=0.1)
+    ax[0].scatter(data.pos[:,0], data.pos[:,1], s=ms, ec='black', lw=lw_marker, c='black', alpha=1)
+    ax[0].grid(False)
+    ax[0].set_xlabel('x')
+    ax[0].set_ylabel('y')
+
+    data = dataset_eval_radius[0]
+    G = utils.to_networkx(data=data)
+    # Extract node and edge positions from the layout
+    pos = dict(enumerate(np.array(data.pos)))
+    node_xyz = np.array([pos[v] for v in sorted(G)])
+    edge_xyz = np.array([(pos[u], pos[v]) for u, v in G.edges()])
+
+    for vizedge in edge_xyz:
+        ax[1].plot(*vizedge.T, color="black", lw=lw_edge, alpha=0.1)
+    ax[1].scatter(data.pos[:,0], data.pos[:,1], s=ms, ec='black', lw=lw_marker, c='black', alpha=1)
+    ax[1].grid(False)
+    ax[1].set_xlabel('x')
+    ax[1].set_ylabel('y')
+
+
+    #ax.set_xlim([0.0075, 0.015])
+    #ax.set_ylim([0.003, 0.009])
+    plt.show(block=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
