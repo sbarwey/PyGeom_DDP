@@ -557,7 +557,7 @@ class Multiscale_MessagePassing_UNet(torch.nn.Module):
             if i < self.n_mlp_encode - 1:
                 x = self.act(x)
 
-        return x 
+        return x
 
     def input_dict(self) -> dict:
         a = { 
@@ -1110,7 +1110,7 @@ class Multiscale_MessagePassing_Layer(torch.nn.Module):
                     
                     # 7) node layer norm 
                     x = self.node_up_norms[m][i](x)
-        return x 
+        return x, edge_attr 
 
     def input_dict(self):
         a = { 'edge_aggregator' : self.edge_aggregator, 
@@ -1841,7 +1841,6 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             batch = edge_index.new_zeros(x.size(0))
 
         mask = x.new_zeros(x.size(0))
-        x_baseline = None
 
         # ~~~~ Node Encoder: 
         for i in range(self.n_mlp_encode):
@@ -1866,9 +1865,9 @@ class GNN_TopK_NoReduction(torch.nn.Module):
         n_mp = self.n_mp_down_topk[m] # number of message passing blocks 
         for i in range(n_mp):
             if not self.param_sharing: 
-                x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                x, edge_attr = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
             else:
-                x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+                x, edge_attr = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
 
         # ~~~~ Store level 0 embeddings in lists  
         xs = [x] 
@@ -1900,9 +1899,9 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             # Do message passing on coarse graph
             for i in range(self.n_mp_down_topk[m]):
                 if not self.param_sharing:
-                    x = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                    x, edge_attr = self.down_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
                 else:
-                    x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
+                    x, edge_attr = self.down_mps(x, edge_index, edge_attr, pos, batch=batch)
             
             # If there are coarser levels, append the fine-level lists
             if m < self.depth:
@@ -1961,22 +1960,10 @@ class GNN_TopK_NoReduction(torch.nn.Module):
             for i in range(self.n_mp_up_topk[m]):
                 for r in range(1):
                     if not self.param_sharing:
-                        x = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
+                        x, edge_attr = self.up_mps[m][i](x, edge_index, edge_attr, pos, batch=batch)
                     else:
-                        x = self.down_mps(x, edge_index, edge_attr, pos, batch=batch) # re-use down_mps here 
+                        x, edge_attr = self.down_mps(x, edge_index, edge_attr, pos, batch=batch) # re-use down_mps here 
                         #x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
-
-            # Evaluate the baseline error as well: 
-            if m == self.depth - 1: # if we're on the 0 level 
-                x_baseline = res.clone()  
-                edge_attr_baseline = res_edge.clone()
-                for i in range(self.n_mp_up_topk[m]):
-                    for r in range(1):
-                        if not self.param_sharing:
-                            x_baseline = self.up_mps[m][i](x_baseline, edge_index, edge_attr_baseline, pos, batch=batch)
-                        else:
-                            x_baseline = self.down_mps(x_baseline, edge_index, edge_attr_baseline, pos, batch=batch) # re-use down_mps here 
-                            #x = self.up_mps(x, edge_index, edge_attr, pos, batch=batch)
 
             # for i in range(self.n_mp_up_topk[m+1]):
             #     for r in range(1):
@@ -2012,15 +1999,7 @@ class GNN_TopK_NoReduction(torch.nn.Module):
                 x = self.act(x)
 
 
-        # ~~~~ Node decoder on baseline x 
-        if x_baseline is not None:
-            for i in range(self.n_mlp_decode):
-                x_baseline = self.node_decode[i](x_baseline) 
-                if i < self.n_mlp_decode - 1:
-                    x_baseline = self.act(x_baseline)
-
-
-        return x, mask, x_baseline
+        return x, mask
 
 
     def get_mask(
