@@ -125,7 +125,12 @@ class Trainer:
 
         # ~~~~ Init training and testing loss history 
         self.loss_hist_train = np.zeros(self.cfg.epochs)
+        self.loss_hist_train_comp1 = np.zeros(self.cfg.epochs)
+        self.loss_hist_train_comp2 = np.zeros(self.cfg.epochs)
+
         self.loss_hist_test = np.zeros(self.cfg.epochs)
+        self.loss_hist_test_comp1 = np.zeros(self.cfg.epochs)
+        self.loss_hist_test_comp2 = np.zeros(self.cfg.epochs)
 
         # ~~~~ Noise setup
         self.noise_dist = []
@@ -167,17 +172,42 @@ class Trainer:
             self.epoch_start = ckpt['epoch'] + 1
             self.epoch = self.epoch_start
             self.training_iter = ckpt['training_iter']
+
             self.loss_hist_train = ckpt['loss_hist_train']
+            self.loss_hist_train_comp1 = ckpt['loss_hist_train_comp1']
+            self.loss_hist_train_comp2 = ckpt['loss_hist_train_comp2']
+
             self.loss_hist_test = ckpt['loss_hist_test']
+            self.loss_hist_test_comp1 = ckpt['loss_hist_test_comp1']
+            self.loss_hist_test_comp2 = ckpt['loss_hist_test_comp2']
+
             self.current_rollout_steps = ckpt['current_rollout_steps']
 
             if len(self.loss_hist_train) < self.cfg.epochs:
+
                 loss_hist_train_new = np.zeros(self.cfg.epochs)
+                loss_hist_train_comp1_new = np.zeros(self.cfg.epochs)
+                loss_hist_train_comp2_new = np.zeros(self.cfg.epochs)
+
                 loss_hist_test_new = np.zeros(self.cfg.epochs)
+                loss_hist_test_comp1_new = np.zeros(self.cfg.epochs)
+                loss_hist_test_comp2_new = np.zeros(self.cfg.epochs)
+
                 loss_hist_train_new[:len(self.loss_hist_train)] = self.loss_hist_train
+                loss_hist_train_comp1_new[:len(self.loss_hist_train_comp1)] = self.loss_hist_train_comp1 
+                loss_hist_train_comp2_new[:len(self.loss_hist_train_comp2)] = self.loss_hist_train_comp2
+
                 loss_hist_test_new[:len(self.loss_hist_test)] = self.loss_hist_test
+                loss_hist_test_comp1_new[:len(self.loss_hist_test_comp1)] = self.loss_hist_test_comp1 
+                loss_hist_test_comp2_new[:len(self.loss_hist_test_comp2)] = self.loss_hist_test_comp2
+
                 self.loss_hist_train = loss_hist_train_new
+                self.loss_hist_train_comp1 = loss_hist_train_comp1_new
+                self.loss_hist_train_comp2 = loss_hist_train_comp2_new
+
                 self.loss_hist_test = loss_hist_test_new
+                self.loss_hist_test_comp1 = loss_hist_test_comp1_new
+                self.loss_hist_test_comp2 = loss_hist_test_comp2_new
             
 
         # ~~~~ Wrap model in DDP
@@ -259,10 +289,10 @@ class Trainer:
             preamble = 'NO_RADIUS_LR_1em5_'
 
         if self.cfg.mask_regularization:
-            preamble += 'MASK_REG_TEST_'
+            preamble += 'BUDGET_REG_'
 
-        modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
-        #modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
+        #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
+        modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
         model = gnn.GNN_TopK_NoReduction(
                 in_channels_node = 2,
                 in_channels_edge = 3,
@@ -270,8 +300,8 @@ class Trainer:
                 out_channels = 2, 
                 n_mlp_encode = 3, 
                 n_mlp_mp = 2,
-                n_mp_down_topk = [2], #[1,1],
-                n_mp_up_topk = [], #[1],
+                n_mp_down_topk = [1,1], # [2], #[1,1],
+                n_mp_up_topk = [1], # [], #[1],
                 pool_ratios = [1./4.],
                 n_mp_down_enc = [2,2,2], # [4,4,4],
                 n_mp_up_enc = [2,2], # [4,4],
@@ -285,54 +315,54 @@ class Trainer:
                 param_sharing = False,
                 name = preamble + modelname)
 
-        # ~~~~ # # ~~~~ FINE-TUNING: 
-        # ~~~~ # # intermediate step: Load state dict using a previous top-k model
-        # ~~~~ # # -- this initializes the top-k vector and the MP layer on the first top-k level using the previously trained top-k model at the smaller rollout length
-        # ~~~~ # # p = torch.load(self.cfg.work_dir + '/saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-        # ~~~~ # # model.load_state_dict(p['state_dict'])
+        # ~~~~ FINE-TUNING: 
+        # intermediate step: Load state dict using a previous top-k model
+        # -- this initializes the top-k vector and the MP layer on the first top-k level using the previously trained top-k model at the smaller rollout length
+        # p = torch.load(self.cfg.work_dir + '/saved_models/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+        # model.load_state_dict(p['state_dict'])
 
-        # ~~~~ # # read a trained model (a baseline model without top-k) 
-        # ~~~~ # modelpath = self.cfg.work_dir + '/saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-        # ~~~~ # p = torch.load(modelpath)
-        # ~~~~ # input_dict = p['input_dict']
-        # ~~~~ # model_read = gnn.GNN_TopK_NoReduction(
-        # ~~~~ #     in_channels_node = input_dict['in_channels_node'],
-        # ~~~~ #     in_channels_edge = input_dict['in_channels_edge'],
-        # ~~~~ #     hidden_channels = input_dict['hidden_channels'],
-        # ~~~~ #     out_channels = input_dict['out_channels'],
-        # ~~~~ #     n_mlp_encode = input_dict['n_mlp_encode'],
-        # ~~~~ #     n_mlp_mp = input_dict['n_mlp_mp'],
-        # ~~~~ #     n_mp_down_topk = input_dict['n_mp_down_topk'],
-        # ~~~~ #     n_mp_up_topk = input_dict['n_mp_up_topk'],
-        # ~~~~ #     pool_ratios = input_dict['pool_ratios'],
-        # ~~~~ #     n_mp_down_enc = input_dict['n_mp_down_enc'],
-        # ~~~~ #     n_mp_up_enc = input_dict['n_mp_up_enc'],
-        # ~~~~ #     n_mp_down_dec = input_dict['n_mp_down_dec'],
-        # ~~~~ #     n_mp_up_dec = input_dict['n_mp_up_dec'], 
-        # ~~~~ #     lengthscales_enc = input_dict['lengthscales_enc'],
-        # ~~~~ #     lengthscales_dec = input_dict['lengthscales_dec'], 
-        # ~~~~ #     bounding_box = input_dict['bounding_box'], 
-        # ~~~~ #     interpolation_mode = input_dict['interp'], 
-        # ~~~~ #     act = input_dict['act'], 
-        # ~~~~ #     param_sharing = input_dict['param_sharing'],
-        # ~~~~ #     filter_lengthscale = input_dict['filter_lengthscale'], 
-        # ~~~~ #     name = input_dict['name'])
+        # read a trained model (a baseline model without top-k) 
+        modelpath = self.cfg.work_dir + '/saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_42_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+        p = torch.load(modelpath)
+        input_dict = p['input_dict']
+        model_read = gnn.GNN_TopK_NoReduction(
+            in_channels_node = input_dict['in_channels_node'],
+            in_channels_edge = input_dict['in_channels_edge'],
+            hidden_channels = input_dict['hidden_channels'],
+            out_channels = input_dict['out_channels'],
+            n_mlp_encode = input_dict['n_mlp_encode'],
+            n_mlp_mp = input_dict['n_mlp_mp'],
+            n_mp_down_topk = input_dict['n_mp_down_topk'],
+            n_mp_up_topk = input_dict['n_mp_up_topk'],
+            pool_ratios = input_dict['pool_ratios'],
+            n_mp_down_enc = input_dict['n_mp_down_enc'],
+            n_mp_up_enc = input_dict['n_mp_up_enc'],
+            n_mp_down_dec = input_dict['n_mp_down_dec'],
+            n_mp_up_dec = input_dict['n_mp_up_dec'], 
+            lengthscales_enc = input_dict['lengthscales_enc'],
+            lengthscales_dec = input_dict['lengthscales_dec'], 
+            bounding_box = input_dict['bounding_box'], 
+            interpolation_mode = input_dict['interp'], 
+            act = input_dict['act'], 
+            param_sharing = input_dict['param_sharing'],
+            filter_lengthscale = input_dict['filter_lengthscale'], 
+            name = input_dict['name'])
 
-        # ~~~~ # model_read.load_state_dict(p['state_dict'])
+        model_read.load_state_dict(p['state_dict'])
 
-        # ~~~~ # def count_parameters(mdl):
-        # ~~~~ #     return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
+        def count_parameters(mdl):
+            return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
 
-        # ~~~~ # if RANK == 0: 
-        # ~~~~ #     print('number of parameters before overwriting: ', count_parameters(model))
+        if RANK == 0: 
+            print('number of parameters before overwriting: ', count_parameters(model))
 
-        # ~~~~ # # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
-        # ~~~~ # model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
-        # ~~~~ # model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
-        # ~~~~ # model.set_node_edge_encoder_decoder(model_read)
+        # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
+        model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
+        model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
+        model.set_node_edge_encoder_decoder(model_read)
 
-        # ~~~~ # if RANK == 0: 
-        # ~~~~ #     print('number of parameters after overwriting: ', count_parameters(model))
+        if RANK == 0: 
+            print('number of parameters after overwriting: ', count_parameters(model))
 
         return model
 
@@ -458,6 +488,12 @@ class Trainer:
         loss = torch.tensor([0.0])
         loss_scale = torch.tensor([1.0/rollout_length])
 
+        # Loss dict for monitoring regularization terms if needed 
+        loss_dict = {}
+        loss_dict['comp1'] = torch.tensor([0.0])
+        loss_dict['comp2'] = torch.tensor([0.0])
+        loss_dict['lam'] = torch.tensor([0.01])
+
         if WITH_CUDA:
             data.x = data.x.cuda()
             data.edge_index = data.edge_index.cuda()
@@ -466,6 +502,9 @@ class Trainer:
             data.batch = data.batch.cuda()
             loss = loss.cuda()
             loss_scale = loss_scale.cuda()
+            loss_dict['comp1'] = loss_dict['comp1'].cuda()
+            loss_dict['comp2'] = loss_dict['comp2'].cuda()
+            loss_dict['lam'] = loss_dict['lam'].cuda()
         
         self.optimizer.zero_grad()
 
@@ -473,6 +512,7 @@ class Trainer:
         #out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
         #loss = self.loss_fn(out, data.x)
 
+                
         # Rollout prediction: 
         x_new = data.x
         for t in range(rollout_length):
@@ -494,7 +534,21 @@ class Trainer:
                 target = target.cuda()
 
             if self.cfg.mask_regularization:
-                loss += loss_scale*( self.loss_fn(non_mask*x_new, non_mask*target) )
+                mse_total = self.loss_fn(x_new, target) 
+                mask = mask.view((-1,1))
+                mse_mask = self.loss_fn(mask*x_new, mask*target)
+
+                budget = mse_mask / mse_total
+                lam = loss_dict['lam']
+                loss_budget = lam * (1.0/budget)
+                
+                # total loss :
+                loss += loss_scale * ( mse_total + lam*loss_budget )
+
+                # store components: 
+                loss_dict['comp1'] += loss_scale * mse_total.item()
+                loss_dict['comp2'] += loss_scale * loss_budget.item()
+
             else:
                 loss += loss_scale * self.loss_fn(x_new, target)
 
@@ -507,7 +561,7 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-        return loss
+        return loss, loss_dict
 
     def train_epoch(
             self,
@@ -516,9 +570,15 @@ class Trainer:
         self.model.train()
         start = time.time()
         running_loss = torch.tensor(0.)
+        running_loss_dict = {}
+        running_loss_dict['comp1'] = torch.tensor(0.)
+        running_loss_dict['comp2'] = torch.tensor(0.)
+
         count = torch.tensor(0.)
         if WITH_CUDA:
             running_loss = running_loss.cuda()
+            running_loss_dict['comp1'] = running_loss_dict['comp1'].cuda() 
+            running_loss_dict['comp2'] = running_loss_dict['comp2'].cuda()
             count = count.cuda()
 
         train_sampler = self.data['train']['sampler']
@@ -527,8 +587,11 @@ class Trainer:
         train_sampler.set_epoch(epoch)
         for bidx, data in enumerate(train_loader):
             #print('Rank %d, bid %d, data:' %(RANK, bidx), data.y[1].shape)
-            loss = self.train_step(data)
+            loss, loss_dict = self.train_step(data)
             running_loss += loss.item()
+            running_loss_dict['comp1'] += loss_dict['comp1'].item()
+            running_loss_dict['comp2'] += loss_dict['comp2'].item()
+
             count += 1 # accumulate current batch count 
             self.training_iter += 1 # accumulate total training iteration
             
@@ -557,15 +620,25 @@ class Trainer:
 
         # divide running loss by number of batches
         running_loss = running_loss / count
+        running_loss_dict['comp1'] = running_loss_dict['comp1'] / count
+        running_loss_dict['comp2'] = running_loss_dict['comp2'] / count
+
         # Allreduce, mean
         loss_avg = metric_average(running_loss)
-        return {'loss': loss_avg}
+        loss_avg_comp1 = metric_average(running_loss_dict['comp1'])
+        loss_avg_comp2 = metric_average(running_loss_dict['comp2'])
+        return {'loss': loss_avg, 'comp1': loss_avg_comp1, 'comp2': loss_avg_comp2}
 
     def test(self) -> dict:
         running_loss = torch.tensor(0.)
+        running_loss_dict = {}
+        running_loss_dict['comp1'] = torch.tensor(0.)
+        running_loss_dict['comp2'] = torch.tensor(0.)
         count = torch.tensor(0.)
         if WITH_CUDA:
             running_loss = running_loss.cuda()
+            running_loss_dict['comp1'] = running_loss_dict['comp1'].cuda()
+            running_loss_dict['comp2'] = running_loss_dict['comp2'].cuda()
             count = count.cuda()
         self.model.eval()
         test_loader = self.data['test']['loader']
@@ -574,6 +647,12 @@ class Trainer:
                 rollout_length = self.get_rollout_steps()
                 loss = torch.tensor([0.0])
                 loss_scale = torch.tensor([1.0/rollout_length])
+                
+                # Loss dict for monitoring regularization terms if needed 
+                loss_dict = {}
+                loss_dict['comp1'] = torch.tensor([0.0])
+                loss_dict['comp2'] = torch.tensor([0.0])
+                loss_dict['lam'] = torch.tensor([0.01])
 
                 if WITH_CUDA:
                     data.x = data.x.cuda()
@@ -583,6 +662,9 @@ class Trainer:
                     data.batch = data.batch.cuda()
                     loss = loss.cuda()
                     loss_scale = loss_scale.cuda()
+                    loss_dict['comp1'] = loss_dict['comp1'].cuda() 
+                    loss_dict['comp2'] = loss_dict['comp2'].cuda()
+                    loss_dict['lam'] = loss_dict['lam'].cuda()
                 
                 # Rollout prediction: 
                 x_new = data.x
@@ -598,20 +680,42 @@ class Trainer:
                         target = target.cuda()
                     
                     if self.cfg.mask_regularization:
-                        x_new_bl = x_old + x_src_bl # the baseline prediction
-                        non_mask = 1 - mask
-                        non_mask = non_mask[:, None]
-                        loss += loss_scale * ( self.loss_fn(non_mask*x_new, non_mask*target) )
+                        mse_total = self.loss_fn(x_new, target) 
+                        mask = mask.view((-1,1))
+                        mse_mask = self.loss_fn(mask*x_new, mask*target)
+
+                        budget = mse_mask / mse_total
+                        lam = loss_dict['lam']
+                        loss_budget = lam * (1.0/budget)
+                        
+                        # total loss :
+                        loss += loss_scale * ( mse_total + lam*loss_budget )
+
+                        # store components: 
+                        loss_dict['comp1'] += loss_scale * mse_total.item()
+                        loss_dict['comp2'] += loss_scale * loss_budget.item()
                     else:
                         loss += loss_scale * self.loss_fn(x_new, target)
 
 
 
                 running_loss += loss.item()
+                running_loss_dict['comp1'] += loss_dict['comp1'].item()
+                running_loss_dict['comp2'] += loss_dict['comp2'].item()
                 count += 1
+
             running_loss = running_loss / count
+            running_loss_dict['comp1'] = running_loss_dict['comp1'] / count
+            running_loss_dict['comp2'] = running_loss_dict['comp2'] / count
+
             loss_avg = metric_average(running_loss)
-        return {'loss': loss_avg}
+            loss_avg_comp1 = metric_average(running_loss_dict['comp1'])
+            loss_avg_comp2 = metric_average(running_loss_dict['comp2'])
+
+            print('Done test')
+            MPI.COMM_WORLD.Abort(1)
+
+        return {'loss': loss_avg, 'comp1': loss_avg_comp1, 'comp2': loss_avg_comp2}
 
 
 def run_demo(demo_fn: Callable, world_size: int | str) -> None:
@@ -631,12 +735,18 @@ def train(cfg: DictConfig):
         trainer.epoch = epoch
         train_metrics = trainer.train_epoch(epoch)
         trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
+        trainer.loss_hist_train_comp1[epoch-1] = train_metrics["comp1"]
+        trainer.loss_hist_train_comp2[epoch-1] = train_metrics["comp2"]
+
         epoch_time = time.time() - t0
         epoch_times.append(epoch_time)
 
         # ~~~~ Validation step
         test_metrics = trainer.test()
         trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+        trainer.loss_hist_test_comp1[epoch-1] = test_metrics["comp1"]
+        trainer.loss_hist_test_comp2[epoch-1] = test_metrics["comp2"]
+
         if RANK == 0:
             astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
             sepstr = '-' * len(astr)
@@ -674,7 +784,11 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
                         'loss_hist_test' : trainer.loss_hist_test, 
+                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
+                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
                         'current_rollout_steps' : trainer.current_rollout_steps}
             else:
                 ckpt = {'epoch' : epoch, 
@@ -683,7 +797,11 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test,
+                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
+                        'loss_hist_test' : trainer.loss_hist_test, 
+                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
+                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
                         'current_rollout_steps' : trainer.current_rollout_steps}
 
             torch.save(ckpt, trainer.ckpt_path)
@@ -709,7 +827,11 @@ def train(cfg: DictConfig):
                         'state_dict' : trainer.model.module.state_dict(), 
                         'input_dict' : trainer.model.module.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
                         'loss_hist_test' : trainer.loss_hist_test,
+                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
+                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
                         'training_iter' : trainer.training_iter,
                         'current_rollout_steps' : trainer.current_rollout_steps
                         }
@@ -718,7 +840,11 @@ def train(cfg: DictConfig):
                         'state_dict' : trainer.model.state_dict(), 
                         'input_dict' : trainer.model.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
                         'loss_hist_test' : trainer.loss_hist_test,
+                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
+                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
                         'training_iter' : trainer.training_iter,
                         'current_rollout_steps' : trainer.current_rollout_steps
                         }
