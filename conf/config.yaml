@@ -23,7 +23,7 @@ restart: False
 # Loss function parameters 
 rollout_steps: 1
 use_rollout_schedule : False
-mask_regularization : False
+mask_regularization : True
 
 hydra:
   job:

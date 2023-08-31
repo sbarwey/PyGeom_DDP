@@ -322,7 +322,7 @@ class Trainer:
         # model.load_state_dict(p['state_dict'])
 
         # read a trained model (a baseline model without top-k) 
-        modelpath = self.cfg.work_dir + '/saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_42_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+        modelpath = self.cfg.work_dir + '/saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath)
         input_dict = p['input_dict']
         model_read = gnn.GNN_TopK_NoReduction(
@@ -447,7 +447,7 @@ class Trainer:
             
             train_dataset = train_dataset + train_dataset_temp
             test_dataset = test_dataset + test_dataset_temp
-
+        
         self.bounding_box = train_dataset[0].bounding_box
 
         # DDP: use DistributedSampler to partition training data
@@ -543,7 +543,7 @@ class Trainer:
                 loss_budget = lam * (1.0/budget)
                 
                 # total loss :
-                loss += loss_scale * ( mse_total + lam*loss_budget )
+                loss += loss_scale * ( mse_total + loss_budget )
 
                 # store components: 
                 loss_dict['comp1'] += loss_scale * mse_total.item()
@@ -603,6 +603,8 @@ class Trainer:
                     'epoch': epoch,
                     'dt': time.time() - start,
                     'batch_loss': loss.item(),
+                    'batch_loss_comp1': loss_dict['comp1'].item(),
+                    'batch_loss_comp2': loss_dict['comp2'].item(),
                     'running_loss': running_loss,
                     'current_rollout_steps': self.current_rollout_steps
                 }
@@ -689,7 +691,7 @@ class Trainer:
                         loss_budget = lam * (1.0/budget)
                         
                         # total loss :
-                        loss += loss_scale * ( mse_total + lam*loss_budget )
+                        loss += loss_scale * ( mse_total + loss_budget )
 
                         # store components: 
                         loss_dict['comp1'] += loss_scale * mse_total.item()
@@ -711,9 +713,6 @@ class Trainer:
             loss_avg = metric_average(running_loss)
             loss_avg_comp1 = metric_average(running_loss_dict['comp1'])
             loss_avg_comp2 = metric_average(running_loss_dict['comp2'])
-
-            print('Done test')
-            MPI.COMM_WORLD.Abort(1)
 
         return {'loss': loss_avg, 'comp1': loss_avg_comp1, 'comp2': loss_avg_comp2}
 
@@ -748,14 +747,16 @@ def train(cfg: DictConfig):
         trainer.loss_hist_test_comp2[epoch-1] = test_metrics["comp2"]
 
         if RANK == 0:
-            astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
+            astr = f'[TEST] loss={test_metrics["loss"]:.4e}\tcomp1={test_metrics["comp1"]:.4e}\tcomp2={test_metrics["comp2"]:.4e}'
             sepstr = '-' * len(astr)
             log.info(sepstr)
             log.info(astr)
             log.info(sepstr)
             summary = '  '.join([
                 '[TRAIN]',
-                f'loss={train_metrics["loss"]:.4e}', 
+                f'loss={train_metrics["loss"]:.4e}',
+                f'comp1={train_metrics["comp1"]:.4e}',
+                f'comp2={train_metrics["comp2"]:.4e}',
                 f'epoch_time={epoch_time:.4g} sec'
             ])
             log.info((sep := '-' * len(summary)))
