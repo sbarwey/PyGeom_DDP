@@ -289,7 +289,7 @@ class Trainer:
             preamble = 'NO_RADIUS_LR_1em5_'
 
         if self.cfg.mask_regularization:
-            preamble += 'BUDGET_REG_'
+            preamble += 'BUDGET_REG_VERIF'
 
         #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
         modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
@@ -492,7 +492,7 @@ class Trainer:
         loss_dict = {}
         loss_dict['comp1'] = torch.tensor([0.0])
         loss_dict['comp2'] = torch.tensor([0.0])
-        loss_dict['lam'] = torch.tensor([0.01])
+        loss_dict['lam'] = torch.tensor([0.00])
 
         if WITH_CUDA:
             data.x = data.x.cuda()
@@ -654,7 +654,7 @@ class Trainer:
                 loss_dict = {}
                 loss_dict['comp1'] = torch.tensor([0.0])
                 loss_dict['comp2'] = torch.tensor([0.0])
-                loss_dict['lam'] = torch.tensor([0.01])
+                loss_dict['lam'] = torch.tensor([0.00])
 
                 if WITH_CUDA:
                     data.x = data.x.cuda()

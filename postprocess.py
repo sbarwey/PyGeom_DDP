@@ -430,7 +430,8 @@ if 1 == 1:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('SEED %d' %(seed))
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            modelpath_topk = 'saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
+            #modelpath_topk = 'saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
+            modelpath_topk = 'saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
             p = torch.load(modelpath_topk)
             input_dict = p['input_dict']
             model_topk = gnn.GNN_TopK_NoReduction(
@@ -527,7 +528,7 @@ if 1 == 1:
             print('SAVING...')
             print('SAVING...')
             print('SAVING...')
-            savepath = './outputs/postproc/budget_without_reg'
+            savepath = './outputs/postproc/budget_with_reg'
             if not os.path.exists(savepath):
                 os.mkdir(savepath)
 
