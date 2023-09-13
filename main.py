@@ -1,4 +1,4 @@
-"""
+/"""
 PyTorch DDP integrated with PyGeom for multi-node training
 """
 from __future__ import absolute_import, division, print_function, annotations
@@ -6,7 +6,7 @@ import os
 import socket
 import logging
 
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, Tuple, Dict
 
 import numpy as np
 
@@ -483,7 +483,7 @@ class Trainer:
     def train_step(
         self,
         data: DataBatch
-    ) -> Tensor:
+    ) -> Tuple[Tensor, Dict]:
         rollout_length = self.get_rollout_steps()
         loss = torch.tensor([0.0])
         loss_scale = torch.tensor([1.0/rollout_length])

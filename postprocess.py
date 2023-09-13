@@ -276,8 +276,8 @@ if 1 == 1:
     a_label = 'Baseline (rollout = 1)'
 
     #seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 42, 65, 82])
-    #seed_list = torch.tensor([105, 122, 142, 152, 162, 172, 182, 192, 42, 65, 82])
     seed_list = torch.tensor([42, 65, 82, 105, 122, 132, 142, 152, 162, 172])
+    #seed_list = torch.tensor([42, 65, 82, 105, 122, 132, 142])
 
     topk_models_converged_loss = []
     topk_models = []
@@ -286,6 +286,7 @@ if 1 == 1:
         #b = torch.load('saved_models/before_mmp_layer_change/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_VERIFpretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -301,51 +302,63 @@ if 1 == 1:
         # b = torch.load('saved_models/before_mmp_layer_change/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_VERIFpretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
     # Combined loss plot 
     baseline_loss = np.mean(a['loss_hist_train'][-10:])
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10,8))
     ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
     for i in range(len(seed_list)):
-        ax.plot(topk_models[i]['loss_hist_train'][1:], lw=2, zorder=-1)
+        ax.plot(topk_models[i]['loss_hist_train'][:], lw=2, zorder=-1)
     #ax.set_yscale('log')
     #ax.set_xscale('log')
     ax.set_ylabel('MSE')
     ax.set_xlabel('Epochs')
     plt.show(block=False)
 
+
+    # Components plot 
+    fig, ax = plt.subplots(1,2,figsize=(10,8))
+    #ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
+    i = 0
+    ax[0].plot(topk_models[i]['loss_hist_train_comp1'][:], lw=2, zorder=-1, label='MSE')
+    ax[0].set_ylabel('MSE')
+    ax[0].set_xlabel('Epochs')
+    ax[0].set_title('MSE Term')
+    ax[1].plot(topk_models[i]['loss_hist_train_comp2'][:], lw=2, zorder=-1, label='Budget Reg')
+    ax[1].set_ylabel('lam * (1/B)')
+    ax[1].set_xlabel('Epochs')
+    ax[1].set_title('Budget Reg. Term')
+    plt.show(block=False)
+       
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
         device = 'cpu'
 
     # Read data: 
-    if 1 == 0:
+    if 1 == 1:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
-        # If seed_list has not already been initialized:
-        if seed_list == None:
-            seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
-                 42, 65, 82])
         mse_mask_list = []
         mse_full_list = []
         for seed in seed_list:
-            #mse_mask = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_mask_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            #mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            #mse_mask = np.load('outputs/postproc/mse_mask_budget_data_no_radius_mask_reg/Re_26214/mse_mask_NO_RADIUS_LR_1em5_MASK_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask = np.load('outputs/postproc/budget_data/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_mask = np.load('outputs/postproc/budget_data/mse_mask_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_mask_list.append(mse_mask)
 
-            #mse_full = np.load('outputs/postproc/mse_mask_budget_data/Re_32564/mse_full_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius/Re_26214/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            #mse_full = np.load('outputs/postproc/mse_mask_budget_data_no_radius_mask_reg/Re_26214/mse_full_NO_RADIUS_LR_1em5_MASK_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full = np.load('outputs/postproc/budget_data/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_full = np.load('outputs/postproc/budget_data/mse_full_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_full_list.append(mse_full)
         
         rollout_id = 0
@@ -393,7 +406,7 @@ if 1 == 1:
 
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         # Load baseline model 
         modelpath_baseline = './saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
         p = torch.load(modelpath_baseline)
