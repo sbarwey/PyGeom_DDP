@@ -269,24 +269,17 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 1: 
     print('Postprocess training losses: focus on effect of seeding.')
+
     # baseline:
-    # a = torch.load('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    #a = torch.load('saved_models/before_mmp_layer_change/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     a = torch.load('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     a_label = 'Baseline (rollout = 1)'
 
-    #seed_list = torch.tensor([105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 42, 65, 82])
     seed_list = torch.tensor([42, 65, 82, 105, 122, 132, 142, 152, 162, 172])
-    #seed_list = torch.tensor([42, 65, 82, 105, 122, 132, 142])
 
     topk_models_converged_loss = []
     topk_models = []
     for seed in seed_list:
-        # b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        #b = torch.load('saved_models/before_mmp_layer_change/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_VERIFpretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -298,11 +291,7 @@ if 1 == 1:
     topk_models_converged_loss = []
     topk_models = []
     for seed in seed_list:
-        # b = torch.load('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        # b = torch.load('saved_models/before_mmp_layer_change/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_VERIFpretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -551,7 +540,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('postprocess testing losses.')
 
     # set device 
@@ -562,24 +551,20 @@ if 1 == 1:
 
     # Load models: effect of seed for R = 1
     modelpath_list = []
-    modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline 
     
     for seed in seed_list:
-        #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget reg 
-        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget reg 
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
 
     # Load rmse data -- effect of seed: 
     if 1 == 0:
-        #rmse_path = './outputs/postproc/rmse_data/Re_26214/'
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
 
-        #rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
+        rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
        
         rmse_topk_mean = []
         for seed in seed_list:
-            #rmse_topk_seed = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
-            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
             rmse_topk_mean.append(np.mean(rmse_topk_seed, axis=1))
 
         # compute average rmse:
@@ -623,68 +608,6 @@ if 1 == 1:
         #ax[0].legend(framealpha=1, fancybox=False, edgecolor='black', prop={'size': 14})
         plt.show(block=False)
 
-    # Load rmse data -- effect of rollout length (no seed): 
-    if 1 == 0:
-        rmse_path = './outputs/postproc/rmse_data/Re_26214/'
-        #rmse_path = './outputs/postproc/rmse_data/Re_32564/'
-
-        rmse_baseline = np.load(rmse_path + 'topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_topk1 = np.load(rmse_path + 'pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_topk2 = np.load(rmse_path + 'pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_topk3 = np.load(rmse_path + 'pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_topk4 = np.load(rmse_path + 'pretrained_topk_unet_rollout_4_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-        rmse_topk5 = np.load(rmse_path + 'pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
-
-
-        # compute average rmse:
-        rmse_baseline_mean = np.mean(rmse_baseline, axis=1)
-        rmse_baseline_max = np.max(rmse_baseline, axis=1)
-        rmse_baseline_min = np.min(rmse_baseline, axis=1)
-
-        rmse_topk1_mean = np.mean(rmse_topk1, axis=1)
-        rmse_topk2_mean = np.mean(rmse_topk2, axis=1)
-        rmse_topk3_mean = np.mean(rmse_topk3, axis=1)
-        rmse_topk4_mean = np.mean(rmse_topk4, axis=1)
-        rmse_topk5_mean = np.mean(rmse_topk5, axis=1)
-
-        rollout_steps = np.arange(1,rmse_baseline.shape[0] + 1)
-
-
-        # Fig, ax 
-        lw = 2
-        ms = 1
-        mew = 1
-        fig, ax = plt.subplots(1,2, figsize=(14,5))
-
-        # ux: 
-        ax[0].plot(rollout_steps, rmse_baseline_mean[:,0], label='Baseline', lw=lw)
-        ax[0].plot(rollout_steps, rmse_topk1_mean[:,0], label='TopK, R=1', lw=lw)
-        ax[0].plot(rollout_steps, rmse_topk2_mean[:,0], label='TopK, R=2', lw=lw)
-        ax[0].plot(rollout_steps, rmse_topk3_mean[:,0], label='TopK, R=3', lw=lw)
-        ax[0].plot(rollout_steps, rmse_topk4_mean[:,0], label='TopK, R=4', lw=lw)
-        ax[0].plot(rollout_steps, rmse_topk5_mean[:,0], label='TopK, R=5', lw=lw)
-        ax[0].set_xlabel('Rollout Steps') 
-        ax[0].set_ylabel('RMSE')
-        ax[0].set_title('Ux')
-
-        # uy:
-        ax[1].plot(rollout_steps, rmse_baseline_mean[:,1], label='Baseline', lw=lw)
-        ax[1].plot(rollout_steps, rmse_topk1_mean[:,1], label='TopK, R=1', lw=lw)
-        ax[1].plot(rollout_steps, rmse_topk2_mean[:,1], label='TopK, R=2', lw=lw)
-        ax[1].plot(rollout_steps, rmse_topk3_mean[:,1], label='TopK, R=3', lw=lw)
-        ax[1].plot(rollout_steps, rmse_topk4_mean[:,1], label='TopK, R=4', lw=lw)
-        ax[1].plot(rollout_steps, rmse_topk5_mean[:,1], label='TopK, R=5', lw=lw)
-        ax[1].set_xlabel('Rollout Steps') 
-        ax[1].set_ylabel('RMSE')
-        ax[1].set_title('Uy')
-
-        ax[0].set_ylim([1e-3, 1e-1])
-        ax[1].set_ylim([1e-3, 1e-1])
-        ax[0].set_yscale('log')
-        ax[1].set_yscale('log')
-        ax[0].legend(framealpha=1, fancybox=False, edgecolor='black', prop={'size': 14})
-        plt.show(block=False)
-
     # Write data: 
     if 1 == 1: 
         for modelpath in modelpath_list:
@@ -720,7 +643,7 @@ if 1 == 1:
             model.eval()
 
             # ~~~~ Re-load data: 
-            rollout_eval = 10 # where to evaluate the RMSE  
+            rollout_eval = 5 # where to evaluate the RMSE  
             #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
             vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
