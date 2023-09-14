@@ -557,14 +557,14 @@ if 1 == 1:
         modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
 
     # Load rmse data -- effect of seed: 
-    if 1 == 0:
+    if 1 == 1:
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
 
         rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
        
         rmse_topk_mean = []
         for seed in seed_list:
-            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
             rmse_topk_mean.append(np.mean(rmse_topk_seed, axis=1))
 
         # compute average rmse:
@@ -609,7 +609,7 @@ if 1 == 1:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
