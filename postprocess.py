@@ -554,10 +554,11 @@ if 1 == 1:
     modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline 
     
     for seed in seed_list:
-        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
+        #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # with budget
 
     # Load rmse data -- effect of seed: 
-    if 1 == 1:
+    if 1 == 0:
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
 
         rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
@@ -609,7 +610,7 @@ if 1 == 1:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -644,8 +645,8 @@ if 1 == 1:
 
             # ~~~~ Re-load data: 
             rollout_eval = 5 # where to evaluate the RMSE  
-            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+            vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+            #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
             path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
             path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
             path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
