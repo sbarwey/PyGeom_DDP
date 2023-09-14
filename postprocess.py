@@ -551,7 +551,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -560,29 +560,16 @@ if 1 == 0:
     else:
         device = 'cpu'
 
-    # # Load models: effect of rollout length 
-    # modelpath_list = []
-    # modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_4_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    # modelpath_list.append('saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-
     # Load models: effect of seed for R = 1
     modelpath_list = []
-    #modelpath_list.append('saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
     
-    if seed_list == None:
-        seed_list = [105, 122, 132, 142, 152, 162, 172, 182, 192, 202, 212, 222, 
-                 42, 65, 82]
     for seed in seed_list:
-        #modelpath_list.append('saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
-        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget reg 
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget reg 
 
     # Load rmse data -- effect of seed: 
-    if 1 == 1:
+    if 1 == 0:
         #rmse_path = './outputs/postproc/rmse_data/Re_26214/'
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
 
@@ -699,7 +686,7 @@ if 1 == 0:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -772,7 +759,7 @@ if 1 == 0:
                 for t in range(rollout_eval):
                     print('\tRollout %d/%d' %(t+1, rollout_eval))
                     x_old = torch.clone(x_new)
-                    x_src,mask = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src,_ = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
 
                     # Accumulate loss 
