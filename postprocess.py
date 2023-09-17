@@ -280,6 +280,7 @@ if 1 == 1:
     topk_models = []
     for seed in seed_list:
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -292,6 +293,7 @@ if 1 == 1:
     topk_models = []
     for seed in seed_list:
         b = torch.load('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
+        #b = torch.load('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
         topk_models.append(b) 
         topk_models_converged_loss.append(b['loss_hist_train'][-1])
 
@@ -540,7 +542,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('postprocess testing losses.')
 
     # set device 
@@ -558,14 +560,16 @@ if 1 == 1:
         modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # with budget
 
     # Load rmse data -- effect of seed: 
-    if 1 == 0:
+    if 1 == 1:
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
+        #rmse_path = './outputs/postproc/rmse_data_no_radius/Re_32564/'
 
         rmse_baseline = np.load(rmse_path + 'NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy')
        
         rmse_topk_mean = []
         for seed in seed_list:
-            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            #rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
+            rmse_topk_seed = np.load(rmse_path + 'NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))
             rmse_topk_mean.append(np.mean(rmse_topk_seed, axis=1))
 
         # compute average rmse:
@@ -610,7 +614,7 @@ if 1 == 1:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -708,184 +712,194 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
-    #modelpath = 'saved_models/model_multi_scale.tar'
-    #modelpath = 'saved_models/model_single_scale.tar'
+if 1 == 1:
+    print('Write model predictions...')
 
-    #modelpath = 'saved_models/topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-    #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_1_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-    #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_2_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-    #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_3_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-    #modelpath = 'saved_models/pretrained_seed_1/pretrained_topk_unet_rollout_5_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
+    # Modelpath list :
+    modelpath_list = ['saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar']
 
+    # no budget reg 
+    for seed in seed_list:
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
-    seed = 182
-    modelpath = 'saved_models/pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)
-
-    p = torch.load(modelpath)
-
-    input_dict = p['input_dict']
-    print('input_dict: ', input_dict)
-
-    # with top-k, no reduction
-    model = gnn.GNN_TopK_NoReduction(
-            in_channels_node = input_dict['in_channels_node'],
-            in_channels_edge = input_dict['in_channels_edge'],
-            hidden_channels = input_dict['hidden_channels'],
-            out_channels = input_dict['out_channels'], 
-            n_mlp_encode = input_dict['n_mlp_encode'], 
-            n_mlp_mp = input_dict['n_mlp_mp'],
-            n_mp_down_topk = input_dict['n_mp_down_topk'],
-            n_mp_up_topk = input_dict['n_mp_up_topk'],
-            pool_ratios = input_dict['pool_ratios'], 
-            n_mp_down_enc = input_dict['n_mp_down_enc'], 
-            n_mp_up_enc = input_dict['n_mp_up_enc'], 
-            n_mp_down_dec = input_dict['n_mp_down_dec'], 
-            n_mp_up_dec = input_dict['n_mp_up_dec'], 
-            lengthscales_enc = input_dict['lengthscales_enc'],
-            lengthscales_dec = input_dict['lengthscales_dec'], 
-            bounding_box = input_dict['bounding_box'], 
-            interpolation_mode = input_dict['interp'], 
-            act = input_dict['act'], 
-            param_sharing = input_dict['param_sharing'],
-            filter_lengthscale = input_dict['filter_lengthscale'], 
-            name = input_dict['name'])
-
-    model.load_state_dict(p['state_dict'])
-    model.eval()
-
-    # Plot the losses:
-    fig, ax = plt.subplots()
-    colors = ['black','blue','red']
-    ax.plot(p['loss_hist_train'], label='train', lw=2, color='black')
-    ax.plot(p['loss_hist_test'], label='valid', lw=2, color='black', ls='--')
-
-    ax.set_yscale('log')
-    #ax.set_xscale('log')
-    ax.grid(True)
-    #ax.set_ylim([1e-6, 1])
-    ax.set_ylim([1e-4, 0.1]) 
-
-    ax.legend(fancybox=False, framealpha=1, edgecolor='black')
-    ax.set_title('Training History')
-    ax.set_xlabel('Epochs')
-    ax.set_ylabel('MSE')
-    plt.show(block=False)
-
-    # Set to eval mode
-    model.eval()
-    header = model.get_save_header()
-
-    # Get Re:
-    str_temp = vtk_file_test.split('.')[0]
-    str_re = str_temp[-8:]
-
-    # Update save directory with trajectory index. This is where openfoam cases will be saved. 
-    save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/%s/' %(str_re)
-
-    if not  os.path.exists(save_dir + '/' + header):
-        os.makedirs(save_dir + '/' + header)
-
-    # Get input 
-    n_nodes =  test_dataset[0].x.shape[0]
-    n_features = test_dataset[0].x.shape[1]
-    field_names = ['ux', 'uy']
-    #u_vec_target = np.zeros((n_nodes,3))
-    #u_vec_pred = np.zeros((n_nodes,3))
-
-    ic_index = 240 # 120
-    x_new = test_dataset[ic_index].x
-    for i in range(ic_index,len(test_dataset)):
-        print('[%d/%d]' %(i+1, len(test_dataset)))
-        data = test_dataset[i]
-
-        # Get time 
-        time_value = data.t.item()
-
-        # Get single step prediction
-        print('\tSingle step...')
-        x_src = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
-        x_new_singlestep = data.x + x_src
-
-        # Get mask (single-step): 
-        print('\tMask single step...')
-        mask_singlestep = model.get_mask(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
-
-        # Get rollout prediction
-        print('\tRollout step...')
-        x_old = torch.clone(x_new)
-        x_src = model.forward(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-        x_new = x_old + x_src
-        target = data.y[0]
-
-        print('\tMask rollout step...')
-        mask_rollout = model.get_mask(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-
-        # unscale target and prediction 
-        mean_i = data.data_scale[0].reshape((1,n_features))
-        std_i = data.data_scale[1].reshape((1,n_features))
-        x_old_unscaled = x_old * std_i + mean_i
-        x_new_unscaled = x_new * std_i + mean_i
-        x_new_singlestep_unscaled = x_new_singlestep * std_i + mean_i
-        target_unscaled = target * std_i + mean_i
-
-        print('\tRollout error...')
-        error_rollout = x_new_unscaled  - target_unscaled
-        error_singlestep = x_new_singlestep_unscaled - target_unscaled
-        
-        # Create time folder 
-        time_folder = save_dir + '/' + header + '/' + '%g' %(time_value)
-        if not os.path.exists(time_folder):
-            os.makedirs(time_folder)
-
-        # Write data to time folder 
-        for f in range(n_features):
-
-            # Prediction singlestep   
-            field_name = '%s_pred_singlestep' %(field_names[f])
-            scalar2openfoam(x_new_singlestep_unscaled[:,f].numpy(), 
-                            time_folder+'/%s' %(field_name), field_name, time_value)
+    # with budget reg
+    for seed in seed_list:
+        modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed))
 
 
-            # Prediction rollout
-            field_name = '%s_pred_rollout' %(field_names[f])
-            scalar2openfoam(x_new_unscaled[:,f].numpy(), 
-                            time_folder+'/%s' %(field_name), field_name, time_value)
+    for modelpath in modelpath_list: 
 
-            # Target 
-            field_name = '%s_target' %(field_names[f])
-            scalar2openfoam(target_unscaled[:,f].numpy(), 
-                            time_folder+'/%s' %(field_name), field_name, time_value)
+        modelpath = 'saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
 
-            # Error rollout  
-            field_name = '%s_error_rollout' %(field_names[f])
-            scalar2openfoam(error_rollout[:,f].numpy(), 
-                            time_folder+'/%s' %(field_name), field_name, time_value)
+        p = torch.load(modelpath)
 
-            # Error singlestep  
-            field_name = '%s_error_singlestep' %(field_names[f])
-            scalar2openfoam(error_singlestep[:,f].numpy(), 
-                            time_folder+'/%s' %(field_name), field_name, time_value)
+        input_dict = p['input_dict']
+        print('input_dict: ', input_dict)
+
+        # with top-k, no reduction
+        model = gnn.GNN_TopK_NoReduction(
+                in_channels_node = input_dict['in_channels_node'],
+                in_channels_edge = input_dict['in_channels_edge'],
+                hidden_channels = input_dict['hidden_channels'],
+                out_channels = input_dict['out_channels'], 
+                n_mlp_encode = input_dict['n_mlp_encode'], 
+                n_mlp_mp = input_dict['n_mlp_mp'],
+                n_mp_down_topk = input_dict['n_mp_down_topk'],
+                n_mp_up_topk = input_dict['n_mp_up_topk'],
+                pool_ratios = input_dict['pool_ratios'], 
+                n_mp_down_enc = input_dict['n_mp_down_enc'], 
+                n_mp_up_enc = input_dict['n_mp_up_enc'], 
+                n_mp_down_dec = input_dict['n_mp_down_dec'], 
+                n_mp_up_dec = input_dict['n_mp_up_dec'], 
+                lengthscales_enc = input_dict['lengthscales_enc'],
+                lengthscales_dec = input_dict['lengthscales_dec'], 
+                bounding_box = input_dict['bounding_box'], 
+                interpolation_mode = input_dict['interp'], 
+                act = input_dict['act'], 
+                param_sharing = input_dict['param_sharing'],
+                filter_lengthscale = input_dict['filter_lengthscale'], 
+                name = input_dict['name'])
+
+        model.load_state_dict(p['state_dict'])
+        model.eval()
+
+        # Set to eval mode
+        model.eval()
+        header = model.get_save_header()
+
+        # Load dataset 
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+
+        rollout_eval = 1 # where to evaluate the RMSE  
+        use_radius = False
+        #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
+        vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
+        path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
+        path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
+        path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+        device_for_loading = device
+
+        test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
+                        vtk_file_test, 
+                        path_to_ei, 
+                        path_to_ea,
+                        path_to_pos, 
+                        device_for_loading, 
+                        use_radius,
+                        time_lag = rollout_eval,
+                        scaling = [data_mean, data_std],
+                        features_to_keep = [1,2], 
+                        fraction_valid = 0, 
+                        multiple_cases = False)
 
 
-        # # Velocity vector
-        # u_vec_target[:,:2] = target[:,:]
-        # u_vec_pred[:,:2] = pred[:,:]
-        # u_vec_error = pred - target
+        # Get Re:
+        str_temp = vtk_file_test.split('.')[0]
+        str_re = str_temp[-8:]
 
-        # field_name = 'U_target'
-        # array2openfoam(u_vec_target,  time_folder+'/%s' %(field_name), field_name, time_value)
+        # Update save directory with trajectory index. This is where openfoam cases will be saved. 
+        save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/%s/' %(str_re)
 
-        # field_name = 'U_pred'
-        # array2openfoam(u_vec_pred,  time_folder+'/%s' %(field_name), field_name, time_value)
+        if not  os.path.exists(save_dir + '/' + header):
+            os.makedirs(save_dir + '/' + header)
 
-        # mask singlestep
-        field_name = 'mask_singlestep'
-        scalar2openfoam(mask_singlestep.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+        # Get input 
+        n_nodes =  test_dataset[0].x.shape[0]
+        n_features = test_dataset[0].x.shape[1]
+        field_names = ['ux', 'uy']
+        #u_vec_target = np.zeros((n_nodes,3))
+        #u_vec_pred = np.zeros((n_nodes,3))
 
-        # mask rollout
-        field_name = 'mask_rollout'
-        scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+        ic_index = 240 # 120
+        x_new = test_dataset[ic_index].x
+        for i in range(ic_index,len(test_dataset)):
+            print('[%d/%d]' %(i+1, len(test_dataset)))
+            data = test_dataset[i]
+
+            # Get time 
+            time_value = data.t.item()
+
+            # Get single step prediction
+            print('\tSingle step...')
+            x_src, mask_singlestep = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_new_singlestep = data.x + x_src
+
+            # Get rollout prediction
+            print('\tRollout step...')
+            x_old = torch.clone(x_new)
+            x_src, mask_rollout = model.forward(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_new = x_old + x_src
+            target = data.y[0]
+
+            # unscale target and prediction 
+            mean_i = data.data_scale[0].reshape((1,n_features))
+            std_i = data.data_scale[1].reshape((1,n_features))
+            x_old_unscaled = x_old * std_i + mean_i
+            x_new_unscaled = x_new * std_i + mean_i
+            x_new_singlestep_unscaled = x_new_singlestep * std_i + mean_i
+            target_unscaled = target * std_i + mean_i
+
+            print('\tRollout error...')
+            error_rollout = x_new_unscaled  - target_unscaled
+            error_singlestep = x_new_singlestep_unscaled - target_unscaled
+            
+            # Create time folder 
+            time_folder = save_dir + '/' + header + '/' + '%g' %(time_value)
+            if not os.path.exists(time_folder):
+                os.makedirs(time_folder)
+
+            # Write data to time folder 
+            for f in range(n_features):
+
+                # Prediction singlestep   
+                field_name = '%s_pred_singlestep' %(field_names[f])
+                scalar2openfoam(x_new_singlestep_unscaled[:,f].numpy(), 
+                                time_folder+'/%s' %(field_name), field_name, time_value)
+
+
+                # Prediction rollout
+                field_name = '%s_pred_rollout' %(field_names[f])
+                scalar2openfoam(x_new_unscaled[:,f].numpy(), 
+                                time_folder+'/%s' %(field_name), field_name, time_value)
+
+                # Target 
+                field_name = '%s_target' %(field_names[f])
+                scalar2openfoam(target_unscaled[:,f].numpy(), 
+                                time_folder+'/%s' %(field_name), field_name, time_value)
+
+                # Error rollout  
+                field_name = '%s_error_rollout' %(field_names[f])
+                scalar2openfoam(error_rollout[:,f].numpy(), 
+                                time_folder+'/%s' %(field_name), field_name, time_value)
+
+                # Error singlestep  
+                field_name = '%s_error_singlestep' %(field_names[f])
+                scalar2openfoam(error_singlestep[:,f].numpy(), 
+                                time_folder+'/%s' %(field_name), field_name, time_value)
+
+
+            # # Velocity vector
+            # u_vec_target[:,:2] = target[:,:]
+            # u_vec_pred[:,:2] = pred[:,:]
+            # u_vec_error = pred - target
+
+            # field_name = 'U_target'
+            # array2openfoam(u_vec_target,  time_folder+'/%s' %(field_name), field_name, time_value)
+
+            # field_name = 'U_pred'
+            # array2openfoam(u_vec_pred,  time_folder+'/%s' %(field_name), field_name, time_value)
+
+            # mask singlestep
+            field_name = 'mask_singlestep'
+            scalar2openfoam(mask_singlestep.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+
+            # mask rollout
+            field_name = 'mask_rollout'
+            scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+
 
 
 # ~~~~ Plot time evolution at the sensors
