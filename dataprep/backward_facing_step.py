@@ -134,8 +134,9 @@ def get_pygeom_dataset_cell_data(
     pos = torch.tensor(np.loadtxt(path_to_pos, dtype=np.float32))
   
     # Distance field
-    distance = np.array(mesh.cell_data['distance'], dtype=np.float32)
-    distance = np.reshape(distance, (n_cells, 1), order='F')
+    #distance = np.array(mesh.cell_data['distance'], dtype=np.float32)
+    #distance = np.reshape(distance, (n_cells, 1), order='F')
+    distance = np.zeros((n_cells, 1))
 
     if use_radius:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

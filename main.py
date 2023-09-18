@@ -1,4 +1,4 @@
-/"""
+"""
 PyTorch DDP integrated with PyGeom for multi-node training
 """
 from __future__ import absolute_import, division, print_function, annotations
@@ -408,29 +408,57 @@ class Trainer:
 
         device_for_loading = 'cpu'
 
-        # ~~~~ MNIST
-        # train_dataset, test_dataset = umnist.get_mnist_dataset(
-        #     self.cfg.path_to_vtk, self.cfg.path_to_ei, self.cfg.path_to_ea, 
-        #     self.cfg.path_to_pos, device_for_loading
-        # )
+        # # ~~~~ BFS: CROPPED
+        # # Get statistics using combined dataset:
+        # path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
+        # data_mean, data_std = bfs.get_data_statistics(
+        #         path_to_vtk, 
+        #         multiple_cases = True)
 
-        # ~~~~ BFS
+        # # Load rollout dataset
+        # filenames = ['Backward_Facing_Step_Cropped_Re_26214.vtk', 
+        #              'Backward_Facing_Step_Cropped_Re_29307.vtk', 
+        #              'Backward_Facing_Step_Cropped_Re_39076.vtk', 
+        #              'Backward_Facing_Step_Cropped_Re_45589.vtk'] 
+        # train_dataset = []
+        # test_dataset = []
+        # for f in filenames: 
+        #     path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/%s' %(f)
 
+        #     train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data(
+        #         path_to_vtk, 
+        #         self.cfg.path_to_ei, 
+        #         self.cfg.path_to_ea,
+        #         self.cfg.path_to_pos, 
+        #         device_for_loading, 
+        #         self.cfg.use_radius,
+        #         time_lag = self.cfg.rollout_steps,
+        #         scaling = [data_mean, data_std],
+        #         features_to_keep = [1,2], 
+        #         fraction_valid = 0.1, 
+        #         multiple_cases = False)
+        #     
+        #     train_dataset = train_dataset + train_dataset_temp
+        #     test_dataset = test_dataset + test_dataset_temp
+        
+        # ~~~~ BFS: FULL-GEOM
         # Get statistics using combined dataset:
-        path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
-        data_mean, data_std = bfs.get_data_statistics(
-                path_to_vtk, 
-                multiple_cases = True)
+        stats = np.load(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/stats.npz')
+        data_mean = stats['mean']
+        data_std = stats['std']
 
         # Load rollout dataset
-        filenames = ['Backward_Facing_Step_Cropped_Re_26214.vtk', 
-                     'Backward_Facing_Step_Cropped_Re_29307.vtk', 
-                     'Backward_Facing_Step_Cropped_Re_39076.vtk', 
-                     'Backward_Facing_Step_Cropped_Re_45589.vtk'] 
+        filenames = [] # this contains the vtk locations 
+        filenames = os.listdir(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
+        filenames = [item for item in filenames if 'Re_' in item]
+
+        print(filenames)
+
         train_dataset = []
         test_dataset = []
-        for f in filenames: 
-            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/%s' %(f)
+        for item in filenames: 
+            print('loading %s...' %(item))
+            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/' + item + '/VTK/Backward_Facing_Step_0_final_smooth.vtk' 
 
             train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data(
                 path_to_vtk, 
@@ -447,7 +475,7 @@ class Trainer:
             
             train_dataset = train_dataset + train_dataset_temp
             test_dataset = test_dataset + test_dataset_temp
-        
+
         self.bounding_box = train_dataset[0].bounding_box
 
         # DDP: use DistributedSampler to partition training data
@@ -728,129 +756,129 @@ def train(cfg: DictConfig):
     trainer = Trainer(cfg)
     epoch_times = []
 
-    for epoch in range(trainer.epoch_start, cfg.epochs+1):
-        # ~~~~ Training step 
-        t0 = time.time()
-        trainer.epoch = epoch
-        train_metrics = trainer.train_epoch(epoch)
-        trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
-        trainer.loss_hist_train_comp1[epoch-1] = train_metrics["comp1"]
-        trainer.loss_hist_train_comp2[epoch-1] = train_metrics["comp2"]
+    # ~~~~ # for epoch in range(trainer.epoch_start, cfg.epochs+1):
+    # ~~~~ #     # ~~~~ Training step 
+    # ~~~~ #     t0 = time.time()
+    # ~~~~ #     trainer.epoch = epoch
+    # ~~~~ #     train_metrics = trainer.train_epoch(epoch)
+    # ~~~~ #     trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
+    # ~~~~ #     trainer.loss_hist_train_comp1[epoch-1] = train_metrics["comp1"]
+    # ~~~~ #     trainer.loss_hist_train_comp2[epoch-1] = train_metrics["comp2"]
 
-        epoch_time = time.time() - t0
-        epoch_times.append(epoch_time)
+    # ~~~~ #     epoch_time = time.time() - t0
+    # ~~~~ #     epoch_times.append(epoch_time)
 
-        # ~~~~ Validation step
-        test_metrics = trainer.test()
-        trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
-        trainer.loss_hist_test_comp1[epoch-1] = test_metrics["comp1"]
-        trainer.loss_hist_test_comp2[epoch-1] = test_metrics["comp2"]
+    # ~~~~ #     # ~~~~ Validation step
+    # ~~~~ #     test_metrics = trainer.test()
+    # ~~~~ #     trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+    # ~~~~ #     trainer.loss_hist_test_comp1[epoch-1] = test_metrics["comp1"]
+    # ~~~~ #     trainer.loss_hist_test_comp2[epoch-1] = test_metrics["comp2"]
 
-        if RANK == 0:
-            astr = f'[TEST] loss={test_metrics["loss"]:.4e}\tcomp1={test_metrics["comp1"]:.4e}\tcomp2={test_metrics["comp2"]:.4e}'
-            sepstr = '-' * len(astr)
-            log.info(sepstr)
-            log.info(astr)
-            log.info(sepstr)
-            summary = '  '.join([
-                '[TRAIN]',
-                f'loss={train_metrics["loss"]:.4e}',
-                f'comp1={train_metrics["comp1"]:.4e}',
-                f'comp2={train_metrics["comp2"]:.4e}',
-                f'epoch_time={epoch_time:.4g} sec'
-            ])
-            log.info((sep := '-' * len(summary)))
-            log.info(summary)
-            log.info(sep)
+    # ~~~~ #     if RANK == 0:
+    # ~~~~ #         astr = f'[TEST] loss={test_metrics["loss"]:.4e}\tcomp1={test_metrics["comp1"]:.4e}\tcomp2={test_metrics["comp2"]:.4e}'
+    # ~~~~ #         sepstr = '-' * len(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         log.info(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         summary = '  '.join([
+    # ~~~~ #             '[TRAIN]',
+    # ~~~~ #             f'loss={train_metrics["loss"]:.4e}',
+    # ~~~~ #             f'comp1={train_metrics["comp1"]:.4e}',
+    # ~~~~ #             f'comp2={train_metrics["comp2"]:.4e}',
+    # ~~~~ #             f'epoch_time={epoch_time:.4g} sec'
+    # ~~~~ #         ])
+    # ~~~~ #         log.info((sep := '-' * len(summary)))
+    # ~~~~ #         log.info(summary)
+    # ~~~~ #         log.info(sep)
 
 
-        # ~~~~ Step scheduler based on validation loss
-        trainer.scheduler.step(test_metrics["loss"])
+    # ~~~~ #     # ~~~~ Step scheduler based on validation loss
+    # ~~~~ #     trainer.scheduler.step(test_metrics["loss"])
 
-        # ~~~~ Checkpointing step 
-        if epoch % cfg.ckptfreq == 0 and RANK == 0:
-            astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
-            sepstr = '-' * len(astr)
-            log.info(sepstr)
-            log.info(astr)
-            log.info(sepstr)
+    # ~~~~ #     # ~~~~ Checkpointing step 
+    # ~~~~ #     if epoch % cfg.ckptfreq == 0 and RANK == 0:
+    # ~~~~ #         astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
+    # ~~~~ #         sepstr = '-' * len(astr)
+    # ~~~~ #         log.info(sepstr)
+    # ~~~~ #         log.info(astr)
+    # ~~~~ #         log.info(sepstr)
 
-            if not os.path.exists(cfg.ckpt_dir):
-                os.makedirs(cfg.ckpt_dir)
-           
-            if WITH_DDP and SIZE > 1:
-                ckpt = {'epoch' : epoch, 
-                        'training_iter' : trainer.training_iter,
-                        'model_state_dict' : trainer.model.module.state_dict(), 
-                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
-                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
-                        'loss_hist_test' : trainer.loss_hist_test, 
-                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
-                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
-                        'current_rollout_steps' : trainer.current_rollout_steps}
-            else:
-                ckpt = {'epoch' : epoch, 
-                        'training_iter' : trainer.training_iter,
-                        'model_state_dict' : trainer.model.state_dict(), 
-                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
-                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
-                        'loss_hist_test' : trainer.loss_hist_test, 
-                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
-                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
-                        'current_rollout_steps' : trainer.current_rollout_steps}
+    # ~~~~ #         if not os.path.exists(cfg.ckpt_dir):
+    # ~~~~ #             os.makedirs(cfg.ckpt_dir)
+    # ~~~~ #        
+    # ~~~~ #         if WITH_DDP and SIZE > 1:
+    # ~~~~ #             ckpt = {'epoch' : epoch, 
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'model_state_dict' : trainer.model.module.state_dict(), 
+    # ~~~~ #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+    # ~~~~ #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+    # ~~~~ #                     'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test, 
+    # ~~~~ #                     'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
+    # ~~~~ #                     'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps}
+    # ~~~~ #         else:
+    # ~~~~ #             ckpt = {'epoch' : epoch, 
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'model_state_dict' : trainer.model.state_dict(), 
+    # ~~~~ #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+    # ~~~~ #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+    # ~~~~ #                     'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test, 
+    # ~~~~ #                     'loss_hist_test_comp1' : trainer.loss_hist_test_comp1, 
+    # ~~~~ #                     'loss_hist_test_comp2' : trainer.loss_hist_test_comp2, 
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps}
 
-            torch.save(ckpt, trainer.ckpt_path)
-        dist.barrier()
+    # ~~~~ #         torch.save(ckpt, trainer.ckpt_path)
+    # ~~~~ #     dist.barrier()
 
-    rstr = f'[{RANK}] ::'
-    log.info(' '.join([
-        rstr,
-        f'Total training time: {time.time() - start} seconds'
-    ]))
-    #log.info(' '.join([
-    #    rstr,
-    #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
-    #]))
+    # ~~~~ # rstr = f'[{RANK}] ::'
+    # ~~~~ # log.info(' '.join([
+    # ~~~~ #     rstr,
+    # ~~~~ #     f'Total training time: {time.time() - start} seconds'
+    # ~~~~ # ]))
+    # ~~~~ # #log.info(' '.join([
+    # ~~~~ # #    rstr,
+    # ~~~~ # #    f'Average time per epoch in the last 5: {np.mean(epoch_times[-5])}'
+    # ~~~~ # #]))
 
-    if RANK == 0:
-        if WITH_CUDA:  
-            trainer.model.to('cpu')
-        if not os.path.exists(cfg.model_dir):
-            os.makedirs(cfg.model_dir)
-        if WITH_DDP and SIZE > 1:
-            save_dict = {
-                        'state_dict' : trainer.model.module.state_dict(), 
-                        'input_dict' : trainer.model.module.input_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
-                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
-                        'loss_hist_test' : trainer.loss_hist_test,
-                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
-                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
-                        'training_iter' : trainer.training_iter,
-                        'current_rollout_steps' : trainer.current_rollout_steps
-                        }
-        else:
-            save_dict = {   
-                        'state_dict' : trainer.model.state_dict(), 
-                        'input_dict' : trainer.model.input_dict(),
-                        'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
-                        'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
-                        'loss_hist_test' : trainer.loss_hist_test,
-                        'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
-                        'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
-                        'training_iter' : trainer.training_iter,
-                        'current_rollout_steps' : trainer.current_rollout_steps
-                        }
+    # ~~~~ # if RANK == 0:
+    # ~~~~ #     if WITH_CUDA:  
+    # ~~~~ #         trainer.model.to('cpu')
+    # ~~~~ #     if not os.path.exists(cfg.model_dir):
+    # ~~~~ #         os.makedirs(cfg.model_dir)
+    # ~~~~ #     if WITH_DDP and SIZE > 1:
+    # ~~~~ #         save_dict = {
+    # ~~~~ #                     'state_dict' : trainer.model.module.state_dict(), 
+    # ~~~~ #                     'input_dict' : trainer.model.module.input_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+    # ~~~~ #                     'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test,
+    # ~~~~ #                     'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
+    # ~~~~ #                     'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps
+    # ~~~~ #                     }
+    # ~~~~ #     else:
+    # ~~~~ #         save_dict = {   
+    # ~~~~ #                     'state_dict' : trainer.model.state_dict(), 
+    # ~~~~ #                     'input_dict' : trainer.model.input_dict(),
+    # ~~~~ #                     'loss_hist_train' : trainer.loss_hist_train,
+    # ~~~~ #                     'loss_hist_train_comp1' : trainer.loss_hist_train_comp1,
+    # ~~~~ #                     'loss_hist_train_comp2' : trainer.loss_hist_train_comp2,
+    # ~~~~ #                     'loss_hist_test' : trainer.loss_hist_test,
+    # ~~~~ #                     'loss_hist_test_comp1' : trainer.loss_hist_test_comp1,
+    # ~~~~ #                     'loss_hist_test_comp2' : trainer.loss_hist_test_comp2,
+    # ~~~~ #                     'training_iter' : trainer.training_iter,
+    # ~~~~ #                     'current_rollout_steps' : trainer.current_rollout_steps
+    # ~~~~ #                     }
 
-        torch.save(save_dict, trainer.model_path)
+    # ~~~~ #     torch.save(save_dict, trainer.model_path)
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:

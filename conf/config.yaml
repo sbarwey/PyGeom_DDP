@@ -6,7 +6,7 @@
 #seed: 105
 seed: 122
 epochs: 300
-backend: nccl
+backend: gloo
 #lr_init: 0.0001
 lr_init: 0.00001
 # momentum: 0.5
@@ -58,6 +58,6 @@ model_dir: ${work_dir}/saved_models/
 #path_to_ea: ${work_dir}/datasets/UNSTRUCTURED_MNIST/edge_attr
 #path_to_pos: ${work_dir}/datasets/UNSTRUCTURED_MNIST/pos
 
-path_to_ei: ${data_dir}/BACKWARD_FACING_STEP/edge_index
-path_to_ea: ${data_dir}/BACKWARD_FACING_STEP/edge_attr
-path_to_pos: ${data_dir}/BACKWARD_FACING_STEP/pos
+path_to_ei: ${data_dir}/BACKWARD_FACING_STEP/full/edge_index
+path_to_ea: ${data_dir}/BACKWARD_FACING_STEP/full/edge_attr
+path_to_pos: ${data_dir}/BACKWARD_FACING_STEP/full/pos

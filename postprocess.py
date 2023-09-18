@@ -124,11 +124,10 @@ dataset_dir = './datasets/BACKWARD_FACING_STEP/'
 
 # ~~~~ For making pygeom dataset from VTK
 # Get statistics using combined dataset:
-path_to_vtk = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
+path_to_vtk = 'datasets/BACKWARD_FACING_STEP/cropped/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
 data_mean, data_std = bfs.get_data_statistics(
         path_to_vtk,
         multiple_cases = True)
-
 
 seed_list = None
 
@@ -729,8 +728,6 @@ if 1 == 1:
 
     for modelpath in modelpath_list: 
 
-        modelpath = 'saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-
         p = torch.load(modelpath)
 
         input_dict = p['input_dict']
@@ -775,11 +772,11 @@ if 1 == 1:
 
         rollout_eval = 1 # where to evaluate the RMSE  
         use_radius = False
-        #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
-        vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214.vtk'
-        path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
-        path_to_ea = 'datasets/BACKWARD_FACING_STEP/edge_attr'
-        path_to_pos = 'datasets/BACKWARD_FACING_STEP/pos'
+        #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/cropped/Backward_Facing_Step_Cropped_Re_32564.vtk'
+        vtk_file_test = 'datasets/BACKWARD_FACING_STEP/cropped/Backward_Facing_Step_Cropped_Re_26214.vtk'
+        path_to_ei = 'datasets/BACKWARD_FACING_STEP/cropped/edge_index'
+        path_to_ea = 'datasets/BACKWARD_FACING_STEP/cropped/edge_attr'
+        path_to_pos = 'datasets/BACKWARD_FACING_STEP/cropped/pos'
         device_for_loading = device
 
         test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
