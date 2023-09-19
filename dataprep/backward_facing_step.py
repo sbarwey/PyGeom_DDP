@@ -69,6 +69,8 @@ def get_data_statistics(
 
     return [data_mean, data_std]
 
+
+
 def get_pygeom_dataset_cell_data(
         path_to_vtk : str, 
         path_to_ei : str, 
@@ -76,6 +78,7 @@ def get_pygeom_dataset_cell_data(
         path_to_pos : str, 
         device_for_loading : str,
         use_radius : bool,
+        time_skip : Optional[int] = 1,
         time_lag : Optional[int] = 1,
         scaling : Optional[list] = None,
         features_to_keep : Optional[list] = None, 
@@ -121,6 +124,13 @@ def get_pygeom_dataset_cell_data(
         n_features = len(field_names)
         n_snaps = len(time_vec)
         data_full_temp = np.reshape(data_full_temp, (n_cells, n_features, n_snaps), order='F')
+
+    # Timestep reduction 
+    # data_full_temp, time_vec, n_snaps 
+    data_full_temp = data_full_temp[:, :, ::time_skip]
+    time_vec = time_vec[::time_skip]
+    n_snaps = len(time_vec)
+    dt = time_vec[1:] - time_vec[:-1]
 
     # Do a dumb reshape
     data_full = np.zeros((n_snaps, n_cells, n_features), dtype=np.float32)
@@ -364,4 +374,3 @@ def get_pygeom_dataset_cell_data(
     # print('\n')
 
     return data_train_list, data_valid_list
-
