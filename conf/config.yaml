@@ -20,6 +20,9 @@ test_batch_size: 1
 fp16_allreduce: False
 restart: False
 
+# GNN timestep factor
+gnn_dt: 1
+
 # Loss function parameters 
 rollout_steps: 1
 use_rollout_schedule : False

@@ -329,7 +329,7 @@ if 1 == 1:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -343,12 +343,12 @@ if 1 == 0:
         mse_mask_list = []
         mse_full_list = []
         for seed in seed_list:
-            mse_mask = np.load('outputs/postproc/budget_data/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            #mse_mask = np.load('outputs/postproc/budget_data/mse_mask_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_mask = np.load('outputs/postproc/budget_without_reg/mse_mask_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_mask = np.load('outputs/postproc/budget_with_reg/mse_mask_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_mask_list.append(mse_mask)
 
-            mse_full = np.load('outputs/postproc/budget_data/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
-            #mse_full = np.load('outputs/postproc/budget_data/mse_full_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            #mse_full = np.load('outputs/postproc/budget_without_reg/mse_full_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
+            mse_full = np.load('outputs/postproc/budget_with_reg/mse_full_NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.npy' %(seed))[:, 2:, :]
             mse_full_list.append(mse_full)
         
         rollout_id = 0
@@ -379,20 +379,20 @@ if 1 == 0:
 
 
         # Just plot one 
-        seed_id = 0
-        fig, ax = plt.subplots()
-        for comp in range(2):
-            mse_full = mse_full_list[seed_id][rollout_id,:,comp]
-            mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
-            mse_not_mask = mse_full - mse_mask
-            percent_mask = (mse_mask/mse_full)*100
-            percent_not_mask = (mse_not_mask/mse_full)*100
-            ax.plot(percent_mask)
-        ax.set_title('Seed = %d' %(seed_list[seed_id]))
-        ax.set_ylim([0,100])
-        ax.set_ylabel('MSE Budget [%]')
-        ax.set_xlabel('Time Step')
-        plt.show(block=False)
+        for seed_id in range(len(seed_list)):
+            fig, ax = plt.subplots()
+            for comp in range(2):
+                mse_full = mse_full_list[seed_id][rollout_id,:,comp]
+                mse_mask = mse_mask_list[seed_id][rollout_id,:,comp]
+                mse_not_mask = mse_full - mse_mask
+                percent_mask = (mse_mask/mse_full)*100
+                percent_not_mask = (mse_not_mask/mse_full)*100
+                ax.plot(percent_mask)
+            ax.set_title('Seed = %d' %(seed_list[seed_id]))
+            ax.set_ylim([0,100])
+            ax.set_ylabel('MSE Budget [%]')
+            ax.set_xlabel('Time Step')
+            plt.show(block=False)
 
 
     # Write data: 
@@ -711,7 +711,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions...')
 
     # Modelpath list :

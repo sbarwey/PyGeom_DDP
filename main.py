@@ -443,14 +443,14 @@ class Trainer:
         
         # ~~~~ BFS: FULL-GEOM
         # Get statistics using combined dataset:
-        stats = np.load(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/3_cases/stats.npz')
+        stats = np.load(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/stats.npz')
         data_mean = stats['mean']
         data_std = stats['std']
 
         # Load rollout dataset
         filenames = [] # this contains the vtk locations 
-        filenames = os.listdir(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/3_cases/')
-        filenames = [item for item in filenames if 'Re_' in item]
+        filenames = os.listdir(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
+        filenames = sorted([item for item in filenames if 'Re_' in item])
 
         print(filenames)
 
@@ -459,7 +459,7 @@ class Trainer:
         for item in filenames: 
             if RANK == 0: 
                 print('loading %s...' %(item))
-            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/3_cases/' + item + '/VTK/Backward_Facing_Step_0_final_smooth.vtk' 
+            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/' + item + '/VTK/Backward_Facing_Step_0_final_smooth.vtk' 
 
             train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data(
                 path_to_vtk, 
@@ -468,13 +468,17 @@ class Trainer:
                 self.cfg.path_to_pos, 
                 device_for_loading, 
                 self.cfg.use_radius,
-                time_skip = 1,
+                time_skip = self.cfg.gnn_dt,
                 time_lag = self.cfg.rollout_steps,
                 scaling = [data_mean, data_std],
                 features_to_keep = [1,2], 
                 fraction_valid = 0.1, 
                 multiple_cases = False)
             
+            if RANK == 0:
+                print('\tnumber of training graphs: %d' %(len(train_dataset_temp)))
+                print('\tnumber of validation graphs: %d' %(len(test_dataset_temp)))
+
             train_dataset = train_dataset + train_dataset_temp
             test_dataset = test_dataset + test_dataset_temp
 

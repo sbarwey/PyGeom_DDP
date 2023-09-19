@@ -188,18 +188,24 @@ def get_pygeom_dataset_cell_data(
     n_snaps = data_full.shape[0] - time_lag
     data_x = [] 
     data_y = []
+    time_y = []
     for i in range(n_snaps): 
         data_x.append([data_full[i]]) 
         if time_lag == 0:
             y_temp = [data_full[i]]
+            time_temp = [time_vec[i]]
         else:
             y_temp = []
+            time_temp = [] 
             for t in range(1, time_lag+1):
                 y_temp.append(data_full[i+t])
+                time_temp.append(time_vec[i+t])
         data_y.append(y_temp)
+        time_y.append(time_temp)
     
     data_x = np.array(data_x) # shape: [n_snaps, 1, n_nodes, n_features]
     data_y = np.array(data_y) # shape: [n_snaps, time_lag, n_nodes, n_features]
+    time_y = np.array(time_y) # shape: [n_snaps, time_lag] 
 
     if time_lag > 0:
         time_vec = time_vec[:-time_lag] 
@@ -232,6 +238,9 @@ def get_pygeom_dataset_cell_data(
         time_vec_train = time_vec[idx_train]
         time_vec_valid = time_vec[idx_valid]
 
+        time_y_train = time_y[idx_train]
+        time_y_valid = time_y[idx_valid]
+
         n_train = n_full - n_valid
     else:
         data_x_train = data_x
@@ -239,6 +248,9 @@ def get_pygeom_dataset_cell_data(
         data_x_valid = None
         data_y_valid = None
         time_vec_train = time_vec
+        time_vec_valid = time_vec
+        time_y_train = time_y
+        time_y_valid = time_y
         n_full = n_snaps
         n_valid = 0
         n_train = n_full
@@ -285,10 +297,12 @@ def get_pygeom_dataset_cell_data(
     data_x_train = torch.tensor(data_x_train)
     data_y_train = torch.tensor(data_y_train)
     time_vec_train = torch.tensor(time_vec_train)
+    time_y_train = torch.tensor(time_y_train)
     if fraction_valid > 0:
         data_x_valid = torch.tensor(data_x_valid)
         data_y_valid = torch.tensor(data_y_valid)
         time_vec_valid = torch.tensor(time_vec_valid)
+        time_y_valid = torch.tensor(time_y_valid)
     
     edge_index = torch.tensor(edge_index)
     edge_attr = torch.tensor(edge_attr)
@@ -335,7 +349,8 @@ def get_pygeom_dataset_cell_data(
                             bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
                             data_scale = (data_train_mean, data_train_std),
                             edge_scale = (edge_attr_mean, edge_attr_std),
-                            t = time_vec_train[i],
+                            t_x = time_vec_train[i],
+                            t_y = time_y_train[i],
                             field_names = field_names)
         data_temp = data_temp.to(device_for_loading)
         data_train_list.append(data_temp)
@@ -360,7 +375,8 @@ def get_pygeom_dataset_cell_data(
                                 bounding_box = [pos[:,0].min(), pos[:,0].max(), pos[:,1].min(), pos[:,1].max()],
                                 data_scale = (data_train_mean, data_train_std),
                                 edge_scale = (edge_attr_mean, edge_attr_std),
-                                t = time_vec_valid[i],
+                                t_x = time_vec_valid[i],
+                                t_y = time_y_valid[i],
                                 field_names = field_names)
             data_temp = data_temp.to(device_for_loading)
             data_valid_list.append(data_temp)
