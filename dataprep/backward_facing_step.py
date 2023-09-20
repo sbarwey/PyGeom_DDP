@@ -294,13 +294,13 @@ def get_pygeom_dataset_cell_data(
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Make pyGeom dataset 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    data_x_train = torch.tensor(data_x_train)
-    data_y_train = torch.tensor(data_y_train)
+    data_x_train = torch.tensor(data_x_train, dtype=torch.float32)
+    data_y_train = torch.tensor(data_y_train, dtype=torch.float32)
     time_vec_train = torch.tensor(time_vec_train)
     time_y_train = torch.tensor(time_y_train)
     if fraction_valid > 0:
-        data_x_valid = torch.tensor(data_x_valid)
-        data_y_valid = torch.tensor(data_y_valid)
+        data_x_valid = torch.tensor(data_x_valid, dtype=torch.float32)
+        data_y_valid = torch.tensor(data_y_valid, dtype=torch.float32)
         time_vec_valid = torch.tensor(time_vec_valid)
         time_y_valid = torch.tensor(time_y_valid)
     
