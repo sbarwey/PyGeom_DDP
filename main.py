@@ -286,10 +286,10 @@ class Trainer:
         if self.cfg.use_radius:
             preamble = '' 
         else:
-            preamble = 'BIGDATA_NO_RADIUS_LR_1em5_'
+            preamble = 'BIGDATA_NO_NOISE_NO_RADIUS_LR_1em5_'
 
         if self.cfg.mask_regularization:
-            preamble += 'BIGDATA_BUDGET_REG_VERIF'
+            preamble += 'BIGDATA_NO_NOISE_BUDGET_REG_'
 
         modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
         #modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
@@ -452,7 +452,7 @@ class Trainer:
         filenames = os.listdir(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
         filenames = sorted([item for item in filenames if 'Re_' in item])
 
-        filenames = filenames[:1]
+        filenames = filenames[::2]
 
         train_dataset = []
         test_dataset = []
@@ -472,7 +472,7 @@ class Trainer:
                 time_lag = self.cfg.rollout_steps,
                 scaling = [data_mean, data_std],
                 features_to_keep = [1,2], 
-                fraction_valid = 0.1, 
+                fraction_valid = 0.05, 
                 multiple_cases = False)
             
             if RANK == 0:
@@ -735,7 +735,6 @@ class Trainer:
                         loss += loss_scale * self.loss_fn(x_new, target)
 
 
-
                 running_loss += loss.item()
                 running_loss_dict['comp1'] += loss_dict['comp1'].item()
                 running_loss_dict['comp2'] += loss_dict['comp2'].item()
@@ -762,6 +761,7 @@ def train(cfg: DictConfig):
     start = time.time()
     trainer = Trainer(cfg)
     epoch_times = []
+    valid_times = []
 
     for epoch in range(trainer.epoch_start, cfg.epochs+1):
         # ~~~~ Training step 
@@ -776,10 +776,14 @@ def train(cfg: DictConfig):
         epoch_times.append(epoch_time)
 
         # ~~~~ Validation step
+        t0 = time.time()
         test_metrics = trainer.test()
         trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
         trainer.loss_hist_test_comp1[epoch-1] = test_metrics["comp1"]
         trainer.loss_hist_test_comp2[epoch-1] = test_metrics["comp2"]
+        valid_time = time.time() - t0
+        valid_times.append(valid_time)
+
 
         if RANK == 0:
             astr = f'[TEST] loss={test_metrics["loss"]:.4e}\tcomp1={test_metrics["comp1"]:.4e}\tcomp2={test_metrics["comp2"]:.4e}'
@@ -793,6 +797,7 @@ def train(cfg: DictConfig):
                 f'comp1={train_metrics["comp1"]:.4e}',
                 f'comp2={train_metrics["comp2"]:.4e}',
                 f'epoch_time={epoch_time:.4g} sec'
+                f' valid_time={valid_time:.4g} sec'
             ])
             log.info((sep := '-' * len(summary)))
             log.info(summary)

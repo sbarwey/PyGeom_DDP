@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of integers
-seeds=(42)
+seeds=(82)
 #seeds=(42 65 82 105 122 132 142 152 162 172) 
 #seeds=(142 152 162 172)
 #seeds=(182 192 202 212 222) 

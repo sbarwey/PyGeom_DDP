@@ -5,23 +5,23 @@
 #seed: 82
 #seed: 105
 seed: 122
-epochs: 300
+epochs: 100
 backend: nccl
 #lr_init: 0.0001
 lr_init: 0.00001
 # momentum: 0.5
 use_radius : False
-use_noise : True
+use_noise : False
 num_threads: 0
 logfreq: 10
 ckptfreq: 5
 batch_size: 2
-test_batch_size: 1
+test_batch_size: 2
 fp16_allreduce: False
 restart: False
 
 # GNN timestep factor
-gnn_dt: 100
+gnn_dt: 1
 
 # Loss function parameters 
 rollout_steps: 1
