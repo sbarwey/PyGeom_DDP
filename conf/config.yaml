@@ -11,7 +11,7 @@ backend: nccl
 lr_init: 0.00001
 # momentum: 0.5
 use_radius : False
-use_noise : False
+use_noise : True
 num_threads: 0
 logfreq: 10
 ckptfreq: 5
@@ -21,7 +21,7 @@ fp16_allreduce: False
 restart: False
 
 # GNN timestep factor
-gnn_dt: 1
+gnn_dt: 10
 
 # Loss function parameters 
 rollout_steps: 1
