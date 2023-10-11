@@ -40,4 +40,4 @@ mpiexec \
 	--ppn $NGPUS_PER_NODE \
 	--hostfile="${PBS_NODEFILE}" \
     --cpu-bind none \
-	./set_affinity_gpu_polaris.sh python3 main.py seed=82 use_noise=True
+	./set_affinity_gpu_polaris.sh python3 main.py seed=65 use_noise=False baseline_modelpath=/lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar

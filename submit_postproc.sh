@@ -1,7 +1,7 @@
 #!/bin/sh
 #PBS -l select=1:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=0:40:00
+#PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
 #PBS -q debug
 #PBS -A datascience
@@ -30,4 +30,4 @@ NGPUS="$((${NUM_NODES}*${NGPUS_PER_NODE}))"
 echo $NUM_NODES $NGPUS_PER_NODE $NGPUS
 
 # run 
-python postprocess.py
+python postprocess.py 

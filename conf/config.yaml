@@ -5,7 +5,7 @@
 #seed: 82
 #seed: 105
 seed: 122
-epochs: 100
+epochs: 300
 backend: nccl
 #lr_init: 0.0001
 lr_init: 0.00001
@@ -18,7 +18,7 @@ ckptfreq: 5
 batch_size: 2
 test_batch_size: 2
 fp16_allreduce: False
-restart: False
+restart: True
 
 # GNN timestep factor
 gnn_dt: 10
@@ -27,6 +27,9 @@ gnn_dt: 10
 rollout_steps: 1
 use_rollout_schedule : False
 mask_regularization : False
+
+# baseline model path
+baseline_modelpath : ${work_dir}/saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar
 
 hydra:
   job:
