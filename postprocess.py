@@ -303,7 +303,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -617,7 +617,6 @@ if 1 == 1:
                 t_re = time.time() - t_re
                 print('\t\t took %g sec' %(t_re))
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -903,7 +902,201 @@ if 1 == 0:
                 print('Saved at: %s' %(savepath + '/%s.npy' %(model.get_save_header())))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Write model predictions
+# Write model predictions -- Focus on effect of Re (big data)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 1:
+    print('Write model predictions...')
+
+    header_list = ['baseline', 'no_budget_reg', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01']
+
+    for header in header_list: 
+        
+        modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
+
+        temp = os.listdir(modelpath)
+
+        modelpath_list = [modelpath + '/' + item for item in temp]
+
+        for modelpath in modelpath_list: 
+
+            p = torch.load(modelpath)
+
+            input_dict = p['input_dict']
+            print('input_dict: ', input_dict)
+
+            # with top-k, no reduction
+            model = gnn.GNN_TopK_NoReduction(
+                    in_channels_node = input_dict['in_channels_node'],
+                    in_channels_edge = input_dict['in_channels_edge'],
+                    hidden_channels = input_dict['hidden_channels'],
+                    out_channels = input_dict['out_channels'], 
+                    n_mlp_encode = input_dict['n_mlp_encode'], 
+                    n_mlp_mp = input_dict['n_mlp_mp'],
+                    n_mp_down_topk = input_dict['n_mp_down_topk'],
+                    n_mp_up_topk = input_dict['n_mp_up_topk'],
+                    pool_ratios = input_dict['pool_ratios'], 
+                    n_mp_down_enc = input_dict['n_mp_down_enc'], 
+                    n_mp_up_enc = input_dict['n_mp_up_enc'], 
+                    n_mp_down_dec = input_dict['n_mp_down_dec'], 
+                    n_mp_up_dec = input_dict['n_mp_up_dec'], 
+                    lengthscales_enc = input_dict['lengthscales_enc'],
+                    lengthscales_dec = input_dict['lengthscales_dec'], 
+                    bounding_box = input_dict['bounding_box'], 
+                    interpolation_mode = input_dict['interp'], 
+                    act = input_dict['act'], 
+                    param_sharing = input_dict['param_sharing'],
+                    filter_lengthscale = input_dict['filter_lengthscale'], 
+                    name = input_dict['name'])
+
+            model.load_state_dict(p['state_dict'])
+            model.eval()
+            model_save_header = model.get_save_header()
+
+            # Load dataset 
+            if torch.cuda.is_available():
+                device = 'cuda:0'
+            else:
+                device = 'cpu'
+
+            rollout_eval = 1 # where to evaluate the RMSE  
+
+            # ~~~~~~~~~~~~~~~~~~~~~~~~ LOAD DATA ~~~~~~~~~~~~~~~~~~~~~~~~
+            # Loading the new (big) data: 
+            Re_list = [] # this contains the vtk locations
+            data_dir = './datasets'
+            Re_list = os.listdir(data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
+            Re_list = sorted([item for item in Re_list if 'Re_' in item])
+
+            for Re_str in Re_list:
+                print('\t%s' %(Re_str))
+                path_to_vtk_test = data_dir + '/BACKWARD_FACING_STEP/full/20_cases/' + Re_str + '/VTK/Backward_Facing_Step_0_final_smooth.vtk'
+
+                path_to_ei = data_dir + '/BACKWARD_FACING_STEP/full/edge_index'
+                path_to_ea = data_dir + '/BACKWARD_FACING_STEP/full/edge_attr'
+                path_to_pos = data_dir + '/BACKWARD_FACING_STEP/full/pos'
+                device_for_loading = device
+                use_radius = False
+                gnn_dt = 10
+                rollout_eval = 1
+                rollout_steps = rollout_eval
+                test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
+                    path_to_vtk_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    use_radius,
+                    time_skip = gnn_dt,
+                    time_lag = rollout_steps,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+
+            
+                # Update save directory with trajectory index. This is where openfoam cases will be saved. 
+                save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/%s' %(Re_str,header)
+
+                if not  os.path.exists(save_dir + '/' + model_save_header):
+                    os.makedirs(save_dir + '/' + model_save_header)
+
+                # Get input 
+                n_nodes =  test_dataset[0].x.shape[0]
+                n_features = test_dataset[0].x.shape[1]
+                field_names = ['ux', 'uy']
+                #u_vec_target = np.zeros((n_nodes,3))
+                #u_vec_pred = np.zeros((n_nodes,3))
+
+                ic_index = 0
+                x_new = test_dataset[ic_index].x
+                for i in range(ic_index,len(test_dataset)):
+                    print('[%d/%d]' %(i+1, len(test_dataset)))
+                    data = test_dataset[i]
+
+                    # Get time 
+                    time_value = data.t_x.item()
+
+                    # Get single step prediction
+                    print('\tSingle step...')
+                    x_src, mask_singlestep = model.forward(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_new_singlestep = data.x + x_src
+
+                    # Get rollout prediction
+                    print('\tRollout step...')
+                    x_old = torch.clone(x_new)
+                    x_src, mask_rollout = model.forward(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_new = x_old + x_src
+                    target = data.y[0]
+
+                    # unscale target and prediction 
+                    mean_i = data.data_scale[0].reshape((1,n_features))
+                    std_i = data.data_scale[1].reshape((1,n_features))
+                    x_old_unscaled = x_old * std_i + mean_i
+                    x_new_unscaled = x_new * std_i + mean_i
+                    x_new_singlestep_unscaled = x_new_singlestep * std_i + mean_i
+                    target_unscaled = target * std_i + mean_i
+
+                    print('\tRollout error...')
+                    error_rollout = x_new_unscaled  - target_unscaled
+                    error_singlestep = x_new_singlestep_unscaled - target_unscaled
+                    
+                    # Create time folder 
+                    time_folder = save_dir + '/' + model_save_header + '/' + '%g' %(time_value)
+                    if not os.path.exists(time_folder):
+                        os.makedirs(time_folder)
+
+                    # Write data to time folder 
+                    for f in range(n_features):
+
+                        # Prediction singlestep   
+                        field_name = '%s_pred_singlestep' %(field_names[f])
+                        scalar2openfoam(x_new_singlestep_unscaled[:,f].numpy(), 
+                                        time_folder+'/%s' %(field_name), field_name, time_value)
+
+
+                        # Prediction rollout
+                        field_name = '%s_pred_rollout' %(field_names[f])
+                        scalar2openfoam(x_new_unscaled[:,f].numpy(), 
+                                        time_folder+'/%s' %(field_name), field_name, time_value)
+
+                        # Target 
+                        field_name = '%s_target' %(field_names[f])
+                        scalar2openfoam(target_unscaled[:,f].numpy(), 
+                                        time_folder+'/%s' %(field_name), field_name, time_value)
+
+                        # Error rollout  
+                        field_name = '%s_error_rollout' %(field_names[f])
+                        scalar2openfoam(error_rollout[:,f].numpy(), 
+                                        time_folder+'/%s' %(field_name), field_name, time_value)
+
+                        # Error singlestep  
+                        field_name = '%s_error_singlestep' %(field_names[f])
+                        scalar2openfoam(error_singlestep[:,f].numpy(), 
+                                        time_folder+'/%s' %(field_name), field_name, time_value)
+
+
+                    # # Velocity vector
+                    # u_vec_target[:,:2] = target[:,:]
+                    # u_vec_pred[:,:2] = pred[:,:]
+                    # u_vec_error = pred - target
+
+                    # field_name = 'U_target'
+                    # array2openfoam(u_vec_target,  time_folder+'/%s' %(field_name), field_name, time_value)
+
+                    # field_name = 'U_pred'
+                    # array2openfoam(u_vec_pred,  time_folder+'/%s' %(field_name), field_name, time_value)
+
+                    # mask singlestep
+                    field_name = 'mask_singlestep'
+                    scalar2openfoam(mask_singlestep.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+
+                    # mask rollout
+                    field_name = 'mask_rollout'
+                    scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Write model predictions -- Focus on effect of seeding (small data)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
     print('Write model predictions...')
@@ -1090,7 +1283,6 @@ if 1 == 0:
             # mask rollout
             field_name = 'mask_rollout'
             scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot time evolution at the sensors
