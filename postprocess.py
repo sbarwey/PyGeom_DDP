@@ -536,6 +536,7 @@ if 1 == 1:
             filenames = os.listdir(data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
             filenames = sorted([item for item in filenames if 'Re_' in item])
 
+            filenames = filenames[:2]
 
             for Re_str in filenames:
                 print('\t%s' %(Re_str))
@@ -574,12 +575,13 @@ if 1 == 1:
                     mse_full.append(np.zeros((N,2))) # 2 components for ux, uy
                     mse_mask.append(np.zeros((N,2))) # 2 components for ux, uy
 
+                t_re = time.time()
                 for i in range(N): 
-                    print('\t\tSnapshot %d/%d' %(i+1, N))
+                    #print('\t\tSnapshot %d/%d' %(i+1, N))
                     data = dataset_eval[i]
                     x_new = data.x
                     for t in range(rollout_eval):
-                        print('\t\t\tRollout %d/%d' %(t+1, rollout_eval))
+                        #print('\t\t\tRollout %d/%d' %(t+1, rollout_eval))
 
                         # Get prediction
                         x_old = torch.clone(x_new)
@@ -603,6 +605,7 @@ if 1 == 1:
                         mse_mask[t][i][0] = mse_mask_0 
                         mse_mask[t][i][1] = mse_mask_1 
 
+                
                 # Save mse data
                 savepath = './outputs/postproc/big_data/%s/%s' %(desc, Re_str)
                 if not os.path.exists(savepath):
@@ -610,6 +613,9 @@ if 1 == 1:
 
                 np.save(savepath + '/mse_full_%s.npy' %(model_topk.get_save_header()), mse_full)
                 np.save(savepath + '/mse_mask_%s.npy' %(model_topk.get_save_header()), mse_mask)
+                
+                t_re = time.time() - t_re
+                print('\t\t took %g sec' %(t_re))
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

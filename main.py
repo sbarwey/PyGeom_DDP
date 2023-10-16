@@ -493,7 +493,7 @@ class Trainer:
         loss_dict = {}
         loss_dict['comp1'] = torch.tensor([0.0])
         loss_dict['comp2'] = torch.tensor([0.0])
-        loss_dict['lam'] = torch.tensor([0.01])
+        loss_dict['lam'] = torch.tensor([0.0001])
 
         if WITH_CUDA:
             data.x = data.x.cuda()
@@ -656,7 +656,7 @@ class Trainer:
                 loss_dict = {}
                 loss_dict['comp1'] = torch.tensor([0.0])
                 loss_dict['comp2'] = torch.tensor([0.0])
-                loss_dict['lam'] = torch.tensor([0.01])
+                loss_dict['lam'] = torch.tensor([0.0001])
 
                 if WITH_CUDA:
                     data.x = data.x.cuda()
