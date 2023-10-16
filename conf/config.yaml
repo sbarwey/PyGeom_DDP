@@ -18,18 +18,21 @@ ckptfreq: 5
 batch_size: 2
 test_batch_size: 2
 fp16_allreduce: False
-restart: True
+restart: False
 
 # GNN timestep factor
 gnn_dt: 10
 
+# Top-K reduction factor 
+topk_rf: 4
+
 # Loss function parameters 
 rollout_steps: 1
 use_rollout_schedule : False
-mask_regularization : False
+mask_regularization : True
 
 # baseline model path
-baseline_modelpath : ${work_dir}/saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar
+baseline_modelpath : ${work_dir}/saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar
 
 hydra:
   job:

@@ -7,7 +7,7 @@
 #PBS -q preemptable
 ##PBS -q debug
 #PBS -A datascience
-#PBS -N GNN_DDP_1
+#PBS -N GNN_DDP_4
 
 
 # Change to working directory
@@ -40,4 +40,4 @@ mpiexec \
 	--ppn $NGPUS_PER_NODE \
 	--hostfile="${PBS_NODEFILE}" \
     --cpu-bind none \
-	./set_affinity_gpu_polaris.sh python3 main.py seed=65 use_noise=True topk_rf=2 
+	./set_affinity_gpu_polaris.sh python3 main.py seed=65 use_noise=True topk_rf=4 

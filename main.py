@@ -255,9 +255,8 @@ class Trainer:
 
         #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
         modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
-        if RANK == 0:
-            log.info('NAME: ' + preamble + modelname)
 
+        topk_reduction_factor = self.cfg.topk_rf
         model = gnn.GNN_TopK_NoReduction(
                 in_channels_node = 2,
                 in_channels_edge = 3,
@@ -267,7 +266,7 @@ class Trainer:
                 n_mlp_mp = 2,
                 n_mp_down_topk = [1,1], # [2], #[1,1],
                 n_mp_up_topk = [1], #[], #[1],
-                pool_ratios = [1./4.],
+                pool_ratios = [1./topk_reduction_factor],
                 n_mp_down_enc = [2,2,2], # [4,4,4],
                 n_mp_up_enc = [2,2], # [4,4],
                 n_mp_down_dec = [2,2,2],
@@ -279,6 +278,10 @@ class Trainer:
                 act = F.elu,
                 param_sharing = False,
                 name = preamble + modelname)
+
+        if RANK == 0:
+            log.info('NAME: ' + preamble + modelname)
+            log.info('SAVE HEADER: ' + model.get_save_header())
 
         # ~~~~ FINE-TUNING: 
         # first, read a trained baseline model (a baseline model without top-k) 

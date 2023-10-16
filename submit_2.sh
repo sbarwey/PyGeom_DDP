@@ -1,13 +1,13 @@
 #!/bin/sh
 #PBS -l select=2:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=4:00:00
+#PBS -l walltime=8:00:00
 ##PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
 #PBS -q preemptable
 ##PBS -q debug
 #PBS -A datascience
-#PBS -N GNN_DDP
+#PBS -N GNN_DDP_2
 
 
 # Change to working directory
@@ -40,4 +40,4 @@ mpiexec \
 	--ppn $NGPUS_PER_NODE \
 	--hostfile="${PBS_NODEFILE}" \
     --cpu-bind none \
-	./set_affinity_gpu_polaris.sh python3 main.py seed=65 use_noise=True baseline_modelpath=/lus/eagle/projects/datascience/sbarwey/codes/ml/DDP_PyGeom/saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar
+	./set_affinity_gpu_polaris.sh python3 main.py seed=65 use_noise=True topk_rf=8 
