@@ -139,66 +139,85 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses (original)')
 
-    # New baseline 
-    a = torch.load('saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    a_label = 'Baseline, Big data, With Noise'
+    # # Comparing baselines:  
+    # a = torch.load('saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # a_label = 'Baseline, Big data, With Noise'
 
-    b = torch.load('saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
-    b_label = 'Baseline, Big data, No Noise'
+    # b = torch.load('saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar')
+    # b_label = 'Baseline, Big data, No Noise'
 
-    c = torch.load('saved_models/small_data/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') 
-    c_label = 'Baseline, Small Data, With Noise'
+    # c = torch.load('saved_models/small_data/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') 
+    # c_label = 'Baseline, Small Data, With Noise'
 
-    # # Plot losses:
-    # fig, ax = plt.subplots(1,4,sharey=False, sharex=True, figsize=(14,6))
-    # ax[0].plot(a['loss_hist_train'])
-    # ax[0].plot(a['loss_hist_test'])
-    # ax[0].set_yscale('log')
-    # #ax[0].set_ylim([5e-4, 1e-3])
-    # ax[0].set_ylabel('Loss')
-    # ax[0].set_xlabel('Epochs')
-    # #ax[0].set_title('1x MMP (rollout = 2)')
-    # ax[0].set_title(a_label)
+    # Comparing fine-tuning 
+    bl = torch.load('saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') 
+    bl_label = 'Baseline'
 
-    # ax[1].plot(b['loss_hist_train'], label='train')
-    # ax[1].plot(b['loss_hist_test'], label='valid')
-    # ax[1].set_yscale('log')
-    # ax[1].set_xlabel('Epochs')
-    # #ax[1].set_title('2x MMP (rollout = 2)')
-    # ax[1].set_title(b_label)
+    desc = 'no_budget_reg'
 
-    # ax[2].plot(c['loss_hist_train'])
-    # ax[2].plot(c['loss_hist_test'])
-    # ax[2].set_yscale('log')
-    # ax[2].set_xlim([0,300])
-    # ax[2].set_xlabel('Epochs')
-    # ax[2].set_title(c_label)
+    ft_2 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_2_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_2_label = 'Finetuned, RF=2'
 
-    # ax[3].plot(d['loss_hist_train'])
-    # ax[3].plot(d['loss_hist_test'])
-    # ax[3].set_yscale('log')
-    # ax[3].set_xlim([0,200])
-    # ax[3].set_xlabel('Epochs')
-    # ax[3].set_title(d_label)
+    ft_4 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_4_label = 'Finetuned, RF=4'
 
-    # plt.show(block=False)
+    ft_8 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_8_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_8_label = 'Finetuned, RF=8'
+
+    ft_16 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_16_label = 'Finetuned, RF=16'
+
+        
+    desc = 'budget_reg_lam_0.001'
+    ft_2_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_2_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_2_br_label = 'Finetuned, RF=2'
+
+    ft_4_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_4_br_label = 'Finetuned, RF=4'
+
+    ft_8_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_8_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_8_br_label = 'Finetuned, RF=8'
+
+    ft_16_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_16_br_label = 'Finetuned, RF=16'
 
     # Combined loss plot 
-    baseline_loss = np.mean(a['loss_hist_train'][-10:])
-    #combined = [b,c,d,e]
-    combined = [a,b,c]
+    baseline_loss = np.mean(bl['loss_hist_test'][-10:])
 
-    fig, ax = plt.subplots()
-    #ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
+
+    # No budget reg 
+    combined = [ft_2, ft_4, ft_8, ft_16]
+    labels = [ft_2_label, ft_4_label, ft_8_label, ft_16_label]
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
     for i in range(len(combined)):
-        ax.plot(combined[i]['loss_hist_train'][1:], lw=2)
-    ax.set_yscale('log')
+        ax.plot(combined[i]['loss_hist_test'][1:], lw=2, label=labels[i])
+    #ax.set_yscale('log')
     #ax.set_xscale('log')
     ax.set_ylabel('MSE')
     ax.set_xlabel('Epochs')
+    ax.legend(fancybox=False, edgecolor='black', framealpha=1)
+    ax.set_title('Validation Loss -- Lam = 0')
+    plt.show(block=False)
+
+    # With budget reg
+    combined = [ft_2_br, ft_4_br, ft_8_br, ft_16_br]
+    labels = [ft_2_br_label, ft_4_br_label, ft_8_br_label, ft_16_br_label]
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
+    for i in range(len(combined)):
+        ax.plot(combined[i]['loss_hist_test_comp2'][1:], lw=2, label=labels[i])
+    #ax.set_yscale('log')
+    #ax.set_xscale('log')
+    ax.set_ylabel('MSE')
+    ax.set_xlabel('Epochs')
+    #ax.legend(fancybox=False, edgecolor='black', framealpha=1)
+    ax.set_title('Validation Loss -- Lam = 0.001')
     plt.show(block=False)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -284,14 +303,14 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
         device = 'cpu'
 
     # Read data: 
-    if 1 == 1:
+    if 1 == 0:
         modelname_list = []
         #modelname_list = ['topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0']
 
@@ -349,41 +368,10 @@ if 1 == 0:
             ax.set_xlabel('Time Step')
             plt.show(block=False)
 
-
-    # Write data: 
+    # Write data, with focus on effect of seeding: 
     if 1 == 0: 
-        # Load baseline model 
-        modelpath_baseline = './saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
-        p = torch.load(modelpath_baseline)
-        input_dict = p['input_dict']
-        model_baseline = gnn.GNN_TopK_NoReduction(
-                    in_channels_node = input_dict['in_channels_node'],
-                    in_channels_edge = input_dict['in_channels_edge'],
-                    hidden_channels = input_dict['hidden_channels'],
-                    out_channels = input_dict['out_channels'], 
-                    n_mlp_encode = input_dict['n_mlp_encode'], 
-                    n_mlp_mp = input_dict['n_mlp_mp'],
-                    n_mp_down_topk = input_dict['n_mp_down_topk'],
-                    n_mp_up_topk = input_dict['n_mp_up_topk'],
-                    pool_ratios = input_dict['pool_ratios'], 
-                    n_mp_down_enc = input_dict['n_mp_down_enc'], 
-                    n_mp_up_enc = input_dict['n_mp_up_enc'], 
-                    n_mp_down_dec = input_dict['n_mp_down_dec'], 
-                    n_mp_up_dec = input_dict['n_mp_up_dec'], 
-                    lengthscales_enc = input_dict['lengthscales_enc'],
-                    lengthscales_dec = input_dict['lengthscales_dec'], 
-                    bounding_box = input_dict['bounding_box'], 
-                    interpolation_mode = input_dict['interp'], 
-                    act = input_dict['act'], 
-                    param_sharing = input_dict['param_sharing'],
-                    filter_lengthscale = input_dict['filter_lengthscale'], 
-                    name = input_dict['name'])
-        model_baseline.load_state_dict(p['state_dict'])
-        model_baseline.to(device)
-        model_baseline.eval()
-
+        print('Writing budget data, with focus on effect of seeding...')
         seed_list = [42, 65, 82, 105, 122, 132, 142, 152, 162, 172]
-
         for seed in seed_list:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('SEED %d' %(seed))
@@ -461,7 +449,6 @@ if 1 == 0:
 
                     # Get prediction
                     x_old = torch.clone(x_new)
-                    #x_src, _ = model_baseline(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_src, mask = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                     x_new = x_old + x_src
                     target = data.y[t]
@@ -493,10 +480,142 @@ if 1 == 0:
             np.save(savepath + '/mse_full_%s.npy' %(model_topk.get_save_header()), mse_full)
             np.save(savepath + '/mse_mask_%s.npy' %(model_topk.get_save_header()), mse_mask)
 
+
+    # Write data, no seeding effect, using new (larger) dataset: 
+    if 1 == 1: 
+        print('Writing budget data, using new (larger) dataset...')
+        
+        rf_list = [2,4,8,16]
+
+        for rf in rf_list:
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print('TOP-K RF %d' %(rf))
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+
+            #desc = 'no_budget_reg'
+            #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+
+            #desc = 'budget_reg_lam_0.001'
+            #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+
+            desc = 'budget_reg_lam_0.01'
+            modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+
+            p = torch.load(modelpath_topk)
+            input_dict = p['input_dict']
+            model_topk = gnn.GNN_TopK_NoReduction(
+                    in_channels_node = input_dict['in_channels_node'],
+                    in_channels_edge = input_dict['in_channels_edge'],
+                    hidden_channels = input_dict['hidden_channels'],
+                    out_channels = input_dict['out_channels'], 
+                    n_mlp_encode = input_dict['n_mlp_encode'], 
+                    n_mlp_mp = input_dict['n_mlp_mp'],
+                    n_mp_down_topk = input_dict['n_mp_down_topk'],
+                    n_mp_up_topk = input_dict['n_mp_up_topk'],
+                    pool_ratios = input_dict['pool_ratios'], 
+                    n_mp_down_enc = input_dict['n_mp_down_enc'], 
+                    n_mp_up_enc = input_dict['n_mp_up_enc'], 
+                    n_mp_down_dec = input_dict['n_mp_down_dec'], 
+                    n_mp_up_dec = input_dict['n_mp_up_dec'], 
+                    lengthscales_enc = input_dict['lengthscales_enc'],
+                    lengthscales_dec = input_dict['lengthscales_dec'], 
+                    bounding_box = input_dict['bounding_box'], 
+                    interpolation_mode = input_dict['interp'], 
+                    act = input_dict['act'], 
+                    param_sharing = input_dict['param_sharing'],
+                    filter_lengthscale = input_dict['filter_lengthscale'], 
+                    name = input_dict['name'])
+            model_topk.load_state_dict(p['state_dict'])
+            model_topk.to(device)
+            model_topk.eval()
+
+            # ~~~~ Re-load data: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Loading the new (big) data: 
+            filenames = [] # this contains the vtk locations
+            data_dir = './datasets'
+            filenames = os.listdir(data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
+            filenames = sorted([item for item in filenames if 'Re_' in item])
+
+
+            for Re_str in filenames:
+                print('\t%s' %(Re_str))
+                path_to_vtk_test = data_dir + '/BACKWARD_FACING_STEP/full/20_cases/' + Re_str + '/VTK/Backward_Facing_Step_0_final_smooth.vtk'
+
+                path_to_ei = data_dir + '/BACKWARD_FACING_STEP/full/edge_index'
+                path_to_ea = data_dir + '/BACKWARD_FACING_STEP/full/edge_attr'
+                path_to_pos = data_dir + '/BACKWARD_FACING_STEP/full/pos'
+                device_for_loading = device
+                use_radius = False
+                gnn_dt = 10
+                rollout_eval = 1
+                rollout_steps = rollout_eval
+                dataset_eval, _ = bfs.get_pygeom_dataset_cell_data(
+                    path_to_vtk_test, 
+                    path_to_ei, 
+                    path_to_ea,
+                    path_to_pos, 
+                    device_for_loading, 
+                    use_radius,
+                    time_skip = gnn_dt,
+                    time_lag = rollout_steps,
+                    scaling = [data_mean, data_std],
+                    features_to_keep = [1,2], 
+                    fraction_valid = 0, 
+                    multiple_cases = False)
+                # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                # Loop through test snapshots 
+                N = len(dataset_eval)
+
+                # populate RMSE versus time plot 
+                mse_full = []
+                mse_mask = [] # error in the masked region 
+                for i in range(rollout_eval):
+                    mse_full.append(np.zeros((N,2))) # 2 components for ux, uy
+                    mse_mask.append(np.zeros((N,2))) # 2 components for ux, uy
+
+                for i in range(N): 
+                    print('\t\tSnapshot %d/%d' %(i+1, N))
+                    data = dataset_eval[i]
+                    x_new = data.x
+                    for t in range(rollout_eval):
+                        print('\t\t\tRollout %d/%d' %(t+1, rollout_eval))
+
+                        # Get prediction
+                        x_old = torch.clone(x_new)
+                        x_src, mask = model_topk(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                        x_new = x_old + x_src
+                        target = data.y[t]
+
+
+                        # Compute MSE budget
+                        n_nodes = target.shape[0]
+                        mse_total_0 = (1.0/n_nodes) * torch.sum( (x_new[:,0] - target[:,0])**2 ) 
+                        mse_mask_0 = (1.0/n_nodes) * torch.sum( mask * ((x_new[:,0] - target[:,0])**2) )
+
+                        mse_total_1 = (1.0/n_nodes) * torch.sum( (x_new[:,1] - target[:,1])**2 ) 
+                        mse_mask_1 = (1.0/n_nodes) * torch.sum( mask * ((x_new[:,1] - target[:,1])**2) )
+
+                        # Store 
+                        mse_full[t][i][0] = mse_total_0 
+                        mse_full[t][i][1] = mse_total_1 
+
+                        mse_mask[t][i][0] = mse_mask_0 
+                        mse_mask[t][i][1] = mse_mask_1 
+
+                # Save mse data
+                savepath = './outputs/postproc/big_data/%s/%s' %(desc, Re_str)
+                if not os.path.exists(savepath):
+                    os.makedirs(savepath, exist_ok=True)
+
+                np.save(savepath + '/mse_full_%s.npy' %(model_topk.get_save_header()), mse_full)
+                np.save(savepath + '/mse_mask_%s.npy' %(model_topk.get_save_header()), mse_mask)
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('postprocess testing losses.')
 
     # set device 
@@ -515,7 +634,90 @@ if 1 == 1:
     #     #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
     #     modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # with budget
 
-    # Load rmse data -- effect of seed: 
+    # Load rmse data -- effect of seed (NEW -- for big data)
+    if 1 == 1:
+        rmse_path = './outputs/postproc/rmse_big_data_no_radius'
+        Re_list = sorted(os.listdir(rmse_path))
+
+        modelname_list = ['NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0', 
+                          'NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0'] 
+
+        rmse_list = [ [], [] ]
+
+        for i in range(len(modelname_list)):
+            for j in range(len(Re_list)):
+                re_dir = Re_list[j]
+                rmse_list[i].append( np.load(rmse_path + '/' + re_dir + '/%s.npy' %(modelname_list[i])) )
+
+        # compute average rmse:
+        rmse_mean_list = [ [], [] ] 
+        rmse_max_list = [ [], [] ]
+        rmse_min_list = [ [], [] ]
+        for i in range(len(modelname_list)):
+            for j in range(len(Re_list)):
+                rmse_mean_list[i].append( np.mean(rmse_list[i][j], axis=1) )
+                rmse_max_list[i].append( np.max(rmse_list[i][j], axis=1) )
+                rmse_min_list[i].append( np.min(rmse_list[i][j], axis=1) )
+
+        rollout_steps = np.arange(1,rmse_list[0][0].shape[0] + 1)
+
+        # Fig, ax 
+        lw = 0.5
+        ms = 10
+        mew = 1
+        cmap = plt.get_cmap('viridis')
+        colors = []
+        for i in range(len(Re_list)):
+            colors.append( cmap(i / len(Re_list)) )
+
+
+        fig, ax = plt.subplots(1,2, figsize=(14,5))
+        for j in range(len(Re_list)):
+            # ux -- baseline, with noise: 
+            ax[0].plot(rollout_steps, 
+                       rmse_mean_list[0][j][:,0],#/rmse_mean_list[0][j][0,0], 
+                       label='Baseline', lw=lw, color=colors[j], #color='black',
+                       marker='o', ms=ms, mew=mew, fillstyle='none')
+            ax[0].set_xlabel('Rollout Steps') 
+            ax[0].set_ylabel('RMSE')
+            ax[0].set_title('Ux')
+
+            # ux -- baseline, no noise:
+            ax[0].plot(rollout_steps, 
+                       rmse_mean_list[1][j][:,0],#/rmse_mean_list[1][j][0,0], 
+                       label='Baseline', lw=lw, color=colors[j], #color='black',
+                       marker='s', ms=ms, mew=mew, fillstyle='none')
+            ax[0].set_xlabel('Rollout Steps') 
+            ax[0].set_ylabel('RMSE')
+            ax[0].set_title('Ux')
+            ax[0].set_yscale('log')
+
+
+            # uy -- baseline, with noise: 
+            ax[1].plot(rollout_steps, 
+                       rmse_mean_list[0][j][:,1],#/rmse_mean_list[0][j][0,1], 
+                       label='Baseline', lw=lw, color=colors[j], #color='black',
+                       marker='o', ms=ms, mew=mew, fillstyle='none')
+            ax[1].set_xlabel('Rollout Steps') 
+            ax[1].set_ylabel('RMSE')
+            ax[1].set_title('Uy')
+
+            # uy -- baseline, no noise:
+            ax[1].plot(rollout_steps, 
+                       rmse_mean_list[1][j][:,1],#/rmse_mean_list[1][j][0,1], 
+                       label='Baseline', lw=lw, color=colors[j], #color='black',
+                       marker='s', ms=ms, mew=mew, fillstyle='none')
+            ax[1].set_xlabel('Rollout Steps') 
+            ax[1].set_ylabel('RMSE')
+            ax[1].set_title('Uy')
+            ax[1].set_yscale('log')
+
+        plt.show(block=False)
+
+
+
+
+    # Load rmse data -- effect of seed (OLH): 
     if 1 == 0:
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
         #rmse_path = './outputs/postproc/rmse_data_no_radius/Re_32564/'
@@ -570,7 +772,7 @@ if 1 == 1:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 1: 
+    if 1 == 0: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -693,8 +895,6 @@ if 1 == 1:
 
                 np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
                 print('Saved at: %s' %(savepath + '/%s.npy' %(model.get_save_header())))
-
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions
@@ -886,8 +1086,9 @@ if 1 == 0:
             scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
 
-
-# ~~~~ Plot time evolution at the sensors
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Plot time evolution at the sensors
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
     #case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_multi_scale'
     case_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/Re_32564/model_single_scale'
@@ -979,15 +1180,10 @@ if 1 == 0:
 
     plt.show()
 
-
-
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Initialize MMP blocks from a pre-trained model 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
-
     # Step 1: Create model  
     modelpath = 'saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar'
     p = torch.load(modelpath)
@@ -1102,13 +1298,10 @@ if 1 == 0:
 
     n_param_finetune = n_param_mmp + n_param_topk
 
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Gradient tests
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 0:
-    
     # Read-in the graph
     vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
     path_to_ei = 'datasets/BACKWARD_FACING_STEP/edge_index'
@@ -1239,11 +1432,6 @@ if 1 == 0:
     edge_variation = torch.abs(phi_own - phi_nei)
     total_variation = torch.sum(edge_variation) 
 
-
-
-
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Developing the mask loss function
 # GOAL :
@@ -1373,7 +1561,6 @@ if 1 == 0:
         target = data.y[t]
         loss += loss_scale * ( loss_fn(x_new, target) + lam*loss_fn(non_mask*x_new_bl, non_mask*target) )
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plotting graph 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1381,6 +1568,8 @@ if 1 == 0:
     print('Plotting graph')
 
     device = 'cpu'
+    
+    asdf
 
     # ~~~~ Re-load data: 
     rollout_eval = 1 # where to evaluate the RMSE  
