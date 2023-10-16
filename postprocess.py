@@ -907,20 +907,20 @@ if 1 == 0:
 if 1 == 1:
     print('Write model predictions...')
 
+    if torch.cuda.is_available():
+        device = 'cuda:0'
+    else:
+        device = 'cpu'
+
     header_list = ['baseline', 'no_budget_reg', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01']
 
     for header in header_list: 
-        
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
-
         temp = os.listdir(modelpath)
-
         modelpath_list = [modelpath + '/' + item for item in temp]
 
         for modelpath in modelpath_list: 
-
             p = torch.load(modelpath)
-
             input_dict = p['input_dict']
             print('input_dict: ', input_dict)
 
@@ -949,16 +949,9 @@ if 1 == 1:
                     name = input_dict['name'])
 
             model.load_state_dict(p['state_dict'])
+            model.to(device)
             model.eval()
             model_save_header = model.get_save_header()
-
-            # Load dataset 
-            if torch.cuda.is_available():
-                device = 'cuda:0'
-            else:
-                device = 'cpu'
-
-            rollout_eval = 1 # where to evaluate the RMSE  
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~ LOAD DATA ~~~~~~~~~~~~~~~~~~~~~~~~
             # Loading the new (big) data: 
@@ -993,11 +986,14 @@ if 1 == 1:
                     fraction_valid = 0, 
                     multiple_cases = False)
 
+                asdf
+
             
                 # Update save directory with trajectory index. This is where openfoam cases will be saved. 
-                save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/%s' %(Re_str,header)
+                #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/%s' %(Re_str,header)
+                save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/%s' %(Re_str, header)
 
-                if not  os.path.exists(save_dir + '/' + model_save_header):
+                if not os.path.exists(save_dir + '/' + model_save_header):
                     os.makedirs(save_dir + '/' + model_save_header)
 
                 # Get input 
@@ -1036,7 +1032,7 @@ if 1 == 1:
                     x_new_singlestep_unscaled = x_new_singlestep * std_i + mean_i
                     target_unscaled = target * std_i + mean_i
 
-                    print('\tRollout error...')
+                    print('\tError...')
                     error_rollout = x_new_unscaled  - target_unscaled
                     error_singlestep = x_new_singlestep_unscaled - target_unscaled
                     
@@ -1050,28 +1046,28 @@ if 1 == 1:
 
                         # Prediction singlestep   
                         field_name = '%s_pred_singlestep' %(field_names[f])
-                        scalar2openfoam(x_new_singlestep_unscaled[:,f].numpy(), 
+                        scalar2openfoam(x_new_singlestep_unscaled[:,f].cpu().numpy(), 
                                         time_folder+'/%s' %(field_name), field_name, time_value)
 
 
                         # Prediction rollout
                         field_name = '%s_pred_rollout' %(field_names[f])
-                        scalar2openfoam(x_new_unscaled[:,f].numpy(), 
+                        scalar2openfoam(x_new_unscaled[:,f].cpu().numpy(), 
                                         time_folder+'/%s' %(field_name), field_name, time_value)
 
                         # Target 
                         field_name = '%s_target' %(field_names[f])
-                        scalar2openfoam(target_unscaled[:,f].numpy(), 
+                        scalar2openfoam(target_unscaled[:,f].cpu().numpy(), 
                                         time_folder+'/%s' %(field_name), field_name, time_value)
 
                         # Error rollout  
                         field_name = '%s_error_rollout' %(field_names[f])
-                        scalar2openfoam(error_rollout[:,f].numpy(), 
+                        scalar2openfoam(error_rollout[:,f].cpu().numpy(), 
                                         time_folder+'/%s' %(field_name), field_name, time_value)
 
                         # Error singlestep  
                         field_name = '%s_error_singlestep' %(field_names[f])
-                        scalar2openfoam(error_singlestep[:,f].numpy(), 
+                        scalar2openfoam(error_singlestep[:,f].cpu().numpy(), 
                                         time_folder+'/%s' %(field_name), field_name, time_value)
 
 
@@ -1088,11 +1084,11 @@ if 1 == 1:
 
                     # mask singlestep
                     field_name = 'mask_singlestep'
-                    scalar2openfoam(mask_singlestep.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+                    scalar2openfoam(mask_singlestep.cpu().numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
                     # mask rollout
                     field_name = 'mask_rollout'
-                    scalar2openfoam(mask_rollout.numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+                    scalar2openfoam(mask_rollout.cpu().numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
