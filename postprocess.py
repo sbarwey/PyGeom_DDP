@@ -953,7 +953,6 @@ if 1 == 1:
             model.eval()
             model_save_header = model.get_save_header()
 
-            # ~~~~~~~~~~~~~~~~~~~~~~~~ LOAD DATA ~~~~~~~~~~~~~~~~~~~~~~~~
             # Loading the new (big) data: 
             Re_list = [] # this contains the vtk locations
             data_dir = './datasets'
@@ -985,8 +984,6 @@ if 1 == 1:
                     features_to_keep = [1,2], 
                     fraction_valid = 0, 
                     multiple_cases = False)
-
-                asdf
 
             
                 # Update save directory with trajectory index. This is where openfoam cases will be saved. 
@@ -1763,8 +1760,6 @@ if 1 == 0:
 
     device = 'cpu'
     
-    asdf
-
     # ~~~~ Re-load data: 
     rollout_eval = 1 # where to evaluate the RMSE  
     #vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
