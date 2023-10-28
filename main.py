@@ -129,6 +129,11 @@ class Trainer:
 
         # ~~~~ Init datasets
         self.data = self.setup_data()
+        if WITH_CUDA: 
+            self.data['train']['stats'][0][0] = self.data['train']['stats'][0][0].cuda()
+            self.data['train']['stats'][0][1] = self.data['train']['stats'][0][1].cuda()
+            self.data['train']['stats'][1][0] = self.data['train']['stats'][1][0].cuda()
+            self.data['train']['stats'][1][1] = self.data['train']['stats'][1][1].cuda()
 
         # ~~~~ Init model and move to gpu 
         self.model = self.build_model()
@@ -256,8 +261,8 @@ class Trainer:
                                                              device_for_loading,
                                                              fraction_valid)
 
-        train_dataset = train_dataset[:10] 
-        test_dataset = test_dataset[:10]
+        train_dataset = train_dataset[:1000] 
+        test_dataset = test_dataset[:100]
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -307,7 +312,7 @@ class Trainer:
             data.edge_index = data.edge_index.cuda()
             data.pos = data.pos.cuda()
             data.batch = data.batch.cuda()
-        
+                    
         self.optimizer.zero_grad()
 
         # scale  
@@ -321,7 +326,6 @@ class Trainer:
 
         # evaluate loss 
         loss = self.loss_fn(out, data.y)
-
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
@@ -401,11 +405,11 @@ class Trainer:
                 
                 if WITH_CUDA:
                     data.x = data.x.cuda()
+                    data.y = data.y.cuda()
                     data.edge_index = data.edge_index.cuda()
-                    data.edge_attr = data.edge_attr.cuda()
                     data.pos = data.pos.cuda()
                     data.batch = data.batch.cuda()
-                
+                                                        
                 # scale  
                 data_mean = self.data['train']['stats'][0]
                 data_std = self.data['train']['stats'][1]

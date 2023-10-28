@@ -6,7 +6,7 @@ import torch_geometric
 from torch_geometric.data import Data 
 import torch_geometric.utils as utils
 import torch_geometric.nn as tgnn 
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, List, Tuple
 
 Tensor = torch.Tensor 
 TORCH_FLOAT = torch.float32
@@ -33,7 +33,7 @@ def get_pygeom_dataset(data_x_path: str,
                        global_ids_path: str,
                        pos_path: str, 
                        device_for_loading : Optional[str] = 'cpu',
-                       fraction_valid : Optional[float] = 0.1) -> tuple[list,list]:
+                       fraction_valid : Optional[float] = 0.1) -> Tuple[List,List,List,List]:
     t_load = time.time()
    
     print('Loading data and making pygeom dataset...')
