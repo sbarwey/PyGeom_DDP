@@ -261,9 +261,6 @@ class Trainer:
                                                              device_for_loading,
                                                              fraction_valid)
 
-        train_dataset = train_dataset[:1000] 
-        test_dataset = test_dataset[:100]
-
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
             log.info('valid dataset: %d elements' %(len(test_dataset)))
@@ -310,19 +307,19 @@ class Trainer:
             data.x = data.x.cuda()
             data.y = data.y.cuda()
             data.edge_index = data.edge_index.cuda()
-            data.pos = data.pos.cuda()
+            data.pos_norm = data.pos_norm.cuda()
             data.batch = data.batch.cuda()
                     
         self.optimizer.zero_grad()
 
-        # scale  
+        # scale x, y
         data_mean = self.data['train']['stats'][0]
         data_std = self.data['train']['stats'][1]
         data.x = (data.x - data_mean[0])/data_std[0]
         data.y = (data.y - data_mean[1])/data_std[1]
-
+    
         # evaluate model 
-        out = self.model(data.x, data.edge_index, data.pos, data.batch)
+        out = self.model(data.x, data.edge_index, data.pos_norm, data.batch)
 
         # evaluate loss 
         loss = self.loss_fn(out, data.y)
@@ -407,7 +404,7 @@ class Trainer:
                     data.x = data.x.cuda()
                     data.y = data.y.cuda()
                     data.edge_index = data.edge_index.cuda()
-                    data.pos = data.pos.cuda()
+                    data.pos_norm = data.pos_norm.cuda()
                     data.batch = data.batch.cuda()
                                                         
                 # scale  
@@ -417,7 +414,7 @@ class Trainer:
                 data.y = (data.y - data_mean[1])/data_std[1]
 
                 # evaluate model 
-                out = self.model(data.x, data.edge_index, data.pos, data.batch)
+                out = self.model(data.x, data.edge_index, data.pos_norm, data.batch)
                 
                 # evaluate loss 
                 loss = self.loss_fn(out, data.y)

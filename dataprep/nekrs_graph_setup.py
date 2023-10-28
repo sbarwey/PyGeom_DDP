@@ -116,6 +116,7 @@ def get_pygeom_dataset(data_x_path: str,
                          y_rms = y_rms_element[i],
                           L = lengthscale_element[i],
                           pos = pos_tuple[i],
+                         pos_norm = pos_tuple[i]/lengthscale_element[i],
                          edge_index = edge_index, 
                          global_ids = global_ids_tuple[i])
         data_temp = data_temp.to(device_for_loading)
@@ -129,6 +130,7 @@ def get_pygeom_dataset(data_x_path: str,
                          y_rms = y_rms_element[i],
                          L = lengthscale_element[i],
                           pos = pos_tuple[i],
+                         pos_norm = pos_tuple[i]/lengthscale_element[i],
                          edge_index = edge_index, 
                          global_ids = global_ids_tuple[i])
         data_temp = data_temp.to(device_for_loading)
