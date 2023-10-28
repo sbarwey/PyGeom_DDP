@@ -54,6 +54,9 @@ def get_pygeom_dataset(data_path: str,
     print('\ttook %g sec' %(t_load))
     return data 
 
+def get_data_statistics(data_path_list):
+    return 
+
 
 def get_rms(x_batch: Tensor) -> Tensor:
     u_var = x_batch.var(dim=1, keepdim=True)
@@ -84,27 +87,40 @@ if __name__ == "__main__":
     gli_lo = torch.stack(utils.unbatch(data_lo.global_ids, data_lo.node_element_ids, dim=0))
 
 
-    # ~~~~ Postprocessing 
-    # get rms 
-    rms_hi = get_rms(x_hi)
-    rms_lo = get_rms(x_lo)
+    # ~~~~ Postprocessing the data  
+    if 1 == 0:
+        # get rms 
+        rms_hi = get_rms(x_hi)
+        rms_lo = get_rms(x_lo)
 
-    # get prediction errors 
-    element_error = (x_hi - x_lo)**2
-    element_error = element_error.mean(dim=[1,2])
+        # get prediction errors 
+        element_error = (x_hi - x_lo)**2
+        element_error = element_error.mean(dim=[1,2])
 
-    # contribution of boundary nodes to the error 
-    mask_internal = gli_lo == 0
-    mask_boundary = ~mask_internal
+        # contribution of boundary nodes to the error 
+        mask_internal = gli_lo == 0
+        mask_boundary = ~mask_internal
+         
+        mask_internal = mask_internal.unsqueeze(-1)
+        mask_boundary = mask_boundary.unsqueeze(-1)
+
+        element_error_boundary =  ((mask_boundary*x_hi - mask_boundary*x_lo)**2).mean(dim=[1,2]) 
+        element_error_internal =  ((mask_internal*x_hi - mask_internal*x_lo)**2).mean(dim=[1,2]) 
+
+
+    # ~~~~ postprocessing the gnn model  
+    if 1 == 0:
+        a = torch.load('./saved_models/super_res_gnn.tar')
+        b = torch.load('./saved_models/super_res_gnn_b32.tar')
+        fig, ax = plt.subplots()
+        ax.plot(a['loss_hist_train'])
+        ax.plot(b['loss_hist_train'])
+        ax.set_yscale('log')
+        plt.show(block=False)
      
-    mask_internal = mask_internal.unsqueeze(-1)
-    mask_boundary = mask_boundary.unsqueeze(-1)
-
-    element_error_boundary =  ((mask_boundary*x_hi - mask_boundary*x_lo)**2).mean(dim=[1,2]) 
-    element_error_internal =  ((mask_internal*x_hi - mask_internal*x_lo)**2).mean(dim=[1,2]) 
 
     # ~~~~ Plotting 
-    if 1 == 1:
+    if 1 == 0:
         print('Plotting...')
 
         # Plot the edges 

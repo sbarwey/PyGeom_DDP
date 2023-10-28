@@ -241,25 +241,35 @@ class Trainer:
     def setup_data(self):
         kwargs = {}
         
-        data_x_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(0,4) # input  
-        data_y_path = self.cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(0,4) # target 
-        edge_index_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(0,4) 
-        node_element_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/node_element_ids_rank_%d_size_%d' %(0,4)
-        global_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/global_ids_rank_%d_size_%d' %(0,4) 
-        pos_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/pos_node_rank_%d_size_%d' %(0,4) 
-
         device_for_loading = 'cpu'
-        fraction_valid = 0.1 
+        fraction_valid = 0 
 
-        train_dataset, test_dataset, data_mean, data_std = ngs.get_pygeom_dataset(
-                                                             data_x_path, 
-                                                             data_y_path,
-                                                             edge_index_path,
-                                                             node_element_ids_path,
-                                                             global_ids_path,
-                                                             pos_path,
-                                                             device_for_loading,
-                                                             fraction_valid)
+        train_dataset = []
+        test_dataset = [] 
+
+        data_read_world_size = 4
+
+        for i in range(data_read_world_size):
+            data_x_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
+            data_y_path = self.cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
+            edge_index_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
+            node_element_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
+            global_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
+            pos_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
+                    
+            # note: data_mean and data_std are overwritten. the one used is for i = 3 
+            train_dataset_temp, test_dataset_temp, data_mean, data_std = ngs.get_pygeom_dataset(
+                                                                 data_x_path, 
+                                                                 data_y_path,
+                                                                 edge_index_path,
+                                                                 node_element_ids_path,
+                                                                 global_ids_path,
+                                                                 pos_path,
+                                                                 device_for_loading,
+                                                                 fraction_valid)
+
+            train_dataset += train_dataset_temp
+            test_dataset += test_dataset_temp
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -294,8 +304,6 @@ class Trainer:
             'test': {
                 'sampler': test_sampler,
                 'loader': test_loader,
-                'example': test_dataset[0],
-                'stats': [data_mean, data_std] 
             }
         }
 
