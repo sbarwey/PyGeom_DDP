@@ -10,6 +10,7 @@ logs/
 datasets/
 ckpt/
 saved_models/
+temp/
 
 *.swp
 .DS_Store
