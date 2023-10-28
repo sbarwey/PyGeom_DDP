@@ -1,21 +1,18 @@
 #!/bin/sh
-#PBS -l select=2:system=polaris
+#PBS -l select=1:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=24:00:00
-##PBS -l walltime=1:00:00
+#PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
-#PBS -q preemptable
-##PBS -q debug
+##PBS -q preemptable
+#PBS -q debug
 #PBS -A datascience
-#PBS -N GNN_DDP
-
+#PBS -N gnn_nekrs_sr
 
 # Change to working directory
 cd ${PBS_O_WORKDIR}
 
 TSTAMP=$(date "+%Y-%m-%d-%H%M%S")
 echo "Job started at: {$TSTAMP}"
-
 
 # Load modules: 
 source /lus/eagle/projects/datascience/sbarwey/codes/ml/pytorch_geometric/module_config
@@ -33,12 +30,4 @@ NGPUS="$((${NUM_NODES}*${NGPUS_PER_NODE}))"
 echo $NUM_NODES $NGPUS_PER_NODE $NGPUS
 
 # run 
-mpiexec \
-	--verbose \
-	--envall \
-	-n $NGPUS \
-	--ppn $NGPUS_PER_NODE \
-	--hostfile="${PBS_NODEFILE}" \
-    -d 8 \
-    --cpu-bind depth \
-	./set_affinity_gpu_polaris.sh python3 main.py
+mpiexec --verbose --envall -n $NGPUS --ppn $NGPUS_PER_NODE --hostfile="${PBS_NODEFILE}" -d 8 --cpu-bind depth ./set_affinity_gpu_polaris.sh python3 main.py

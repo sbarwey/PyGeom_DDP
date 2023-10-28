@@ -242,7 +242,7 @@ class Trainer:
         kwargs = {}
         
         device_for_loading = 'cpu'
-        fraction_valid = 0 
+        fraction_valid = 0.1 
 
         train_dataset = []
         test_dataset = [] 

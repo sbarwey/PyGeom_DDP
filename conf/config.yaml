@@ -1,6 +1,6 @@
 # @package _global_
 seed: 122
-epochs: 50
+epochs: 100
 backend: nccl
 lr_init: 0.00001
 # momentum: 0.5
@@ -8,7 +8,7 @@ use_radius : False
 use_noise : True
 num_threads: 0
 logfreq: 10
-ckptfreq: 1
+ckptfreq: 10
 batch_size: 32
 test_batch_size: 32
 fp16_allreduce: False
