@@ -201,7 +201,7 @@ class Trainer:
         output_channels = sample.y.shape[1] 
         hidden_channels = 64 
         n_mlp_layers = [3,3,3]
-        n_messagePassing_layers = 1
+        n_messagePassing_layers = self.cfg.n_mp_layers
         activation = F.elu
 
         if RANK == 0:
@@ -212,7 +212,7 @@ class Trainer:
             log.info('n_messagePassing_layers: %d' %(n_messagePassing_layers))
             log.info(f'activation: {activation}')
         
-        name = 'super_res_gnn'
+        name = 'super_res_gnn_mp_%d' %(n_messagePassing_layers)
         model = gnn.mp_gnn(input_channels,
                            hidden_channels,
                            output_channels,
