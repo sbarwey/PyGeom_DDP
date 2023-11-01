@@ -620,7 +620,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -631,16 +631,10 @@ if 1 == 0:
 
     # Load models: effect of seed for R = 1
     modelpath_list = []
-    #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline 
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/NO_NOISE_NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline, no noise 
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline, withn oise 
-
-    # for seed in seed_list:
-    #     #modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # no budget
-    #     modelpath_list.append('saved_models/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_%d_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(seed)) # with budget
-
-    # Load rmse data -- effect of seed (NEW -- for big data)
-    if 1 == 1:
+    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/baseline/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline, withn oise 
+    
+    # Load rmse data --(NEW -- for big data)
+    if 1 == 0:
         rmse_path = './outputs/postproc/rmse_big_data_no_radius'
         Re_list = sorted(os.listdir(rmse_path))
 
@@ -719,10 +713,7 @@ if 1 == 0:
 
         plt.show(block=False)
 
-
-
-
-    # Load rmse data -- effect of seed (OLH): 
+    # Load rmse data -- effect of seed (OLD): 
     if 1 == 0:
         rmse_path = './outputs/postproc/rmse_data_no_radius/Re_26214/'
         #rmse_path = './outputs/postproc/rmse_data_no_radius/Re_32564/'
@@ -777,7 +768,7 @@ if 1 == 0:
         plt.show(block=False)
 
     # Write data: 
-    if 1 == 0: 
+    if 1 == 1: 
         for modelpath in modelpath_list:
             p = torch.load(modelpath)
             input_dict = p['input_dict']
@@ -811,7 +802,7 @@ if 1 == 0:
             model.eval()
 
             # ~~~~ Re-load data: 
-            rollout_eval = 10 # where to evaluate the RMSE  
+            rollout_eval = 1 # where to evaluate the RMSE  
 
             # ~~~~ # Loading the old (small) data: 
             # vtk_file_test = 'datasets/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_32564.vtk'
@@ -876,7 +867,7 @@ if 1 == 0:
                 for i in range(rollout_eval):
                     rmse_data.append(np.zeros((N,2))) # 2 components for ux, uy
 
-                for i in range(N): 
+                for i in range(N): # skip first 20 snapshots  
                     print('%s, Snapshot %d/%d' %(item, i+1, N))
                     data = dataset_eval_rmse[i]
                     x_new = data.x
@@ -885,18 +876,23 @@ if 1 == 0:
                         x_old = torch.clone(x_new)
                         x_src,_ = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                         x_new = x_old + x_src
-                        
-                        # Accumulate loss 
                         target = data.y[t]
+                        
+                        # unscale prediction and target 
+                        n_features = x_old.shape[1]
+                        mean_i = data.data_scale[0].reshape((1,n_features))
+                        std_i = data.data_scale[1].reshape((1,n_features))
+                        x_new = x_new * std_i + mean_i
+                        target = target * std_i + mean_i
 
                         # compute rmse 
                         rmse_data[t][i][0] = torch.sqrt(F.mse_loss(x_new[:,0], target[:,0]))
                         rmse_data[t][i][1] = torch.sqrt(F.mse_loss(x_new[:,1], target[:,1]))
 
                 # Save rmse_data
-                savepath = './outputs/postproc/rmse_big_data_no_radius/%s' %(item)
+                savepath = './outputs/postproc/for_paper/single_step_rmse/%s' %(item)
                 if not os.path.exists(savepath):
-                    os.mkdir(savepath)
+                    os.makedirs(savepath)
 
                 np.save(savepath + '/%s.npy' %(model.get_save_header()), rmse_data)
                 print('Saved at: %s' %(savepath + '/%s.npy' %(model.get_save_header())))
@@ -904,7 +900,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Focus on effect of Re (big data)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions...')
 
     if torch.cuda.is_available():
