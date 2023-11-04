@@ -999,8 +999,8 @@ if 1 == 1:
                 traj_index_list = [50, 150, 250]
                 for traj_id in traj_index_list: 
                     # This is where openfoam cases will be saved. 
-                    #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/traj_%d/%s' %(Re_str,traj_id,header)
-                    save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data/%s/traj_%d/%s' %(Re_str,traj_id,header)
+                    #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
+                    save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
 
                     if not os.path.exists(save_dir + '/' + model_save_header):
                         os.makedirs(save_dir + '/' + model_save_header)
