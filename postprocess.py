@@ -911,9 +911,7 @@ if 1 == 1:
     else:
         device = 'cpu'
 
-    header_list = ['no_budget_reg', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01', 'baseline']
     header_list = ['no_budget_reg', 'baseline']
-    header_list = ['baseline']
 
     for header in header_list: 
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
