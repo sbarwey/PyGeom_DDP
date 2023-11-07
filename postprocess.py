@@ -620,7 +620,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('postprocess testing losses.')
 
     # set device 
@@ -631,10 +631,15 @@ if 1 == 0:
 
     # Load models: effect of seed for R = 1
     modelpath_list = []
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/baseline/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline, withn oise 
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=4, lam=0
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_8_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=8, lam=0
-    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=16, lam=0
+    # modelpath_list.append('saved_models/big_data/dt_gnn_1em4/baseline/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # baseline, withn oise 
+    # modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=4, lam=0
+    # modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_8_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=8, lam=0
+    # modelpath_list.append('saved_models/big_data/dt_gnn_1em4/no_budget_reg/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf=16, lam=0
+
+    # budget reg models 
+    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/budget_reg_lam_0.0001/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf = 4
+    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/budget_reg_lam_0.0001/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_8_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf = 8
+    modelpath_list.append('saved_models/big_data/dt_gnn_1em4/budget_reg_lam_0.0001/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar') # rf = 16
     
     # Load rmse data --(NEW -- for big data)
     if 1 == 0:
@@ -903,7 +908,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions, small trajectories...')
 
     if torch.cuda.is_available():
