@@ -303,7 +303,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -485,21 +485,24 @@ if 1 == 0:
     if 1 == 1: 
         print('Writing budget data, using new (larger) dataset...')
         
-        rf_list = [2,4,8,16]
+        rf_list = [4,8,16]
 
         for rf in rf_list:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('TOP-K RF %d' %(rf))
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
-            #desc = 'no_budget_reg'
-            #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+            desc = 'no_budget_reg'
+            modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+
+            #desc = 'budget_reg_lam_0.0001'
+            #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
 
             #desc = 'budget_reg_lam_0.001'
             #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
 
-            desc = 'budget_reg_lam_0.01'
-            modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
+            #desc = 'budget_reg_lam_0.01'
+            #modelpath_topk = 'saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_%d_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc,rf)
 
             p = torch.load(modelpath_topk)
             input_dict = p['input_dict']
@@ -536,7 +539,8 @@ if 1 == 0:
             filenames = os.listdir(data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
             filenames = sorted([item for item in filenames if 'Re_' in item])
 
-            filenames = filenames[:2]
+            filenames = filenames[1::2]
+
 
             for Re_str in filenames:
                 print('\t%s' %(Re_str))
@@ -607,7 +611,8 @@ if 1 == 0:
 
                 
                 # Save mse data
-                savepath = './outputs/postproc/big_data/%s/%s' %(desc, Re_str)
+                #savepath = './outputs/postproc/big_data/%s/%s' %(desc, Re_str)
+                savepath = './outputs/postproc/for_paper/single_step_budget/%s/%s' %(desc, Re_str)
                 if not os.path.exists(savepath):
                     os.makedirs(savepath, exist_ok=True)
 
@@ -620,7 +625,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess testing losses: RMSE  
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('postprocess testing losses.')
 
     # set device 
