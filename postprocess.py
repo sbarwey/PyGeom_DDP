@@ -303,7 +303,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Baseline error budget: what percent of baseline error is in masked region? 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -913,7 +913,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
     print('Write model predictions, small trajectories...')
 
     if torch.cuda.is_available():
@@ -921,7 +921,7 @@ if 1 == 0:
     else:
         device = 'cpu'
 
-    header_list = ['no_budget_reg', 'baseline']
+    header_list = ['no_budget_reg', 'budget_reg_lam_0.0001', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01', 'baseline']
 
     for header in header_list: 
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
@@ -968,6 +968,7 @@ if 1 == 0:
             Re_list = os.listdir(data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
             Re_list = sorted([item for item in Re_list if 'Re_' in item])
             Re_test = Re_list[1::2]
+            Re_test = ['Re_27233', 'Re_35392', 'Re_45589']
 
             for Re_str in Re_test: # loops through Re_test 
                 print('\t%s' %(Re_str))
@@ -994,6 +995,12 @@ if 1 == 0:
                     fraction_valid = 0, 
                     multiple_cases = False)
 
+
+                # Setup instantaneous budget computation 
+                mse_full = np.zeros((rollout_steps,2))
+                mse_full_ss = np.zeros((rollout_steps,2))
+                mse_mask = np.zeros((rollout_steps,2))
+                mse_mask_ss = np.zeros((rollout_steps,2))
             
 
                 # Get input 
@@ -1009,33 +1016,60 @@ if 1 == 0:
                     # This is where openfoam cases will be saved. 
                     #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
                     save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
-
                     if not os.path.exists(save_dir + '/' + model_save_header):
                         os.makedirs(save_dir + '/' + model_save_header)
 
                     data = test_dataset[traj_id]
                     x_new = data.x
                     for t in range(rollout_steps):
+                        # ~~~~ Rollout predictions ~~~~ # 
                         x_old = torch.clone(x_new)
                         x_src, mask = model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
                         x_new = x_old + x_src
-                        target = data.y[t]
+                        # ~~~~ Single-step predictions ~~~~ # 
+                        if t == 0: 
+                            x_old_ss = x_old
+                        else:
+                            x_old_ss = data.y[t-1]
+                        x_src, mask_ss = model(x_old_ss, data.edge_index, data.edge_attr, data.pos, data.batch)
+                        x_new_ss = x_old_ss + x_src 
+                        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-                        # unscale target and prediction 
+                        # Target
+                        target = data.y[t]
+                        
+                        # Compute MSE budget - rollout
+                        n_nodes = target.shape[0]
+                        mse_full[t,0] = (1.0/n_nodes) * torch.sum( (x_new[:,0] - target[:,0])**2 )
+                        mse_mask[t,0] = (1.0/n_nodes) * torch.sum( mask * ((x_new[:,0] - target[:,0])**2) )
+                        mse_full[t,1] = (1.0/n_nodes) * torch.sum( (x_new[:,1] - target[:,1])**2 )
+                        mse_mask[t,1] = (1.0/n_nodes) * torch.sum( mask * ((x_new[:,1] - target[:,1])**2) )
+
+                        # Compute MSE budget - single step 
+                        n_nodes = target.shape[0]
+                        mse_full_ss[t,0] = (1.0/n_nodes) * torch.sum( (x_new_ss[:,0] - target[:,0])**2 )
+                        mse_mask_ss[t,0] = (1.0/n_nodes) * torch.sum( mask_ss * ((x_new_ss[:,0] - target[:,0])**2) )
+                        mse_full_ss[t,1] = (1.0/n_nodes) * torch.sum( (x_new_ss[:,1] - target[:,1])**2 )
+                        mse_mask_ss[t,1] = (1.0/n_nodes) * torch.sum( mask_ss * ((x_new_ss[:,1] - target[:,1])**2) )
+
+                        # unscale rollout 
                         mean_i = data.data_scale[0].reshape((1,n_features)).float()
                         std_i = data.data_scale[1].reshape((1,n_features)).float()
                         x_old_unscaled = x_old * std_i + mean_i
                         x_new_unscaled = x_new * std_i + mean_i
                         target_unscaled = target * std_i + mean_i
-
                         error = target_unscaled - x_new_unscaled
                         error_norm = torch.abs((target_unscaled - x_new_unscaled)/target_unscaled)
-
+                        
+                        # unscale single step 
+                        x_old_ss_unscaled = x_old_ss * std_i + mean_i
+                        x_new_ss_unscaled = x_new_ss * std_i + mean_i
+                        error_ss = target_unscaled - x_new_ss_unscaled
+                        error_norm_ss = torch.abs((target_unscaled - x_new_ss_unscaled)/target_unscaled)
 
                         # Create time folder 
                         time_value = data.t_y[t]
                         time_folder = save_dir + '/' + model_save_header + '/' + '%g' %(time_value)
-                        
                         if not os.path.exists(time_folder):
                             os.makedirs(time_folder)
 
@@ -1052,24 +1086,60 @@ if 1 == 0:
                             scalar2openfoam(x_new_unscaled[:,f].cpu().numpy(), 
                                             time_folder+'/%s' %(field_name), field_name, time_value)
 
+                            # Prediction single step 
+                            field_name = '%s_pred_ss' %(field_names[f])
+                            scalar2openfoam(x_new_ss_unscaled[:,f].cpu().numpy(), 
+                                            time_folder+'/%s' %(field_name), field_name, time_value)
+
                             # Target 
                             field_name = '%s_target' %(field_names[f])
                             scalar2openfoam(target_unscaled[:,f].cpu().numpy(), 
                                             time_folder+'/%s' %(field_name), field_name, time_value)
 
-                            # Error  
+                            # Error -- rollout  
                             field_name = '%s_error' %(field_names[f])
                             scalar2openfoam(error[:,f].cpu().numpy(), 
                                             time_folder+'/%s' %(field_name), field_name, time_value)
+
+                            # Error -- single step 
+                            field_name = '%s_error_ss' %(field_names[f])
+                            scalar2openfoam(error_ss[:,f].cpu().numpy(), 
+                                            time_folder+'/%s' %(field_name), field_name, time_value)
                             
-                            # Error norm  
+                            # Error norm -- rollout 
                             field_name = '%s_error_norm' %(field_names[f])
                             scalar2openfoam(error_norm[:,f].cpu().numpy(), 
                                             time_folder+'/%s' %(field_name), field_name, time_value)
+                            
+                            # Error norm -- single step
+                            field_name = '%s_error_norm_ss' %(field_names[f])
+                            scalar2openfoam(error_norm_ss[:,f].cpu().numpy(), 
+                                            time_folder+'/%s' %(field_name), field_name, time_value)
 
-                        # mask
+
+                        # mask -- rollout
                         field_name = 'mask'
                         scalar2openfoam(mask.cpu().numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+                        # mask -- single step 
+                        field_name = 'mask_ss'
+                        scalar2openfoam(mask_ss.cpu().numpy().squeeze(), time_folder+'/%s' %(field_name), field_name, time_value)
+
+                        
+                    # Create budget folder 
+                    budget_folder = save_dir + '/' + model_save_header + '/budget_data'
+                    if not os.path.exists(budget_folder):
+                        os.makedirs(budget_folder)
+
+                    # write budget data 
+                    np.save(budget_folder + '/mse_full_rollout.npy', mse_full)
+                    np.save(budget_folder + '/mse_mask_rollout.npy', mse_mask)
+                    np.save(budget_folder + '/mse_full_singlestep.npy', mse_full_ss)
+                    np.save(budget_folder + '/mse_mask_singlestep.npy', mse_mask_ss)
+
+
+
+
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
