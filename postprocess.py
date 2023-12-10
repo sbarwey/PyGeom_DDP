@@ -162,7 +162,7 @@ if __name__ == "__main__":
             plt.show(block=False)
 
     # ~~~~ Plotting  
-    if 1 == 1:
+    if 1 == 0:
         print('Plotting...')
 
         # Plot the edges 
