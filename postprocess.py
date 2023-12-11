@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
 
     # ~~~~ Visualize model predictions 
-    if 1 == 1:
+    if 1 == 0:
         mp = [1,2,3,4,5,6,7,8] 
         x_list = [] 
         y_pred_list = []
@@ -160,6 +160,59 @@ if __name__ == "__main__":
                     ax[r,c].set_ylabel('Target')
                     count += 1 
             plt.show(block=False)
+
+
+    # ~~~~ Postprocess run logs: KE, dissipation, enst
+    if 1 == 1:
+        import re
+
+        def read_nrs_log(file_path):
+            lines = []
+            values = []
+            with open(file_path, 'r') as file:
+                 for line in file:
+                     if line.startswith('  time'):
+                         line=line.strip()
+                         lines.append(line)
+                         numbers = re.findall(r"[-+]?\d*\.\d+|\d+", line)
+                         numbers = [float(num) for num in numbers]
+                         values.append(np.array(numbers, ndmin=2))
+            del lines[0]
+            del values[0]
+            values = np.concatenate(values, axis=0) 
+            return lines, values 
+
+        # Re = 1600 
+        _, values_1600 = read_nrs_log('./outputs/run_logs/Re_1600_poly_7.log')
+        _, values_2000 = read_nrs_log('./outputs/run_logs/Re_2000_poly_7.log')
+        _, values_2400 = read_nrs_log('./outputs/run_logs/Re_2400_poly_7.log')
+        
+        #   0      1     2          4        5       6
+        # [time, enst, energy, -2*nu*enst, dE/dt, nuEff/nu]
+
+        # Kinetic energy  
+        lw = 2
+        fig, ax = plt.subplots()
+        ax.plot(values_1600[:,0], values_1600[:,2], label='Re=1600', lw=lw)
+        ax.plot(values_2000[:,0], values_2000[:,2], label='Re=2000', lw=lw)
+        ax.plot(values_2400[:,0], values_2400[:,2], label='Re=2400', lw=lw)
+        ax.set_title('Kinetic Energy')
+        #ax.set_xlim([7.5, 10.5])
+        plt.show(block=False)
+
+        # dissipation rate ( dEk/dt )
+        fig, ax = plt.subplots()
+        ax.plot(values_1600[:,0], -values_1600[:,5], label='Re=1600', lw=lw)
+        ax.plot(values_2000[:,0], -values_2000[:,5], label='Re=2000', lw=lw)
+        ax.plot(values_2400[:,0], -values_2400[:,5], label='Re=2400', lw=lw)
+        ax.set_title('Dissipation Rate')
+        ax.set_xlim([7.5, 10.5])
+        ax.legend()
+        ax.set_xlabel('t_c')
+        ax.set_ylabel('-dEk/dt')
+        plt.show(block=False)
+
+
 
     # ~~~~ Plotting  
     if 1 == 0:
