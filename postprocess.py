@@ -995,6 +995,8 @@ if 1 == 1:
                     fraction_valid = 0, 
                     multiple_cases = False)
 
+                asdf
+
 
                 # Setup instantaneous budget computation 
                 mse_full = np.zeros((rollout_steps,2))
