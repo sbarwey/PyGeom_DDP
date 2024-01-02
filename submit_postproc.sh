@@ -1,10 +1,10 @@
 #!/bin/sh
 #PBS -l select=1:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=4:00:00
+#PBS -l walltime=1:00:00
 #PBS -l filesystems=home:eagle
-##PBS -q debug
-#PBS -q preemptable
+#PBS -q debug-scaling
+##PBS -q preemptable
 #PBS -A datascience
 #PBS -N bfs_postproc
 
