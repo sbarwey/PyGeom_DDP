@@ -542,7 +542,8 @@ class Trainer:
 
                 budget = mse_mask / mse_total
                 lam = loss_dict['lam']
-                loss_budget = lam * (1.0/budget)
+                #loss_budget = lam * (1.0/budget) # inverse budget 
+                loss_budget = lam * budget # direct budget -- when lam is negative 
                 
                 # total loss :
                 loss += loss_scale * ( mse_total + loss_budget )
@@ -692,7 +693,8 @@ class Trainer:
 
                         budget = mse_mask / mse_total
                         lam = loss_dict['lam']
-                        loss_budget = lam * (1.0/budget)
+                        # loss_budget = lam * (1.0/budget) # inverse budget 
+                        loss_budget = lam * budget # direct budget -- when lam is negative 
                         
                         # total loss :
                         loss += loss_scale * ( mse_total + loss_budget )

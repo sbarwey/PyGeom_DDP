@@ -18,7 +18,7 @@ ckptfreq: 5
 batch_size: 2
 test_batch_size: 2
 fp16_allreduce: False
-restart: True
+restart: False
 
 # GNN timestep factor
 gnn_dt: 10
