@@ -139,7 +139,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('Postprocess training losses (original)')
 
     # # Comparing baselines:  
@@ -157,7 +157,6 @@ if 1 == 0:
     bl_label = 'Baseline'
 
     desc = 'no_budget_reg'
-
     ft_2 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_2_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
     ft_2_label = 'Finetuned, RF=2'
 
@@ -184,9 +183,13 @@ if 1 == 0:
     ft_16_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
     ft_16_br_label = 'Finetuned, RF=16'
 
+
+    # Looking at the lambda test 
+    # LAM = -0.0002459254785
+
+
     # Combined loss plot 
     baseline_loss = np.mean(bl['loss_hist_test'][-10:])
-
 
     # No budget reg 
     combined = [ft_2, ft_4, ft_8, ft_16]
@@ -219,6 +222,8 @@ if 1 == 0:
     #ax.legend(fancybox=False, edgecolor='black', framealpha=1)
     ax.set_title('Validation Loss -- Lam = 0.001')
     plt.show(block=False)
+
+    # Lambda test 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Overwrite some model names: 
@@ -913,7 +918,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions, small trajectories...')
 
     if torch.cuda.is_available():
