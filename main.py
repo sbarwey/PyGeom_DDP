@@ -242,7 +242,7 @@ class Trainer:
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
         # MMP unet + topk 
-        preamble = '' 
+        preamble = 'LAM_TEST_' 
 
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
@@ -493,7 +493,8 @@ class Trainer:
         loss_dict = {}
         loss_dict['comp1'] = torch.tensor([0.0])
         loss_dict['comp2'] = torch.tensor([0.0])
-        loss_dict['lam'] = torch.tensor([0.0001])
+        #loss_dict['lam'] = torch.tensor([0.0001])
+        loss_dict['lam'] = torch.tensor([-0.0002459254785])
 
         if WITH_CUDA:
             data.x = data.x.cuda()
@@ -656,7 +657,8 @@ class Trainer:
                 loss_dict = {}
                 loss_dict['comp1'] = torch.tensor([0.0])
                 loss_dict['comp2'] = torch.tensor([0.0])
-                loss_dict['lam'] = torch.tensor([0.0001])
+                #loss_dict['lam'] = torch.tensor([0.0001])
+                loss_dict['lam'] = torch.tensor([-0.0002459254785])
 
                 if WITH_CUDA:
                     data.x = data.x.cuda()
