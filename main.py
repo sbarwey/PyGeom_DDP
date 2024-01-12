@@ -242,7 +242,7 @@ class Trainer:
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
         # MMP unet + topk 
-        preamble = 'LAM_TEST_' 
+        preamble = 'LAM_TEST_NO_INV_B_' 
 
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
