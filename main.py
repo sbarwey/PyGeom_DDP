@@ -241,35 +241,51 @@ class Trainer:
     def setup_data(self):
         kwargs = {}
         
-        device_for_loading = 'cpu'
-        fraction_valid = 0.1 
+        # device_for_loading = 'cpu'
+        # fraction_valid = 0.1 
 
-        train_dataset = []
-        test_dataset = [] 
+        # train_dataset = []
+        # test_dataset = [] 
 
-        data_read_world_size = 4
+        # data_read_world_size = 4
 
-        for i in range(data_read_world_size):
-            data_x_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
-            data_y_path = self.cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
-            edge_index_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
-            node_element_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
-            global_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
-            pos_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
-                    
-            # note: data_mean and data_std are overwritten. the one used is for i = 3 
-            train_dataset_temp, test_dataset_temp, data_mean, data_std = ngs.get_pygeom_dataset(
-                                                                 data_x_path, 
-                                                                 data_y_path,
-                                                                 edge_index_path,
-                                                                 node_element_ids_path,
-                                                                 global_ids_path,
-                                                                 pos_path,
-                                                                 device_for_loading,
-                                                                 fraction_valid)
+        # for i in range(data_read_world_size):
+        #     data_x_path = self.cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
+        #     data_y_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
+        #     edge_index_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
+        #     node_element_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
+        #     global_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
+        #     pos_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
+        #             
+        #     # note: data_mean and data_std are overwritten. the one used is for i = 3 
+        #     if RANK == 0:
+        #         log.info('in get_pygeom_dataset...')
 
-            train_dataset += train_dataset_temp
-            test_dataset += test_dataset_temp
+        #     train_dataset_temp, test_dataset_temp, data_mean, data_std = ngs.get_pygeom_dataset(
+        #                                                          data_x_path, 
+        #                                                          data_y_path,
+        #                                                          edge_index_path,
+        #                                                          node_element_ids_path,
+        #                                                          global_ids_path,
+        #                                                          pos_path,
+        #                                                          device_for_loading,
+        #                                                          fraction_valid)
+
+        #     train_dataset += train_dataset_temp
+        #     test_dataset += test_dataset_temp
+
+
+        train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/valid_dataset.pt")
+        data_mean = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
+        data_std = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
+
+        # convert statistics to float32 : torch.float32 --- tensor = tensor.to(torch.float32) 
+        data_mean[0] = data_mean[0].to(torch.float32)
+        data_mean[1] = data_mean[1].to(torch.float32)
+        data_std[0] = data_std[0].to(torch.float32)
+        data_std[1] = data_std[1].to(torch.float32)
+
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -449,104 +465,110 @@ def train(cfg: DictConfig):
     epoch_times = []
     valid_times = []
 
-    # for epoch in range(trainer.epoch_start, cfg.epochs+1):
-    #     # ~~~~ Training step 
-    #     t0 = time.time()
-    #     trainer.epoch = epoch
-    #     train_metrics = trainer.train_epoch(epoch)
+    for epoch in range(trainer.epoch_start, cfg.epochs+1):
+        # ~~~~ Training step 
+        t0 = time.time()
+        trainer.epoch = epoch
+        train_metrics = trainer.train_epoch(epoch)
 
-    #     trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
+        trainer.loss_hist_train[epoch-1] = train_metrics["loss"]
 
-    #     epoch_time = time.time() - t0
-    #     epoch_times.append(epoch_time)
+        epoch_time = time.time() - t0
+        epoch_times.append(epoch_time)
 
-    #     # ~~~~ Validation step
-    #     t0 = time.time()
-    #     test_metrics = trainer.test()
-    #     trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
-    #     valid_time = time.time() - t0
-    #     valid_times.append(valid_time)
+        # ~~~~ Validation step
+        t0 = time.time()
+        test_metrics = trainer.test()
+        trainer.loss_hist_test[epoch-1] = test_metrics["loss"]
+        valid_time = time.time() - t0
+        valid_times.append(valid_time)
 
-    #     if RANK == 0:
-    #         astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
-    #         sepstr = '-' * len(astr)
-    #         log.info(sepstr)
-    #         log.info(astr)
-    #         log.info(sepstr)
-    #         summary = '  '.join([
-    #             '[TRAIN]',
-    #             f'loss={train_metrics["loss"]:.4e}',
-    #             f'epoch_time={epoch_time:.4g} sec'
-    #             f' valid_time={valid_time:.4g} sec'
-    #         ])
-    #         log.info((sep := '-' * len(summary)))
-    #         log.info(summary)
-    #         log.info(sep)
+        if RANK == 0:
+            astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
+            sepstr = '-' * len(astr)
+            log.info(sepstr)
+            log.info(astr)
+            log.info(sepstr)
+            summary = '  '.join([
+                '[TRAIN]',
+                f'loss={train_metrics["loss"]:.4e}',
+                f'epoch_time={epoch_time:.4g} sec'
+                f' valid_time={valid_time:.4g} sec'
+            ])
+            log.info((sep := '-' * len(summary)))
+            log.info(summary)
+            log.info(sep)
 
 
-    #     # ~~~~ Step scheduler based on validation loss
-    #     trainer.scheduler.step(test_metrics["loss"])
+        # ~~~~ Step scheduler based on validation loss
+        trainer.scheduler.step(test_metrics["loss"])
 
-    #     # ~~~~ Checkpointing step 
-    #     if epoch % cfg.ckptfreq == 0 and RANK == 0:
-    #         astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
-    #         sepstr = '-' * len(astr)
-    #         log.info(sepstr)
-    #         log.info(astr)
-    #         log.info(sepstr)
+        # ~~~~ Checkpointing step 
+        if epoch % cfg.ckptfreq == 0 and RANK == 0:
+            astr = 'Checkpointing on root processor, epoch = %d' %(epoch)
+            sepstr = '-' * len(astr)
+            log.info(sepstr)
+            log.info(astr)
+            log.info(sepstr)
 
-    #         if not os.path.exists(cfg.ckpt_dir):
-    #             os.makedirs(cfg.ckpt_dir)
-    #        
-    #         if WITH_DDP and SIZE > 1:
-    #             ckpt = {'epoch' : epoch, 
-    #                     'training_iter' : trainer.training_iter,
-    #                     'model_state_dict' : trainer.model.module.state_dict(), 
-    #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-    #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test} 
-    #         else:
-    #             ckpt = {'epoch' : epoch, 
-    #                     'training_iter' : trainer.training_iter,
-    #                     'model_state_dict' : trainer.model.state_dict(), 
-    #                     'optimizer_state_dict' : trainer.optimizer.state_dict(), 
-    #                     'scheduler_state_dict' : trainer.scheduler.state_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test}
+            if not os.path.exists(cfg.ckpt_dir):
+                os.makedirs(cfg.ckpt_dir)
+           
+            if WITH_DDP and SIZE > 1:
+                ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
+                        'model_state_dict' : trainer.model.module.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test} 
+            else:
+                ckpt = {'epoch' : epoch, 
+                        'training_iter' : trainer.training_iter,
+                        'model_state_dict' : trainer.model.state_dict(), 
+                        'optimizer_state_dict' : trainer.optimizer.state_dict(), 
+                        'scheduler_state_dict' : trainer.scheduler.state_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test}
 
-    #         torch.save(ckpt, trainer.ckpt_path)
-    #     dist.barrier()
+            torch.save(ckpt, trainer.ckpt_path)
+        dist.barrier()
 
-    # rstr = f'[{RANK}] ::'
-    # log.info(' '.join([
-    #     rstr,
-    #     f'Total training time: {time.time() - start} seconds'
-    # ]))
+    rstr = f'[{RANK}] ::'
+    log.info(' '.join([
+        rstr,
+        f'Total training time: {time.time() - start} seconds'
+    ]))
 
-    # if RANK == 0:
-    #     if WITH_CUDA:  
-    #         trainer.model.to('cpu')
-    #     if not os.path.exists(cfg.model_dir):
-    #         os.makedirs(cfg.model_dir)
-    #     if WITH_DDP and SIZE > 1:
-    #         save_dict = {
-    #                     'state_dict' : trainer.model.module.state_dict(), 
-    #                     'input_dict' : trainer.model.module.input_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test,
-    #                     'training_iter' : trainer.training_iter
-    #                     }
-    #     else:
-    #         save_dict = {   
-    #                     'state_dict' : trainer.model.state_dict(), 
-    #                     'input_dict' : trainer.model.input_dict(),
-    #                     'loss_hist_train' : trainer.loss_hist_train,
-    #                     'loss_hist_test' : trainer.loss_hist_test,
-    #                     'training_iter' : trainer.training_iter
-    #                     }
+    if RANK == 0:
+        if WITH_CUDA:  
+            trainer.model.to('cpu')
+        if not os.path.exists(cfg.model_dir):
+            os.makedirs(cfg.model_dir)
+        if WITH_DDP and SIZE > 1:
+            save_dict = {
+                        'state_dict' : trainer.model.module.state_dict(), 
+                        'input_dict' : trainer.model.module.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : trainer.training_iter
+                        }
+        else:
+            save_dict = {   
+                        'state_dict' : trainer.model.state_dict(), 
+                        'input_dict' : trainer.model.input_dict(),
+                        'loss_hist_train' : trainer.loss_hist_train,
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'training_iter' : trainer.training_iter
+                        }
 
-    #     torch.save(save_dict, trainer.model_path)
+        torch.save(save_dict, trainer.model_path)
+
+
+def write_full_dataset(cfg: DictConfig):
+    return 
+
+
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
@@ -560,6 +582,7 @@ def main(cfg: DictConfig) -> None:
 
     train(cfg)
     cleanup()
+
 
 if __name__ == '__main__':
     main()
