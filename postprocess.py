@@ -1006,7 +1006,6 @@ if 1 == 1:
                 mse_full_ss = np.zeros((rollout_steps,2))
                 mse_mask = np.zeros((rollout_steps,2))
                 mse_mask_ss = np.zeros((rollout_steps,2))
-            
 
                 # Get input 
                 n_nodes =  test_dataset[0].x.shape[0]
