@@ -139,7 +139,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses (original)')
 
     # # Comparing baselines:  
@@ -918,7 +918,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
     print('Write model predictions, small trajectories...')
 
     if torch.cuda.is_available():
@@ -927,6 +927,7 @@ if 1 == 0:
         device = 'cpu'
 
     header_list = ['no_budget_reg', 'budget_reg_lam_0.0001', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01', 'baseline']
+    header_list = ['budget_reg_lam_test_no_inv_budget']
 
     for header in header_list: 
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
@@ -999,9 +1000,6 @@ if 1 == 0:
                     features_to_keep = [1,2], 
                     fraction_valid = 0, 
                     multiple_cases = False)
-
-                asdf
-
 
                 # Setup instantaneous budget computation 
                 mse_full = np.zeros((rollout_steps,2))
