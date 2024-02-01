@@ -22,22 +22,22 @@ def ratio_boundary_internal_nodes(p: int) -> float:
 if __name__ == "__main__":
 
     
-    # Load a dataset 
-    data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/"
-    train_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/train_dataset.pt")
-    test_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/valid_dataset.pt")
-    data_mean = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
-    data_std = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
+    # # Load a dataset 
+    # data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/"
+    # train_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/train_dataset.pt")
+    # test_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/valid_dataset.pt")
+    # data_mean = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
+    # data_std = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
 
-    # convert statistics to float32 : torch.float32 --- tensor = tensor.to(torch.float32) 
-    data_mean[0] = data_mean[0].to(torch.float32)
-    data_mean[1] = data_mean[1].to(torch.float32)
-    data_std[0] = data_std[0].to(torch.float32)
-    data_std[1] = data_std[1].to(torch.float32)
+    # # convert statistics to float32 : torch.float32 --- tensor = tensor.to(torch.float32) 
+    # data_mean[0] = data_mean[0].to(torch.float32)
+    # data_mean[1] = data_mean[1].to(torch.float32)
+    # data_std[0] = data_std[0].to(torch.float32)
+    # data_std[1] = data_std[1].to(torch.float32)
 
 
     # ~~~~ postprocessing: training losses 
-    if 1 == 1:
+    if 1 == 0:
         mp = [1,2,3,4,5,6,7,8]
         mp = [5]
 
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
 
     # ~~~~ Postprocess run logs: KE, dissipation, enst
-    if 1 == 0:
+    if 1 == 1:
         import re
 
         def read_nrs_log(file_path):
@@ -275,9 +275,11 @@ if __name__ == "__main__":
             return lines, values 
 
         # Re = 1600 
-        _, values_1600 = read_nrs_log('./outputs/run_logs/Re_1600_poly_7.log')
-        _, values_2000 = read_nrs_log('./outputs/run_logs/Re_2000_poly_7.log')
-        _, values_2400 = read_nrs_log('./outputs/run_logs/Re_2400_poly_7.log')
+        _, values_1600 = read_nrs_log('./outputs/run_logs/36_cubed/Re_1600_poly_7.log')
+        _, values_2000 = read_nrs_log('./outputs/run_logs/36_cubed/Re_2000_poly_7.log')
+        _, values_2400 = read_nrs_log('./outputs/run_logs/36_cubed/Re_2400_poly_7.log')
+
+        _, values_1600_2 = read_nrs_log('./outputs/run_logs/72_cubed/Re_1600_poly_7.log')
         
         #   0      1     2          4        5       6
         # [time, enst, energy, -2*nu*enst, dE/dt, nuEff/nu]
@@ -285,22 +287,25 @@ if __name__ == "__main__":
         # Kinetic energy  
         lw = 2
         fig, ax = plt.subplots()
-        ax.plot(values_1600[:,0], values_1600[:,2], label='Re=1600', lw=lw)
-        ax.plot(values_2000[:,0], values_2000[:,2], label='Re=2000', lw=lw)
-        ax.plot(values_2400[:,0], values_2400[:,2], label='Re=2400', lw=lw)
+        ax.plot(values_1600[:,0], values_1600[:,2], label='Re=1600, 36^3, P=7', lw=lw)
+        ax.plot(values_1600_2[:,0], values_1600_2[:,2], label='Re=1600, 72^3, P=7', lw=lw)
+        # ax.plot(values_2000[:,0], values_2000[:,2], label='Re=2000', lw=lw)
+        # ax.plot(values_2400[:,0], values_2400[:,2], label='Re=2400', lw=lw)
         ax.set_title('Kinetic Energy')
         #ax.set_xlim([7.5, 10.5])
         plt.show(block=False)
 
         # dissipation rate ( dEk/dt )
         fig, ax = plt.subplots()
-        ax.plot(values_1600[:,0], -values_1600[:,5], label='Re=1600', lw=lw)
-        ax.plot(values_2000[:,0], -values_2000[:,5], label='Re=2000', lw=lw)
-        ax.plot(values_2400[:,0], -values_2400[:,5], label='Re=2400', lw=lw)
+        ax.plot(values_1600[:,0], -values_1600[:,4], label='Re=1600, 36^3, P=7', lw=lw)
+        ax.plot(values_1600_2[:,0], -values_1600_2[:,4], label='Re=1600, 72^3, P=7', lw=lw, ls='--')
+        #ax.plot(values_2000[:,0], -values_2000[:,5], label='Re=2000', lw=lw)
+        #ax.plot(values_2400[:,0], -values_2400[:,5], label='Re=2400', lw=lw)
         ax.set_title('Dissipation Rate')
-        ax.set_xlim([7.5, 10.5])
+        #ax.set_xlim([7.5, 10.5])
         ax.legend()
         ax.set_xlabel('t_c')
+        #ax.set_ylabel('-dEk/dt')
         ax.set_ylabel('-dEk/dt')
         plt.show(block=False)
 
