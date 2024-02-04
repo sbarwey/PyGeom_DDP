@@ -1,7 +1,7 @@
 # @package _global_
 seed: 122
-epochs: 10
-backend: gloo
+epochs: 100
+backend: nccl
 lr_init: 0.0001
 # momentum: 0.5
 use_noise : True
