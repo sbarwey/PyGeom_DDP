@@ -15,6 +15,9 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 torch.set_grad_enabled(False)
 
+def count_parameters(mdl):
+    return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
+
 def ratio_boundary_internal_nodes(p: int) -> float: 
     ratio = ( (p+1)**3 - (p-1)**3 )/(p-1)**3
     return ratio 
@@ -22,10 +25,12 @@ def ratio_boundary_internal_nodes(p: int) -> float:
 if __name__ == "__main__":
 
     
-    # # Load a dataset 
-    # data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/"
-    # train_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/train_dataset.pt")
-    # test_dataset = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/valid_dataset.pt")
+    # Load a dataset 
+    data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/"
+    # data_dir = "/Users/sbarwey/Files/temp/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/"
+
+    train_dataset = torch.load(data_dir + "/train_dataset.pt")
+    test_dataset = torch.load(data_dir + "/valid_dataset.pt")
     # data_mean = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
     # data_std = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
 
@@ -172,7 +177,6 @@ if __name__ == "__main__":
         ax.set_ylabel('Target RMS Velocity')
         plt.show(block=False)
 
-
     # ~~~~ Visualize model predictions -- a single element  
     if 1 == 0:
         element_ids_sorted = torch.load("/Users/sbarwey/Files/ml/DDP_PyGeom_SR/outputs/postproc/element_ids_sorted.pt")
@@ -253,9 +257,8 @@ if __name__ == "__main__":
                     count += 1 
             plt.show(block=False)
 
-
     # ~~~~ Postprocess run logs: KE, dissipation, enst
-    if 1 == 1:
+    if 1 == 0:
         import re
 
         def read_nrs_log(file_path):
@@ -381,14 +384,6 @@ if __name__ == "__main__":
             ax[2].set_aspect('equal')
             plt.show(block=False)
 
-
-        # Global scatter plots of training data -- joint distributions 
-        if 1 == 1:
-            
-
-
-            pass 
-
         # RMS versus reconstruction MSE 
         if 1 == 0:
             fig, ax = plt.subplots(figsize=(8,7))
@@ -400,4 +395,49 @@ if __name__ == "__main__":
             ax.set_ylabel('Reconstruction MSE', fontsize=20)
             ax.legend(fontsize=20)
             plt.show(block=False)
+
+    # ~~~~ Test the model 
+    if 1 == 1:   
+        sample = train_dataset[0]
+        input_node_channels = sample.x.shape[1]
+        input_edge_channels = sample.pos.shape[1] + sample.x.shape[1] + 1 
+        hidden_channels = 128  
+        output_node_channels = sample.y.shape[1] 
+        n_mlp_hidden_layers = 2 
+        n_messagePassing_layers = 8
+
+        name = 'gnn' 
+        model = gnn.GNN(input_node_channels,
+                           input_edge_channels,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
+
+        train_loader = torch_geometric.loader.DataLoader(
+            train_dataset,
+            batch_size=8,
+            shuffle=False,
+        )
+
+        for bidx, data in enumerate(train_loader):
+            # 1) Preprocessing: scale input  
+            eps = 1e-10
+            x_scaled = (data.x - data.x_mean)/(data.x_std + eps) 
+
+            # 2) Evaluate the model 
+            gnn_out = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
+
+            # 3) Set the target 
+            target = (data.y - data.x)/(data.x_std + eps)
+
+            # 4) Inference -- Make a prediction 
+            # y_pred = gnn_out * (data.x_std.unsqueeze(0) + eps) + data.x 
+
+            break
+
+
+
+
 

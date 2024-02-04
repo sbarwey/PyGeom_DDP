@@ -112,41 +112,32 @@ def write_full_dataset(cfg: DictConfig):
     n_i = []
 
     data_read_world_size = 4
-    snapshot_time_list = ['8.0', '9.0', '10.0']
-    Re_list = ['1600', '2000', '2400']
-    #snapshot_time_list = ['9.0']
+    snapshot_time_list = ['10.0'] # ['8.0', '9.0', '10.0']
+    Re_list = ['1600'] #['1600', '2000', '2400']
+
+    case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
+    #case_path = "/Users/sbarwey/Files/temp"
 
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snapshot_time_list)):
             for i in range(data_read_world_size):
                 Re = Re_list[Re_id]
                 snapshot_time = snapshot_time_list[snap_id]
-                data_x_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_recon_poly_7' %(Re) + '/fld_u_time_%s_rank_%d_size_%d' %(snapshot_time,i,data_read_world_size) # input  
-                data_y_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_target_poly_7' %(Re) + '/fld_u_time_%s_rank_%d_size_%d' %(snapshot_time,i,data_read_world_size) # target 
-                edge_index_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_recon_poly_7' %(Re) + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
-                node_element_ids_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_recon_poly_7' %(Re) + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
-                global_ids_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_recon_poly_7' %(Re) + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
-                pos_path = cfg.case_path + '/Re_%s_poly_7/gnn_outputs_recon_poly_7' %(Re) + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
+                
+                print('Re: ', Re)
+                print('snapshot_time: ', snapshot_time)
+
+                data_x_path = case_path + '/Re_%s_poly_7/snapshots_interp_5to7/gnn_outputs_poly_7' %(Re) + '/fld_u_time_%s_rank_%d_size_%d' %(snapshot_time,i,data_read_world_size) # input  
+                data_y_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/fld_u_time_%s_rank_%d_size_%d' %(snapshot_time,i,data_read_world_size) # target 
+                edge_index_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
+                node_element_ids_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
+                global_ids_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
+                pos_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
                         
-                # data_x_path = cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
-                # data_y_path = cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
-                # edge_index_path = cfg.case_path + '/Re_1600_poly_7/gnn_outputs_recon_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
-                # node_element_ids_path = cfg.case_path + '/Re_1600_poly_7/gnn_outputs_recon_poly_7' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
-                # global_ids_path = cfg.case_path + '/Re_1600_poly_7/gnn_outputs_recon_poly_7' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
-                # pos_path = cfg.case_path + '/Re_1600_poly_7/gnn_outputs_recon_poly_7' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
-
-                # # FOR TESTING ONLY -- poly 1 data 
-                # data_x_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
-                # data_y_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
-                # edge_index_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
-                # node_element_ids_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
-                # global_ids_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
-                # pos_path = cfg.case_path + '/gnn_outputs_distributed_gnn/gnn_outputs_poly_1' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
-
                 if RANK == 0:
                     log.info('in get_pygeom_dataset...')
 
-                train_dataset_temp, test_dataset_temp, data_mean, data_var, n_samples = ngs.get_pygeom_dataset_updated_statistics(
+                train_dataset_temp, test_dataset_temp, data_mean, data_var, n_samples = ngs.get_pygeom_dataset(
                                                                      data_x_path, 
                                                                      data_y_path,
                                                                      edge_index_path,
@@ -165,9 +156,8 @@ def write_full_dataset(cfg: DictConfig):
                 var_y_i.append(data_var[1])
                 n_i.append(n_samples)
 
-                # print('data_mean[0].shape: ', data_mean[0].shape)
-                # print('data_var[0].shape: ', data_var[0].shape)
-
+                print('data_mean[0].shape: ', data_mean[0].shape)
+                print('data_var[0].shape: ', data_var[0].shape)
 
     # ~~~~ Get global training statistics 
     mean_x_i = np.stack(mean_x_i, axis=0)

@@ -2,62 +2,65 @@ from __future__ import absolute_import, division, print_function, annotations
 from typing import Optional, Union, Callable, List
 import torch
 from torch import Tensor
-import torch.nn as nn
-import torch.nn.functional as F
 import torch_geometric.nn as tgnn
 from torch_scatter import scatter_mean
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.typing import Adj, OptTensor, PairTensor
 from pooling import TopKPooling_Mod, avg_pool_mod, avg_pool_mod_no_x
 
-class mp_gnn(torch.nn.Module):
+class GNN(torch.nn.Module):
     def __init__(self, 
-                 input_channels: int, 
+                 input_node_channels: int, 
+                 input_edge_channels: int, 
                  hidden_channels: int, 
-                 output_channels: int, 
-                 n_mlp_layers: List[int], 
+                 output_node_channels: int, 
+                 n_mlp_hidden_layers: int, 
                  n_messagePassing_layers: int,
-                 activation: Callable,
-                 name: Optional[str] = 'model'):
+                 name: Optional[str] = 'gnn'):
         super().__init__()
         
-        self.input_channels = input_channels
+        self.input_node_channels = input_node_channels
+        self.input_edge_channels = input_edge_channels
         self.hidden_channels = hidden_channels
-        self.output_channels = output_channels 
-        self.n_mlp_layers = n_mlp_layers
+        self.output_node_channels = output_node_channels 
+        self.n_mlp_hidden_layers = n_mlp_hidden_layers
         self.n_messagePassing_layers = n_messagePassing_layers
-        self.act = activation
         self.name = name 
 
-        # ~~~~ node encoder 
-        self.node_encoder = torch.nn.ModuleList()
-        for j in range(self.n_mlp_layers[0]):
-            if j == 0:
-                input_features = self.input_channels
-                output_features = self.hidden_channels 
-            else:
-                input_features = self.hidden_channels
-                output_features = self.hidden_channels
-            self.node_encoder.append( nn.Linear(input_features, output_features, bias=True) )
+        # ~~~~ node encoder MLP  
+        self.node_encoder = MLP(
+                input_channels = self.input_node_channels,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
 
-        # ~~~~ node decoder 
-        self.node_decoder = torch.nn.ModuleList()
-        for j in range(self.n_mlp_layers[0]):
-            if j == self.n_mlp_layers[0] - 1:
-                input_features = self.hidden_channels
-                output_features = self.output_channels
-            else:
-                input_features = self.hidden_channels
-                output_features = self.hidden_channels
-            self.node_decoder.append( nn.Linear(input_features, output_features, bias=True) )
+        # ~~~~ edge encoder MLP 
+        self.edge_encoder = MLP(
+                input_channels = self.input_edge_channels,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
 
-        # ~~~~ message passing layer 
-        self.mp_layers = torch.nn.ModuleList()
-        for j in range(self.n_messagePassing_layers):
-            self.mp_layers.append( mp_layer(channels = hidden_channels,
-                                             n_mlp_layers_edge = self.n_mlp_layers[1], 
-                                             n_mlp_layers_node = self.n_mlp_layers[2],
-                                             activation = self.act) 
+        # ~~~~ node decoder MLP  
+        self.node_decoder = MLP(
+                input_channels = self.hidden_channels,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.output_node_channels,
+                activation_layer = torch.nn.ELU(),
+                )
+        
+        # ~~~~ Processor 
+        self.processor = torch.nn.ModuleList()
+        for i in range(self.n_messagePassing_layers):
+            self.processor.append( 
+                          MessagePassingLayer(
+                                     channels = hidden_channels,
+                                     n_mlp_hidden_layers = self.n_mlp_hidden_layers, 
+                                     ) 
                                   )
         
         self.reset_parameters()
@@ -71,128 +74,171 @@ class mp_gnn(torch.nn.Module):
 
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
-        
-        # ~~~~ Node Encoder: 
-        n_layers = self.n_mlp_layers[0]
-        for i in range(n_layers):
-            x = self.node_encoder[i](x)
-            if i < n_layers - 1:
-                x = self.act(x)
 
-        # ~~~~ Message passing with residual:  
+        # ~~~~ Compute edge features 
+        x_send = x[edge_index[0,:],:]
+        x_recv = x[edge_index[1,:],:]
+        pos_send = pos[edge_index[0,:],:]
+        pos_recv = pos[edge_index[1,:],:]
+        e_1 = pos_send - pos_recv
+        e_2 = torch.norm(e_1, dim=1, p=2, keepdim=True)
+        e_3 = x_send - x_recv
+        e = torch.cat((e_1, e_2, e_3), dim=1)
+
+        # ~~~~ Node encoder 
+        x = self.node_encoder(x) 
+
+        # ~~~~ Edge encoder 
+        e = self.edge_encoder(e) 
+
+        # ~~~~ Processor 
         for i in range(self.n_messagePassing_layers):
-            x = x + self.mp_layers[i](x, edge_index, pos, batch)
-        
-        # ~~~~ Node decoder:
-        n_layers = self.n_mlp_layers[0]
-        for i in range(n_layers):
-            x = self.node_decoder[i](x)
-            if i < n_layers - 1:
-                x = self.act(x)
+            x,e = self.processor[i](x,e,edge_index,batch)
 
+        # ~~~~ Node decoder 
+        x = self.node_decoder(x)
+        
         return x 
 
     def reset_parameters(self):
-        for module in self.node_encoder:
+        self.node_encoder.reset_parameters()
+        self.edge_encoder.reset_parameters()
+        self.node_decoder.reset_parameters()
+        for module in self.processor:
             module.reset_parameters()
-
-        for module in self.node_decoder:
-            module.reset_parameters()
-
-        for module in self.mp_layers:
-            module.reset_parameters()
-            
         return
 
     def input_dict(self) -> dict:
-        a = {'input_channels': self.input_channels,
-             'hidden_channels': self.hidden_channels,
-             'output_channels': self.output_channels,
-             'n_mlp_layers': self.n_mlp_layers,
-             'activation': self.act}
+        a = {'input_node_channels': self.input_node_channels,
+             'input_edge_channels': self.input_edge_channels,
+             'hidden_channels': self.hidden_channels, 
+             'output_node_channels': self.output_node_channels,
+             'n_mlp_hidden_layers': self.n_mlp_hidden_layers,
+             'n_messagePassing_layers': self.n_messagePassing_layers,
+             'name': self.name} 
         return a
 
     def get_save_header(self) -> str:
-        header = '%s' %(self.name)
+        a = self.input_dict()
+        header = a['name']
+        
+        for key in a.keys():
+            if key != 'name': 
+                header += '_' + str(a[key])
+
+        #for item in self.input_dict():
         return header
 
+
+
  
-class mp_layer(torch.nn.Module):
+
+class MLP(torch.nn.Module):
+    def __init__(self,
+                 input_channels: int,
+                 hidden_channels: List[int],
+                 output_channels: int,
+                 norm_layer: Optional[Callable[..., torch.nn.Module]] = None,
+                 activation_layer: Optional[Callable[..., torch.nn.Module]] = torch.nn.ReLU(),
+                 bias: bool = True):
+        super().__init__()
+
+        self.input_channels = input_channels
+        self.hidden_channels = hidden_channels 
+        self.output_channels = output_channels 
+        self.norm_layer = norm_layer
+        self.activation_layer = activation_layer
+
+        self.ic = [input_channels] + hidden_channels # input channel dimensions for each layer
+        self.oc = hidden_channels + [output_channels] # output channel dimensions for each layer 
+
+        self.mlp = torch.nn.ModuleList()
+        for i in range(len(self.ic)):
+            self.mlp.append( torch.nn.Linear(self.ic[i], self.oc[i], bias=bias) )
+
+        self.reset_parameters()
+
+        return
+
+    def forward(self, x: Tensor) -> Tensor:
+        for i in range(len(self.ic)):
+            x = self.mlp[i](x) 
+            if i < (len(self.ic) - 1):
+                x = self.activation_layer(x)
+        x = self.norm_layer(x) if self.norm_layer else x
+        return x  
+
+    def reset_parameters(self):
+        for module in self.mlp:
+            module.reset_parameters()
+        if self.norm_layer:
+            self.norm_layer.reset_parameters()
+        return
+
+class MessagePassingLayer(torch.nn.Module):
     def __init__(self, 
                  channels: int, 
-                 n_mlp_layers_edge: int, 
-                 n_mlp_layers_node: int,
-                 activation: Callable):
+                 n_mlp_hidden_layers: int):
         super().__init__()
 
         self.edge_aggregator = EdgeAggregation(aggr='add')
         self.channels = channels
-        self.n_mlp_layers_edge = n_mlp_layers_edge
-        self.n_mlp_layers_node = n_mlp_layers_node
-        self.act = activation
+        self.n_mlp_hidden_layers = n_mlp_hidden_layers 
 
-        self.edge_updater = torch.nn.ModuleList()
-        for j in range(self.n_mlp_layers_edge):
-            if j == 0:
-                input_features = self.channels*3 + 3 # additional 3 for node positions  
-                output_features = self.channels 
-            else:
-                input_features = self.channels
-                output_features = self.channels
-            self.edge_updater.append( nn.Linear(input_features, output_features, bias=True) )
+        # Edge update MLP 
+        self.edge_updater = MLP(
+                input_channels = self.channels*3,
+                hidden_channels = [self.channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.channels)
+                )
 
-        self.node_updater = torch.nn.ModuleList()
-        for j in range(self.n_mlp_layers_node):
-            if j == 0:
-                input_features = self.channels*2
-                output_features = self.channels 
-            else:
-                input_features = self.channels
-                output_features = self.channels
-            self.node_updater.append( nn.Linear(input_features, output_features, bias=True) )
+        # Node update MLP
+        self.node_updater = MLP(
+                input_channels = self.channels*2,
+                hidden_channels = [self.channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.channels)
+                )
 
         self.reset_parameters()
+
+        return 
 
     def forward(
             self,
             x: Tensor,
+            e: Tensor,
             edge_index: LongTensor,
-            pos: Tensor,
             batch: Optional[LongTensor] = None) -> Tensor:
 
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
         
         # ~~~~ Edge update 
-        x_nei = x[edge_index[0,:], :] 
-        x_own = x[edge_index[1,:], :] 
-        pos_nei = pos[edge_index[0,:], :]
-        pos_own = pos[edge_index[1,:], :] 
-        ea = torch.cat((x_nei, x_own, x_nei - x_own, pos_nei - pos_own), dim=1)
-        n_layers = self.n_mlp_layers_edge
-        for j in range(n_layers):
-            ea = self.edge_updater[j](ea) 
-            if j < n_layers - 1:
-                ea = self.act(ea)
+        e += self.edge_updater(
+                torch.cat((x[edge_index[0,:],:], x[edge_index[1,:],:], e), dim=1)
+                )
+        
+        # ~~~~ Edge aggregation
+        edge_agg = self.edge_aggregator(x, edge_index, e)
 
-        edge_agg = self.edge_aggregator(x, edge_index, ea)
+        # ~~~~ Node update 
+        x += self.node_updater(
+                torch.cat((x, edge_agg), dim=1)
+                )
 
-        x = torch.cat((x, edge_agg), dim=1)
-        n_layers = self.n_mlp_layers_node
-        for j in range(n_layers):
-            x = self.node_updater[j](x) 
-            if j < n_layers - 1:
-                x = self.act(x)
-
-        return x  
+        return x,e  
 
     def reset_parameters(self):
-        for module in self.edge_updater:
-            module.reset_parameters()
-
-        for module in self.node_updater:
-            module.reset_parameters()
+        self.edge_updater.reset_parameters()
+        self.node_updater.reset_parameters()
         return
+
+
+
 
 class EdgeAggregation(MessagePassing):
     r"""This is a custom class that returns node quantities that represent the neighborhood-averaged edge features.

@@ -117,8 +117,8 @@ class Trainer:
 
         # ~~~~ Init training and testing loss history 
         self.loss_hist_train = np.zeros(self.cfg.epochs)
-
         self.loss_hist_test = np.zeros(self.cfg.epochs)
+        self.lr_hist = np.zeros(self.cfg.epochs)
 
         # ~~~~ Noise setup
         self.noise_dist = []
@@ -129,11 +129,11 @@ class Trainer:
 
         # ~~~~ Init datasets
         self.data = self.setup_data()
-        if WITH_CUDA: 
-            self.data['train']['stats'][0][0] = self.data['train']['stats'][0][0].cuda()
-            self.data['train']['stats'][0][1] = self.data['train']['stats'][0][1].cuda()
-            self.data['train']['stats'][1][0] = self.data['train']['stats'][1][0].cuda()
-            self.data['train']['stats'][1][1] = self.data['train']['stats'][1][1].cuda()
+        # if WITH_CUDA: 
+        #     self.data['train']['stats'][0][0] = self.data['train']['stats'][0][0].cuda()
+        #     self.data['train']['stats'][0][1] = self.data['train']['stats'][0][1].cuda()
+        #     self.data['train']['stats'][1][0] = self.data['train']['stats'][1][0].cuda()
+        #     self.data['train']['stats'][1][1] = self.data['train']['stats'][1][1].cuda()
 
         # ~~~~ Init model and move to gpu 
         self.model = self.build_model()
@@ -160,14 +160,18 @@ class Trainer:
             self.training_iter = ckpt['training_iter']
             self.loss_hist_train = ckpt['loss_hist_train']
             self.loss_hist_test = ckpt['loss_hist_test']
+            self.lr_hist = ckpt['lr_hist']
 
             if len(self.loss_hist_train) < self.cfg.epochs:
                 loss_hist_train_new = np.zeros(self.cfg.epochs)
                 loss_hist_test_new = np.zeros(self.cfg.epochs)
+                lr_hist = np.zeros(self.cfg.epochs)
                 loss_hist_train_new[:len(self.loss_hist_train)] = self.loss_hist_train
                 loss_hist_test_new[:len(self.loss_hist_test)] = self.loss_hist_test
+                lr_hist_new[:len(self.lr_hist)] = self.lr_hist
                 self.loss_hist_train = loss_hist_train_new
                 self.loss_hist_test = loss_hist_test_new
+                self.lr_hist = lr_hist_new 
             
 
         # ~~~~ Wrap model in DDP
@@ -197,30 +201,23 @@ class Trainer:
     def build_model(self) -> nn.Module:
          
         sample = self.data['train']['example']
-        input_channels = sample.x.shape[1]
-        output_channels = sample.y.shape[1] 
-        hidden_channels = 64 
-        n_mlp_layers = [3,3,3]
-        n_messagePassing_layers = self.cfg.n_mp_layers
-        activation = F.elu
+        input_node_channels = sample.x.shape[1]
+        input_edge_channels = sample.pos.shape[1] + sample.x.shape[1] + 1 
+        hidden_channels = self.cfg.hidden_channels 
+        output_node_channels = sample.y.shape[1] 
+        n_mlp_hidden_layers = self.cfg.n_mlp_hidden_layers 
+        n_messagePassing_layers = self.cfg.n_messagePassing_layers 
 
-        if RANK == 0:
-            log.info('input_channels: %d' %(input_channels))
-            log.info('output_channels: %d' %(output_channels))
-            log.info('hidden_channels: %d' %(hidden_channels))
-            log.info(f'n_mlp_layers: {n_mlp_layers}')
-            log.info('n_messagePassing_layers: %d' %(n_messagePassing_layers))
-            log.info(f'activation: {activation}')
-        
-        name = 'super_res_gnn_mp_%d' %(n_messagePassing_layers)
-        model = gnn.mp_gnn(input_channels,
+        name = 'gnn'
+        model = gnn.GNN(input_node_channels,
+                           input_edge_channels,
                            hidden_channels,
-                           output_channels,
-                           n_mlp_layers,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
                            n_messagePassing_layers,
-                           activation,
                            name)
-        
+
+                
         return model
 
     def build_optimizer(self, model: nn.Module) -> torch.optim.Optimizer:
@@ -241,51 +238,8 @@ class Trainer:
     def setup_data(self):
         kwargs = {}
         
-        # device_for_loading = 'cpu'
-        # fraction_valid = 0.1 
-
-        # train_dataset = []
-        # test_dataset = [] 
-
-        # data_read_world_size = 4
-
-        # for i in range(data_read_world_size):
-        #     data_x_path = self.cfg.case_path + '/gnn_outputs_recon_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # input  
-        #     data_y_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/fld_u_rank_%d_size_%d' %(i,data_read_world_size) # target 
-        #     edge_index_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
-        #     node_element_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/node_element_ids_rank_%d_size_%d' %(i,data_read_world_size)
-        #     global_ids_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
-        #     pos_path = self.cfg.case_path + '/gnn_outputs_original_poly_7' + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
-        #             
-        #     # note: data_mean and data_std are overwritten. the one used is for i = 3 
-        #     if RANK == 0:
-        #         log.info('in get_pygeom_dataset...')
-
-        #     train_dataset_temp, test_dataset_temp, data_mean, data_std = ngs.get_pygeom_dataset(
-        #                                                          data_x_path, 
-        #                                                          data_y_path,
-        #                                                          edge_index_path,
-        #                                                          node_element_ids_path,
-        #                                                          global_ids_path,
-        #                                                          pos_path,
-        #                                                          device_for_loading,
-        #                                                          fraction_valid)
-
-        #     train_dataset += train_dataset_temp
-        #     test_dataset += test_dataset_temp
-
-
-        train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/train_dataset.pt")
-        test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/valid_dataset.pt")
-        data_mean = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
-        data_std = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
-
-        # convert statistics to float32 : torch.float32 --- tensor = tensor.to(torch.float32) 
-        data_mean[0] = data_mean[0].to(torch.float32)
-        data_mean[1] = data_mean[1].to(torch.float32)
-        data_std[0] = data_std[0].to(torch.float32)
-        data_std[1] = data_std[1].to(torch.float32)
-
+        train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -293,7 +247,7 @@ class Trainer:
 
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=SIZE, rank=RANK,
+            train_dataset, num_replicas=SIZE, rank=RANK, shuffle=True,
         )
         train_loader = torch_geometric.loader.DataLoader(
             train_dataset,
@@ -304,18 +258,20 @@ class Trainer:
 
         # DDP: use DistributedSampler to partition the test data
         test_sampler = torch.utils.data.distributed.DistributedSampler(
-            test_dataset, num_replicas=SIZE, rank=RANK
+            test_dataset, num_replicas=SIZE, rank=RANK, shuffle=False,
         )
         test_loader = torch_geometric.loader.DataLoader(
-            test_dataset, batch_size=self.cfg.test_batch_size
+            test_dataset, 
+            batch_size=self.cfg.test_batch_size,
+            sampler=test_sampler,
         )
 
         return {
             'train': {
                 'sampler': train_sampler,
                 'loader': train_loader,
-                'example': train_dataset[0],
-                'stats': [data_mean, data_std] 
+                'example': train_dataset[0]
+                # 'stats': [data_mean, data_std] 
             },
             'test': {
                 'sampler': test_sampler,
@@ -329,24 +285,27 @@ class Trainer:
     ) -> Tensor:
         if WITH_CUDA:
             data.x = data.x.cuda()
+            data.x_mean = data.x_mean.cuda()
+            data.x_std = data.x_std.cuda()
             data.y = data.y.cuda()
             data.edge_index = data.edge_index.cuda()
             data.pos_norm = data.pos_norm.cuda()
             data.batch = data.batch.cuda()
                     
         self.optimizer.zero_grad()
+        
+        # 1) Preprocessing: scale input  
+        eps = 1e-10
+        x_scaled = (data.x - data.x_mean)/(data.x_std + eps) 
+          
+        # 2) evaluate model 
+        out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
-        # scale x, y
-        data_mean = self.data['train']['stats'][0]
-        data_std = self.data['train']['stats'][1]
-        data.x = (data.x - data_mean[0])/data_std[0]
-        data.y = (data.y - data_mean[1])/data_std[1]
-    
-        # evaluate model 
-        out = self.model(data.x, data.edge_index, data.pos_norm, data.batch)
+        # 3) set the target 
+        target = (data.y - data.x)/(data.x_std + eps)
 
-        # evaluate loss 
-        loss = self.loss_fn(out, data.y)
+        # 4) evaluate loss 
+        loss = self.loss_fn(out_gnn, target)
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
@@ -423,31 +382,32 @@ class Trainer:
         test_loader = self.data['test']['loader']
         with torch.no_grad():
             for data in test_loader:
-                
                 if WITH_CUDA:
                     data.x = data.x.cuda()
+                    data.x_mean = data.x_mean.cuda()
+                    data.x_std = data.x_std.cuda()
                     data.y = data.y.cuda()
                     data.edge_index = data.edge_index.cuda()
                     data.pos_norm = data.pos_norm.cuda()
                     data.batch = data.batch.cuda()
-                                                        
-                # scale  
-                data_mean = self.data['train']['stats'][0]
-                data_std = self.data['train']['stats'][1]
-                data.x = (data.x - data_mean[0])/data_std[0]
-                data.y = (data.y - data_mean[1])/data_std[1]
+                                                       
+                # 1) Preprocessing: scale input  
+                eps = 1e-10
+                x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
+                  
+                # 2) evaluate model 
+                out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
-                # evaluate model 
-                out = self.model(data.x, data.edge_index, data.pos_norm, data.batch)
-                
-                # evaluate loss 
-                loss = self.loss_fn(out, data.y)
+                # 3) set the target 
+                target = (data.y - data.x)/(data.x_std + eps)
+
+                # 4) evaluate loss 
+                loss = self.loss_fn(out_gnn, target)
 
                 running_loss += loss.item()
                 count += 1
 
             running_loss = running_loss / count
-
             loss_avg = metric_average(running_loss)
 
         return {'loss': loss_avg}
@@ -483,6 +443,10 @@ def train(cfg: DictConfig):
         valid_time = time.time() - t0
         valid_times.append(valid_time)
 
+        # ~~~~ Learning rate 
+        lr = trainer.optimizer.param_groups[0]['lr']
+        trainer.lr_hist[epoch-1] = lr
+
         if RANK == 0:
             astr = f'[TEST] loss={test_metrics["loss"]:.4e}'
             sepstr = '-' * len(astr)
@@ -492,13 +456,13 @@ def train(cfg: DictConfig):
             summary = '  '.join([
                 '[TRAIN]',
                 f'loss={train_metrics["loss"]:.4e}',
-                f'epoch_time={epoch_time:.4g} sec'
-                f' valid_time={valid_time:.4g} sec'
+                f'epoch_time={epoch_time:.4g} sec',
+                f' valid_time={valid_time:.4g} sec',
+                f' learning_rate={lr:.6g}'
             ])
             log.info((sep := '-' * len(summary)))
             log.info(summary)
             log.info(sep)
-
 
         # ~~~~ Step scheduler based on validation loss
         trainer.scheduler.step(test_metrics["loss"])
@@ -521,7 +485,8 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test} 
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'lr_hist' : trainer.lr_hist} 
             else:
                 ckpt = {'epoch' : epoch, 
                         'training_iter' : trainer.training_iter,
@@ -529,7 +494,8 @@ def train(cfg: DictConfig):
                         'optimizer_state_dict' : trainer.optimizer.state_dict(), 
                         'scheduler_state_dict' : trainer.scheduler.state_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
-                        'loss_hist_test' : trainer.loss_hist_test}
+                        'loss_hist_test' : trainer.loss_hist_test,
+                        'lr_hist' : trainer.lr_hist}
 
             torch.save(ckpt, trainer.ckpt_path)
         dist.barrier()
@@ -551,6 +517,7 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.module.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
+                        'lr_hist' : trainer.lr_hist,
                         'training_iter' : trainer.training_iter
                         }
         else:
@@ -559,6 +526,7 @@ def train(cfg: DictConfig):
                         'input_dict' : trainer.model.input_dict(),
                         'loss_hist_train' : trainer.loss_hist_train,
                         'loss_hist_test' : trainer.loss_hist_test,
+                        'lr_hist' : trainer.lr_hist,
                         'training_iter' : trainer.training_iter
                         }
 
