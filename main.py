@@ -165,7 +165,7 @@ class Trainer:
             if len(self.loss_hist_train) < self.cfg.epochs:
                 loss_hist_train_new = np.zeros(self.cfg.epochs)
                 loss_hist_test_new = np.zeros(self.cfg.epochs)
-                lr_hist = np.zeros(self.cfg.epochs)
+                lr_hist_new = np.zeros(self.cfg.epochs)
                 loss_hist_train_new[:len(self.loss_hist_train)] = self.loss_hist_train
                 loss_hist_test_new[:len(self.loss_hist_test)] = self.loss_hist_test
                 lr_hist_new[:len(self.lr_hist)] = self.lr_hist
@@ -208,7 +208,7 @@ class Trainer:
         n_mlp_hidden_layers = self.cfg.n_mlp_hidden_layers 
         n_messagePassing_layers = self.cfg.n_messagePassing_layers 
 
-        name = 'gnn'
+        name = self.cfg.model_name
         model = gnn.GNN(input_node_channels,
                            input_edge_channels,
                            hidden_channels,
