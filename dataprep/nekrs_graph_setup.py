@@ -49,6 +49,12 @@ def get_pygeom_dataset(data_x_path: str,
     x = np.loadtxt(data_x_path, dtype=NP_FLOAT)
     y = np.loadtxt(data_y_path, dtype=NP_FLOAT)
 
+    # Retain only N_gll = Np*Ne elements
+    N_gll = pos.shape[0]
+    x = x[:N_gll, :]
+    y = y[:N_gll, :]
+    print('N_gll: ', N_gll)
+
     # Make tensor 
     edge_index = torch.tensor(edge_index)
     node_element_ids = torch.tensor(node_element_ids)

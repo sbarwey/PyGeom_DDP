@@ -1,12 +1,12 @@
 #!/bin/sh
 #PBS -l select=1:system=polaris
 #PBS -l place=scatter
-#PBS -l walltime=1:00:00
+#PBS -l walltime=4:00:00
 #PBS -l filesystems=home:eagle
-##PBS -q preemptable
-#PBS -q debug
+#PBS -q preemptable
+##PBS -q debug
 #PBS -A datascience
-#PBS -N gnn_nekrs_sr
+#PBS -N gnn_sr
 
 # Change to working directory
 cd ${PBS_O_WORKDIR}
@@ -30,4 +30,4 @@ NGPUS="$((${NUM_NODES}*${NGPUS_PER_NODE}))"
 echo $NUM_NODES $NGPUS_PER_NODE $NGPUS
 
 # run 
-mpiexec --verbose --envall -n $NGPUS --ppn $NGPUS_PER_NODE --hostfile="${PBS_NODEFILE}" -d 8 --cpu-bind depth ./set_affinity_gpu_polaris.sh python3 main.py
+mpiexec --verbose --envall -n $NGPUS --ppn $NGPUS_PER_NODE --hostfile="${PBS_NODEFILE}" -d 8 --cpu-bind depth ./set_affinity_gpu_polaris.sh python3 main.py n_messagePassing_layers=6

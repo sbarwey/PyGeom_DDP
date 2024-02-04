@@ -115,8 +115,8 @@ def write_full_dataset(cfg: DictConfig):
     snapshot_time_list = ['10.0'] # ['8.0', '9.0', '10.0']
     Re_list = ['1600'] #['1600', '2000', '2400']
 
-    case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
-    #case_path = "/Users/sbarwey/Files/temp"
+    #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
+    case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
 
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snapshot_time_list)):
