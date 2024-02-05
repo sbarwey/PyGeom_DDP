@@ -37,6 +37,7 @@ def get_pygeom_dataset(data_x_path: str,
                        node_element_ids_path: str,
                        global_ids_path: str,
                        pos_path: str, 
+                       edge_index_vertex_path: Optional[str] = None,
                        device_for_loading : Optional[str] = 'cpu',
                        fraction_valid : Optional[float] = 0.1) -> Tuple[List,List,List,List]:
     t_load = time.time()
@@ -48,6 +49,14 @@ def get_pygeom_dataset(data_x_path: str,
     pos = np.loadtxt(pos_path, dtype=NP_FLOAT)
     x = np.loadtxt(data_x_path, dtype=NP_FLOAT)
     y = np.loadtxt(data_y_path, dtype=NP_FLOAT)
+
+    # Add extra edges if defined -- produces multiscale graph (adding P1 connectivity)
+    if edge_index_vertex_path: 
+        print('Adding p1 connectivity...')
+        print('\tEdge index shape before: ', edge_index.shape)
+        edge_index_vertex = np.loadtxt(edge_index_vertex_path, dtype=NP_INT).T 
+        edge_index = np.concatenate((edge_index, edge_index_vertex), axis=1)
+        print('\tEdge index shape after: ', edge_index.shape)
 
     # Retain only N_gll = Np*Ne elements
     N_gll = pos.shape[0]

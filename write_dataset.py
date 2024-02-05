@@ -134,18 +134,22 @@ def write_full_dataset(cfg: DictConfig):
                 global_ids_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/global_ids_rank_%d_size_%d' %(i,data_read_world_size) 
                 pos_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/pos_node_rank_%d_size_%d' %(i,data_read_world_size) 
                         
+                # Super-impose P1 connectivity:
+                edge_index_vertex_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/edge_index_element_local_vertex_rank_%d_size_%d' %(i,data_read_world_size) 
+
                 if RANK == 0:
                     log.info('in get_pygeom_dataset...')
 
                 train_dataset_temp, test_dataset_temp, data_mean, data_var, n_samples = ngs.get_pygeom_dataset(
-                                                                     data_x_path, 
-                                                                     data_y_path,
-                                                                     edge_index_path,
-                                                                     node_element_ids_path,
-                                                                     global_ids_path,
-                                                                     pos_path,
-                                                                     device_for_loading,
-                                                                     fraction_valid)
+                                     data_x_path = data_x_path, 
+                                     data_y_path = data_y_path,
+                                     edge_index_path = edge_index_path,
+                                     node_element_ids_path = node_element_ids_path,
+                                     global_ids_path = global_ids_path,
+                                     pos_path = pos_path,
+                                     edge_index_vertex_path = edge_index_vertex_path,
+                                     device_for_loading = device_for_loading,
+                                     fraction_valid = fraction_valid)
 
                 train_dataset += train_dataset_temp
                 test_dataset += test_dataset_temp
@@ -194,13 +198,13 @@ def write_full_dataset(cfg: DictConfig):
         std_x = data_std[0]
         std_y = data_std[1]
        
-        print('\n\nmean_x: ', mean_x)
-        print('\n\nmean_x.shape: ', mean_x.shape)
-        print('\n\nmean_x type: ', type(mean_x))
-        print('\n\nstd_x: ', std_x)
-        print('\n\nstd_x.shape: ', std_x.shape)
-        print('\n\nstd_x type: ', type(std_x))
-        print('\n\nn_samples: ', np.sum(n_i))
+        # print('\n\nmean_x: ', mean_x)
+        # print('\n\nmean_x.shape: ', mean_x.shape)
+        # print('\n\nmean_x type: ', type(mean_x))
+        # print('\n\nstd_x: ', std_x)
+        # print('\n\nstd_x.shape: ', std_x.shape)
+        # print('\n\nstd_x type: ', type(std_x))
+        # print('\n\nn_samples: ', np.sum(n_i))
 
         # print('\n\nmean_y: ', mean_y)
         # print('\n\nmean_y.shape: ', mean_y.shape)
