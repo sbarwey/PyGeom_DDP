@@ -25,79 +25,99 @@ def ratio_boundary_internal_nodes(p: int) -> float:
 if __name__ == "__main__":
 
     
-    # Load a dataset 
-    data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/"
-    # data_dir = "/Users/sbarwey/Files/temp/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/"
-
-    train_dataset = torch.load(data_dir + "/train_dataset.pt")
-    test_dataset = torch.load(data_dir + "/valid_dataset.pt")
-    # data_mean = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_mean.pt")
-    # data_std = torch.load(data_dir + "Single_Snapshot_Re_1600_T_9.0/data_std.pt")
-
-    # # convert statistics to float32 : torch.float32 --- tensor = tensor.to(torch.float32) 
-    # data_mean[0] = data_mean[0].to(torch.float32)
-    # data_mean[1] = data_mean[1].to(torch.float32)
-    # data_std[0] = data_std[0].to(torch.float32)
-    # data_std[1] = data_std[1].to(torch.float32)
-
-
     # ~~~~ postprocessing: training losses 
     if 1 == 0:
         mp = [1,2,3,4,5,6,7,8]
-        mp = [5]
+        mp = [6]
 
         conv_loss_train = []
         conv_loss_valid = []
-
+ 
         plt.rcParams.update({'font.size': 18})
         fig, ax = plt.subplots()
+        ax2 = ax.twinx()
         for i in mp:
-            a = torch.load('./saved_models/single_snapshot_t_9/batch_size_8/super_res_gnn_mp_%d.tar' %(i))
-            a = torch.load('./saved_models/identity_map_test/super_res_gnn_mp_%d.tar' %(i))
-            ax.plot(a['loss_hist_train'], label='mp %d' %(i), lw=2)
+            a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(i))
+            ax.plot(a['loss_hist_train'], label='mp %d' %(i), lw=2, color='red')
+            ax2.plot(a['lr_hist'],  label='mp %d' %(i), lw=2)
             conv_loss_train.append(np.mean(a['loss_hist_train'][-10:]))
             conv_loss_valid.append(np.mean(a['loss_hist_test'][-10:]))
         ax.set_yscale('log')
         ax.legend()
         ax.set_xlabel('Epochs')
         ax.set_ylabel('Loss')
+        ax2.set_ylabel('Learning Rate')
+        ax2.grid(False)
         plt.show(block=False)
      
-        ms=15
-        mew=2
-        lw=1
+        # ms=15
+        # mew=2
+        # lw=1
+        # fig, ax = plt.subplots()
+        # ax.plot(mp, conv_loss_train, marker='o', fillstyle='none', lw=lw, ms=ms, mew=mew, color='black')
+        # ax.plot(mp, conv_loss_valid, marker='s', fillstyle='none', lw=lw, ms=ms, mew=mew, color='blue')
+        # ax.set_ylabel('Super-Resolution Loss')
+        # ax.set_xlabel('Message Passing Layers')
+        # #ax.set_ylim([0.05, 0.07])
+        # #ax.set_yscale('log')
+        # plt.show(block=False)
+
+        mp = 6 
+        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        epochs = list(range(1, 300))
+        plt.rcParams.update({'font.size': 18})
+
         fig, ax = plt.subplots()
-        ax.plot(mp, conv_loss_train, marker='o', fillstyle='none', lw=lw, ms=ms, mew=mew, color='black')
-        ax.plot(mp, conv_loss_valid, marker='s', fillstyle='none', lw=lw, ms=ms, mew=mew, color='blue')
-        ax.set_ylabel('Super-Resolution Loss')
-        ax.set_xlabel('Message Passing Layers')
-        ax.set_ylim([0.05, 0.07])
-        #ax.set_yscale('log')
+        ax.plot(epochs, a['loss_hist_train'][1:], lw=2, color='red', label='Single-Scale')
+        ax.plot(epochs, a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
+        ax.plot(epochs, b['loss_hist_train'][1:], lw=2, color='black', label='Multi-Scale')
+        ax.plot(epochs, b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
+        ax.set_yscale('log')
+        ax.legend()
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel('Loss')
+        #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
+        
+        # ax2 = ax.twinx()
+        # ax2.plot(a['lr_hist'][1:],  label='mp %d' %(i), lw=2, color='blue')
+        # ax2.set_ylabel('Learning Rate', color='blue')
+        # ax2.tick_params(axis='y', labelcolor='blue')
+        # ax2.grid(False)
+
         plt.show(block=False)
+
+
 
     # ~~~~ Analyze predictions -- all elements 
     if 1 == 0:
+        mode = "multi_scale"
+
+        data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+
+        # Load data 
+        train_dataset = torch.load(data_dir + "/train_dataset.pt")
+        test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+        
+        # Load model 
         mp = 6 
-
-        a = torch.load('./saved_models/single_snapshot_t_9/batch_size_8/super_res_gnn_mp_%d.tar' %(mp))
-        n_messagePassing_layers = mp 
-        
-        input_dict = a['input_dict']
-        input_channels = input_dict['input_channels']
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels = input_dict['input_edge_channels'] 
         hidden_channels = input_dict['hidden_channels']
-        output_channels = input_dict['output_channels']
-        n_mlp_layers = input_dict['n_mlp_layers']
-        activation = input_dict['activation']
-        name = 'temp'
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
 
-        model = gnn.mp_gnn(input_channels,
-                       hidden_channels,
-                       output_channels,
-                       n_mlp_layers,
-                       n_messagePassing_layers,
-                       activation,
-                       name)
-        
+        model = gnn.GNN(input_node_channels,
+                           input_edge_channels,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
         model.load_state_dict(a['state_dict'])
         device = 'cpu'
         model.to(device)
@@ -108,42 +128,35 @@ if __name__ == "__main__":
             y_pred_list = []
             y_target_list = []
 
-
-            dataset = train_dataset 
+            dataset = test_dataset 
             N = len(dataset) 
             mse_before_gnn = torch.zeros(N)
             mse_after_gnn = torch.zeros(N) 
-            rms_input = torch.zeros(N) 
-            rms_target = torch.zeros(N)
 
             for i in range(N):
                 print('evaluating %d/%d' %(i+1, N))
                 data = dataset[i]
 
-                # scale input 
-                x_in = (data.x - data_mean[0])/data_std[0]
+                # 1) Preprocessing: scale input  
+                eps = 1e-10
+                x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
 
-                # evaluate 
-                y_pred_scaled = model(x_in, data.edge_index, data.pos_norm, data.batch)
-
-                # unscale output 
-                y_pred = y_pred_scaled * data_std[1] + data_mean[1] 
-                y_target = data.y
-                x_input = data.x[:, :3]
+                # 2) evaluate model 
+                out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                    
+                # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
+                y_pred = out_gnn * (data.x_std + eps) + data.x 
 
                 # y_pred_list.append(y_pred)
                 # y_target_list.append(y_target)
                 # x_input_list.append(x_input)
 
                 # loss before gnn 
-                mse_before_gnn[i] = F.mse_loss(x_input, y_target)
+                mse_before_gnn[i] = F.mse_loss(data.x, data.y)
 
                 # loss after gnn 
-                mse_after_gnn[i] = F.mse_loss(y_pred, y_target) 
-
-                # rms
-                rms_input[i] = data.x_rms
-                rms_target[i] = data.y_rms
+                mse_after_gnn[i] = F.mse_loss(y_pred, data.y) 
+        asdf
 
         # Visualize
         element_ids = torch.arange(N) 
@@ -163,99 +176,86 @@ if __name__ == "__main__":
 
         # Plotting error difference versus element 
         fig, ax = plt.subplots()
-        #ax.plot(element_ids, difference_sorted, lw=2)
-        ax.plot(element_ids, difference_sorted.abs(), lw=2)
+        ax.plot(element_ids, difference_sorted, lw=2)
+        #ax.plot(element_ids, difference_sorted.abs(), lw=2)
         ax.set_xlabel('Element IDs (Sorted)')
         ax.set_ylabel('Model Gain')
-        ax.set_yscale('log')
+        #ax.set_yscale('log')
         plt.show(block=False)
 
-        # Plotting error difference versus RMS 
-        fig, ax = plt.subplots()
-        ax.scatter(difference, rms_target)
-        ax.set_xlabel('Model Gain')
-        ax.set_ylabel('Target RMS Velocity')
-        plt.show(block=False)
+        # # Plotting error difference versus RMS 
+        # fig, ax = plt.subplots()
+        # ax.scatter(difference, rms_target)
+        # ax.set_xlabel('Model Gain')
+        # ax.set_ylabel('Target RMS Velocity')
+        # plt.show(block=False)
 
     # ~~~~ Visualize model predictions -- a single element  
-    if 1 == 0:
-        element_ids_sorted = torch.load("/Users/sbarwey/Files/ml/DDP_PyGeom_SR/outputs/postproc/element_ids_sorted.pt")
-        mp = [1,2,3,4,5,6,7,8] 
-        x_list = [] 
-        y_pred_list = []
-        y_target_list = []
+    if 1 == 1:
+        mode = "single_scale"
 
-        for i in mp:
-            #a = torch.load('./saved_models/super_res_gnn_mp_%d.tar' %(i))
-            a = torch.load('./saved_models/single_snapshot_t_9/batch_size_8/super_res_gnn_mp_%d.tar' %(i))
-            n_messagePassing_layers = i 
-            
-            input_dict = a['input_dict']
-            input_channels = input_dict['input_channels']
-            hidden_channels = input_dict['hidden_channels']
-            output_channels = input_dict['output_channels']
-            n_mlp_layers = input_dict['n_mlp_layers']
-            activation = input_dict['activation']
-            name = 'temp'
+        data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
 
-            model = gnn.mp_gnn(input_channels,
+        # Load data 
+        train_dataset = torch.load(data_dir + "/train_dataset.pt")
+        test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+        
+        # Load model 
+        mp = 6 
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels = input_dict['input_edge_channels'] 
+        hidden_channels = input_dict['hidden_channels']
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
+
+        model = gnn.GNN(input_node_channels,
+                           input_edge_channels,
                            hidden_channels,
-                           output_channels,
-                           n_mlp_layers,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
                            n_messagePassing_layers,
-                           activation,
                            name)
-            
-            model.load_state_dict(a['state_dict'])
-            device = 'cpu'
-            model.to(device)
-            model.eval()
+        model.load_state_dict(a['state_dict'])
+        device = 'cpu'
+        model.to(device)
+        model.eval()
 
-            with torch.no_grad():
+        with torch.no_grad():
 
-                #element 1: 100 
-                #element 2: 1000
-                #element 3: 23 
-                #element 4: 1100
-                data = train_dataset[0]
-                data = test_dataset[element_ids_sorted[-1]]
+            #element 1: 100 
+            #element 2: 1000
+            #element 3: 23 
+            #element 4: 1100
+            # eids = torch.load('./outputs/postproc/element_ids_sorted.pt')
+            # data = test_dataset[ eids[0] ]
+            data = test_dataset[150]
+             
+            # 1) Preprocessing: scale input  
+            eps = 1e-10
+            x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
 
-                # scale input 
-                x_in = (data.x - data_mean[0])/data_std[0]
-
-                # evaluate 
-                y_pred_scaled = model(x_in, data.edge_index, data.pos_norm, data.batch)
-
-                # unscale output 
-                y_pred = y_pred_scaled * data_std[1] + data_mean[1] 
-                y_target = data.y
-                x = data.x
-
-                y_pred_list.append(y_pred)
-                y_target_list.append(y_target)
-                x_list.append(x)
-
+            # 2) evaluate model 
+            out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                
+            # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
+            y_pred = out_gnn * (data.x_std + eps) + data.x 
 
         plt.rcParams.update({'font.size': 14})
+        fig, ax = plt.subplots(1,3, figsize=(10,4))
         for comp in range(3):
-            fig, ax = plt.subplots(2,4, figsize=(15,7))
-            count = 0 
-            for r in range(2):
-                for c in range(4):
-                    i = mp[count]
-                    x = x_list[count]
-                    y_target = y_target_list[count]
-                    y_pred = y_pred_list[count]
-                    ax[r,c].scatter(x[:,comp], y_target[:,comp], color='red')
-                    ax[r,c].scatter(y_pred[:,comp], y_target[:,comp], color='lime')
-                    ax[r,c].plot([y_target[:,comp].min(), y_target[:,comp].max()],
-                               [y_target[:,comp].min(), y_target[:,comp].max()],
-                               color='black', lw=2)
-                    ax[r,c].set_title('n_mp=%d' %(i))
-                    ax[r,c].set_xlabel('Prediction')
-                    ax[r,c].set_ylabel('Target')
-                    count += 1 
-            plt.show(block=False)
+            ax[comp].scatter(data.x[:,comp], data.y[:,comp], color='red')
+            ax[comp].scatter(y_pred[:,comp], data.y[:,comp], color='lime')
+            ax[comp].plot([data.y[:,comp].min(), data.y[:,comp].max()],
+                    [data.y[:,comp].min(), data.y[:,comp].max()],
+                    color='black', lw=2)
+            ax[comp].set_title('n_mp=%d, comp=%d' %(mp,comp))
+            ax[comp].set_xlabel('Prediction')
+            ax[comp].set_ylabel('Target')
+        plt.show(block=False)
 
     # ~~~~ Postprocess run logs: KE, dissipation, enst
     if 1 == 0:
@@ -397,7 +397,7 @@ if __name__ == "__main__":
             plt.show(block=False)
 
     # ~~~~ Test the model 
-    if 1 == 1:   
+    if 1 == 0:   
         sample = train_dataset[0]
         input_node_channels = sample.x.shape[1]
         input_edge_channels = sample.pos.shape[1] + sample.x.shape[1] + 1 
