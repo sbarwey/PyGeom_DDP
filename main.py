@@ -301,8 +301,9 @@ class Trainer:
         # 2) evaluate model 
         out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
-        # 3) set the target 
-        target = (data.y - data.x)/(data.x_std + eps)
+        # 3) set the target -- target = data.x + GNN(x_scaled)  
+        # target = (data.y - data.x)/(data.x_std + eps)
+        target = data.y - data.x
 
         # 4) evaluate loss 
         loss = self.loss_fn(out_gnn, target)
@@ -399,7 +400,8 @@ class Trainer:
                 out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
                 # 3) set the target 
-                target = (data.y - data.x)/(data.x_std + eps)
+                #target = (data.y - data.x)/(data.x_std + eps)
+                target = data.y - data.x
 
                 # 4) evaluate loss 
                 loss = self.loss_fn(out_gnn, target)
