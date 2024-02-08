@@ -18,49 +18,34 @@ torch.set_grad_enabled(False)
 def count_parameters(mdl):
     return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
 
-def ratio_boundary_internal_nodes(p: int) -> float: 
-    ratio = ( (p+1)**3 - (p-1)**3 )/(p-1)**3
-    return ratio 
-
 if __name__ == "__main__":
 
     
     # ~~~~ postprocessing: training losses 
     if 1 == 0:
-        mp = [1,2,3,4,5,6,7,8]
         mp = [6]
+        mp = [2,4,6,8]
 
         conv_loss_train = []
         conv_loss_valid = []
  
-        plt.rcParams.update({'font.size': 18})
-        fig, ax = plt.subplots()
-        ax2 = ax.twinx()
         for i in mp:
             a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(i))
-            ax.plot(a['loss_hist_train'], label='mp %d' %(i), lw=2, color='red')
-            ax2.plot(a['lr_hist'],  label='mp %d' %(i), lw=2)
             conv_loss_train.append(np.mean(a['loss_hist_train'][-10:]))
             conv_loss_valid.append(np.mean(a['loss_hist_test'][-10:]))
-        ax.set_yscale('log')
-        ax.legend()
-        ax.set_xlabel('Epochs')
-        ax.set_ylabel('Loss')
-        ax2.set_ylabel('Learning Rate')
-        ax2.grid(False)
-        plt.show(block=False)
      
-        # ms=15
-        # mew=2
-        # lw=1
-        # fig, ax = plt.subplots()
-        # ax.plot(mp, conv_loss_train, marker='o', fillstyle='none', lw=lw, ms=ms, mew=mew, color='black')
-        # ax.plot(mp, conv_loss_valid, marker='s', fillstyle='none', lw=lw, ms=ms, mew=mew, color='blue')
-        # ax.set_ylabel('Super-Resolution Loss')
-        # ax.set_xlabel('Message Passing Layers')
-        # #ax.set_ylim([0.05, 0.07])
-        # #ax.set_yscale('log')
-        # plt.show(block=False)
+        plt.rcParams.update({'font.size': 18})
+        ms=15
+        mew=2
+        lw=1
+        fig, ax = plt.subplots()
+        ax.plot(mp, conv_loss_train, marker='o', fillstyle='none', lw=lw, ms=ms, mew=mew, color='black')
+        ax.plot(mp, conv_loss_valid, marker='s', fillstyle='none', lw=lw, ms=ms, mew=mew, color='blue')
+        ax.set_ylabel('Super-Resolution Loss')
+        ax.set_xlabel('Message Passing Layers')
+        #ax.set_ylim([0.05, 0.07])
+        ax.set_yscale('log')
+        plt.show(block=False)
 
         mp = 6 
         a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
@@ -77,6 +62,7 @@ if __name__ == "__main__":
         ax.legend()
         ax.set_xlabel('Epochs')
         ax.set_ylabel('Loss')
+        ax.set_title('n_mp_layers = %d' %(mp))
         #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
         
         # ax2 = ax.twinx()
@@ -87,13 +73,11 @@ if __name__ == "__main__":
 
         plt.show(block=False)
 
-
-
     # ~~~~ Analyze predictions -- all elements 
     if 1 == 0:
-        mode = "multi_scale"
-
+        mode = "single_scale"
         data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+        pod_compute = True
 
         # Load data 
         train_dataset = torch.load(data_dir + "/train_dataset.pt")
@@ -123,6 +107,7 @@ if __name__ == "__main__":
         model.to(device)
         model.eval()
 
+
         with torch.no_grad():
             x_input_list = [] 
             y_pred_list = []
@@ -132,6 +117,11 @@ if __name__ == "__main__":
             N = len(dataset) 
             mse_before_gnn = torch.zeros(N)
             mse_after_gnn = torch.zeros(N) 
+
+            sample = dataset[0]
+
+            if pod_compute:
+                X = torch.zeros((3, N, sample.x.shape[0], sample.x.shape[1])) 
 
             for i in range(N):
                 print('evaluating %d/%d' %(i+1, N))
@@ -147,16 +137,35 @@ if __name__ == "__main__":
                 # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
                 y_pred = out_gnn * (data.x_std + eps) + data.x 
 
-                # y_pred_list.append(y_pred)
-                # y_target_list.append(y_target)
-                # x_input_list.append(x_input)
-
+                if pod_compute: 
+                    X[0,i,:,:] = data.x 
+                    X[1,i,:,:] = data.y
+                    X[2,i,:,:] = y_pred
+    
                 # loss before gnn 
                 mse_before_gnn[i] = F.mse_loss(data.x, data.y)
 
                 # loss after gnn 
                 mse_after_gnn[i] = F.mse_loss(y_pred, data.y) 
-        asdf
+
+        if pod_compute:
+
+            # X[0] -- input 
+            # X[1] -- target 
+            # X[2] -- prediction 
+            names = ['input', 'target', 'pred']
+            for i in range(3):
+                for comp in range(3):
+                    print('saving pod -- i = %d, comp = %d' %(i, comp))
+                    X_temp = X[i,:,:,comp].to(torch.float64)
+                    X_temp = X_temp - X_temp.mean(dim=0, keepdim=True) 
+                    N = X_temp.shape[0]
+                    cov = X_temp.T @ X_temp 
+                    cov = cov/(N-1)
+                    lam, _ = np.linalg.eig(cov.numpy())
+                    fname = 'single_scale_pod_eigenvalues_%s_comp_%d.npy' %(names[i], comp)
+                    np.save('./outputs/postproc/%s' %(fname), lam)
+
 
         # Visualize
         element_ids = torch.arange(N) 
@@ -190,10 +199,54 @@ if __name__ == "__main__":
         # ax.set_ylabel('Target RMS Velocity')
         # plt.show(block=False)
 
-    # ~~~~ Visualize model predictions -- a single element  
-    if 1 == 1:
-        mode = "single_scale"
 
+    # ~~~~ Plot some POD 
+    if 1 == 1:
+        lw = 1.5 
+        fig, ax = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
+        fig2, ax2 = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
+        for comp in range(3):
+            lam_input = np.load('./outputs/postproc/pod_eigenvalues_input_comp_%d.npy' %(comp)).real
+            lam_target = np.load('./outputs/postproc/pod_eigenvalues_target_comp_%d.npy' %(comp)).real 
+            lam_pred = np.load('./outputs/postproc/pod_eigenvalues_pred_comp_%d.npy' %(comp)).real 
+            lam_pred_ss = np.load('./outputs/postproc/single_scale_pod_eigenvalues_pred_comp_%d.npy' %(comp)).real 
+
+            lam_input = np.sort(lam_input)[::-1]
+            lam_target = np.sort(lam_target)[::-1]
+            lam_pred = np.sort(lam_pred)[::-1]
+            lam_pred_ss = np.sort(lam_pred_ss)[::-1]
+
+            mode_ids = list(range(1, len(lam_input)+1))
+            ax[comp].plot(mode_ids, lam_target, color='black', lw=lw, label='y')
+            ax[comp].plot(mode_ids, lam_input, color='blue', lw=lw, label='x')
+            ax[comp].plot(mode_ids, lam_pred_ss, color='lime', lw=lw, ls='--', label='GNN_SS(x)')
+            ax[comp].plot(mode_ids, lam_pred, color='red', lw=lw, ls='--', label='GNN_MS(x)')
+            ax[comp].set_yscale('log')
+            ax[comp].set_xscale('log')
+            ax[comp].set_ylabel('Eigenvalue')
+            ax[comp].set_xlabel('Index')
+            ax[comp].set_ylim([1e-9, 1e2])
+            ax[comp].legend(fancybox=False, framealpha=1)
+
+            # Error 
+            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_input)/lam_target, 
+                           color='blue', lw=lw, label='x')
+            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_pred_ss)/lam_target, 
+                           color='lime', lw=lw, ls='--', label='GNN_SS(x)')
+            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_pred)/lam_target, 
+                           color='red', lw=lw, ls='--', label='GNN_MS(x)')
+            ax2[comp].set_yscale('log')
+            ax2[comp].set_xscale('log')
+            ax2[comp].set_ylabel('Relative Error')
+            ax2[comp].set_xlabel('Index')
+            #ax2[comp].set_title('Error')
+            ax2[comp].legend(fancybox=False, framealpha=1)
+        plt.show(block=False)
+        
+
+    # ~~~~ Visualize model predictions -- a single element  
+    if 1 == 0:
+        mode = "single_scale"
         data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
 
         # Load data 
@@ -436,6 +489,70 @@ if __name__ == "__main__":
             # y_pred = gnn_out * (data.x_std.unsqueeze(0) + eps) + data.x 
 
             break
+
+
+
+    # ~~~~ Compute POD basis 
+    if 1 == 0:
+        print('pod basis')
+        # mode = "multi_scale"
+        # data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+        # train_dataset = torch.load(data_dir + "/train_dataset.pt")
+        # test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+
+        raw_data_path = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7/snapshots_target/gnn_outputs_poly_7'
+        time_str = '10.0'
+        rank = 0
+        SIZE = 4 
+        x = torch.tensor(np.loadtxt(raw_data_path + '/fld_u_time_%s_rank_%d_size_%d' %(time_str,rank,SIZE)))
+        node_element_ids = torch.tensor(np.loadtxt(raw_data_path + '/node_element_ids_rank_%d_size_%d' %(rank, SIZE), dtype=np.int64))
+        x = torch.stack(utils.unbatch(x, node_element_ids, dim=0)).numpy()
+
+
+        Ne = x.shape[0]
+        Np = x.shape[1]
+        Nf = x.shape[2]
+
+        x = x.reshape((Ne, Np*Nf))
+        
+        print('Covariance...')
+        cov = (1.0 / (Ne - 1.0)) * x.T @ x
+        lam, evec = np.linalg.eig(cov)
+
+        # a = np.diag(evec.T @ evec)
+
+        fig, ax = plt.subplots()
+        ax.plot(lam)
+        ax.set_yscale('log')
+        plt.show(block=False)
+        
+
+
+
+
+        # Project a single element in the POD basis 
+        # ELE --- [Nf, 1]
+        # MODE --- [Nf, 4]
+        # A -- ELE.T @ MODE --- [1, 4]  
+        # RECON -- A @ MODE.T 
+
+        N_modes = Nf*Np 
+        sample = x[0, :].reshape((1,-1)) 
+        modes = evec[:, 0:N_modes]
+        coeffs = (sample @ modes).squeeze()
+        
+        fig, ax = plt.subplots()
+        ax.plot(coeffs)
+        ax.set_xscale('log')
+        plt.show(block=False)
+         
+
+
+
+
+
+
+
 
 
 
