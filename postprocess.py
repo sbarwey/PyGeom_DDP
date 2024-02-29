@@ -22,16 +22,6 @@ def count_parameters(mdl):
     return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
 
 if __name__ == "__main__":
-
-
-
-
-
-
-
-
-
-
     # ~~~~ postprocessing: training losses 
     if 1 == 0:
         mp = [6]
@@ -662,7 +652,6 @@ if __name__ == "__main__":
         print("Type =", type(first_element))
         print(first_element)
 
-
         # Test reshaping : 
         if 1 == 0:
             pos_1 = torch.tensor(first_element.pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
@@ -676,7 +665,7 @@ if __name__ == "__main__":
 
 
         # Test read/write: 
-        if 1 == 1:
+        if 1 == 0:
             # Write new file 
             x_1 = torch.tensor(first_element.vel).reshape((3, -1)).T # pygeom x format -- [N, 3]
             y = x_1 + 84.0

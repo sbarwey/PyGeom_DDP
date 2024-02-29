@@ -95,7 +95,73 @@ def init_process_group(
 def cleanup():
     dist.destroy_process_group()
 
+
 def write_full_dataset(cfg: DictConfig):
+    torch.manual_seed(cfg.seed)
+    np.random.seed(cfg.seed)
+    
+    device_for_loading = 'cpu'
+    fraction_valid = 0.1 
+
+    train_dataset = []
+    test_dataset = [] 
+
+    mean_x_i = [] 
+    mean_y_i = []
+    var_x_i = []
+    var_y_i = []
+    n_i = []
+
+    data_read_world_size = 4
+    snapshot_time_list = ['10.0'] # ['8.0', '9.0', '10.0']
+    Re_list = ['1600'] #['1600', '2000', '2400']
+
+    case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
+    #case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
+
+    for Re_id in range(len(Re_list)):
+        for snap_id in range(len(snapshot_time_list)):
+            for i in range(data_read_world_size):
+                Re = Re_list[Re_id]
+                snapshot_time = snapshot_time_list[snap_id]
+                
+                print('Re: ', Re)
+                print('snapshot_time: ', snapshot_time)
+
+                edge_index_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/edge_index_element_local_rank_%d_size_%d' %(i,data_read_world_size) 
+                        
+                # Super-impose P1 connectivity:
+                edge_index_vertex_path = case_path + '/Re_%s_poly_7/snapshots_target/gnn_outputs_poly_7' %(Re) + '/edge_index_element_local_vertex_rank_%d_size_%d' %(i,data_read_world_size) 
+
+                if RANK == 0:
+                    log.info('in get_pygeom_dataset...')
+
+                train_dataset_temp, test_dataset_temp, data_mean, data_var, n_samples = ngs.get_pygeom_dataset(
+                                     data_x_path = data_x_path, 
+                                     data_y_path = data_y_path,
+                                     edge_index_path = edge_index_path,
+                                     node_element_ids_path = node_element_ids_path,
+                                     global_ids_path = global_ids_path,
+                                     pos_path = pos_path,
+                                     edge_index_vertex_path = edge_index_vertex_path,
+                                     device_for_loading = device_for_loading,
+                                     fraction_valid = fraction_valid)
+
+                train_dataset += train_dataset_temp
+                test_dataset += test_dataset_temp
+
+                mean_x_i.append(data_mean[0])
+                mean_y_i.append(data_mean[1])
+                var_x_i.append(data_var[0])
+                var_y_i.append(data_var[1])
+                n_i.append(n_samples)
+
+                print('data_mean[0].shape: ', data_mean[0].shape)
+                print('data_var[0].shape: ', data_var[0].shape)
+
+
+
+def write_full_dataset_from_textfiles(cfg: DictConfig):
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
     
