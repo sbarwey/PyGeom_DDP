@@ -9,6 +9,9 @@ import torch_geometric.nn as tgnn
 import matplotlib.pyplot as plt
 import dataprep.nekrs_graph_setup as ngs
 import models.gnn as gnn
+from pymech.neksuite import readnek,writenek
+from pymech.dataset import open_dataset
+
 
 seed = 122
 torch.manual_seed(seed)
@@ -20,7 +23,15 @@ def count_parameters(mdl):
 
 if __name__ == "__main__":
 
-    
+
+
+
+
+
+
+
+
+
     # ~~~~ postprocessing: training losses 
     if 1 == 0:
         mp = [6]
@@ -50,6 +61,7 @@ if __name__ == "__main__":
         mp = 6 
         a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
         b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_unscaledResidual_3_7_128_3_2_%d.tar' %(mp))
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
 
@@ -58,6 +70,9 @@ if __name__ == "__main__":
         ax.plot(epochs, a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
         ax.plot(epochs, b['loss_hist_train'][1:], lw=2, color='black', label='Multi-Scale')
         ax.plot(epochs, b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
+        ax.plot(epochs, c['loss_hist_train'][1:], lw=2, color='blue', label='Multi-Scale (UR)')
+        ax.plot(epochs, c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
+
         ax.set_yscale('log')
         ax.legend()
         ax.set_xlabel('Epochs')
@@ -199,9 +214,8 @@ if __name__ == "__main__":
         # ax.set_ylabel('Target RMS Velocity')
         # plt.show(block=False)
 
-
     # ~~~~ Plot some POD 
-    if 1 == 1:
+    if 1 == 0:
         lw = 1.5 
         fig, ax = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
         fig2, ax2 = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
@@ -243,19 +257,19 @@ if __name__ == "__main__":
             ax2[comp].legend(fancybox=False, framealpha=1)
         plt.show(block=False)
         
-
     # ~~~~ Visualize model predictions -- a single element  
     if 1 == 0:
-        mode = "single_scale"
+        mode = "multi_scale"
         data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
 
         # Load data 
         train_dataset = torch.load(data_dir + "/train_dataset.pt")
         test_dataset = torch.load(data_dir + "/valid_dataset.pt")
-        
+
         # Load model 
         mp = 6 
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        #a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_unscaledResidual_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -295,7 +309,8 @@ if __name__ == "__main__":
             out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
                 
             # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
-            y_pred = out_gnn * (data.x_std + eps) + data.x 
+            #y_pred = out_gnn * (data.x_std + eps) + data.x 
+            y_pred = out_gnn + data.x 
 
         plt.rcParams.update({'font.size': 14})
         fig, ax = plt.subplots(1,3, figsize=(10,4))
@@ -310,6 +325,98 @@ if __name__ == "__main__":
             ax[comp].set_ylabel('Target')
         plt.show(block=False)
 
+    # Comparing two models, on the full dataset testing 
+    if 1 == 0:
+        mode = 'multi_scale'
+        data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+
+        # Load data 
+        train_dataset = torch.load(data_dir + "/train_dataset.pt")
+        test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+
+        # Load model 1 
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_6.tar' %(mode))
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels = input_dict['input_edge_channels'] 
+        hidden_channels = input_dict['hidden_channels']
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
+        model_1 = gnn.GNN(input_node_channels,
+                           input_edge_channels,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
+        model_1.load_state_dict(a['state_dict'])
+        device = 'cpu'
+        model_1.to(device)
+        model_1.eval()
+
+        # Load model 2 
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_unscaledResidual_3_7_128_3_2_6.tar' %(mode))
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels = input_dict['input_edge_channels'] 
+        hidden_channels = input_dict['hidden_channels']
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
+        model_2 = gnn.GNN(input_node_channels,
+                           input_edge_channels,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
+        model_2.load_state_dict(a['state_dict'])
+        device = 'cpu'
+        model_2.to(device)
+        model_2.eval()
+
+        N_test = len(test_dataset)
+
+        error_1 = torch.zeros((N_test, 3))
+        error_2 = torch.zeros((N_test, 3))
+        y_std = torch.zeros((N_test))
+
+        with torch.no_grad():
+            for i in range(N_test):
+                print(f"iter {i} / {N_test}")
+                data = test_dataset[i]
+                 
+                # 1) Preprocessing: scale input  
+                eps = 1e-10
+                x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
+
+                # 2) evaluate model 
+                out_gnn_1 = model_1(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                out_gnn_2 = model_2(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                    
+                # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
+                y_pred_1 = out_gnn_1 * (data.x_std + eps) + data.x 
+                y_pred_2 = out_gnn_2 + data.x 
+
+                error_1[i] = torch.mean( (y_pred_1 - data.y)**2, dim=0 ) 
+                error_2[i] = torch.mean( (y_pred_2 - data.y)**2, dim=0 ) 
+                y_std[i] = torch.std(data.y)
+
+
+        plt.rcParams.update({'font.size': 14})
+        fig, ax = plt.subplots(1,3, figsize=(10,4))
+        for comp in range(3):
+            ax[comp].scatter(error_1[:,comp], y_std, color='black')
+            ax[comp].scatter(error_2[:,comp], y_std, color='blue')
+            ax[comp].set_title('y_std vs error, comp=%d' %(comp))
+            ax[comp].set_xlabel('Error')
+            ax[comp].set_ylabel('y_std')
+            ax[comp].set_xscale('log')
+        plt.show(block=False)
+       
     # ~~~~ Postprocess run logs: KE, dissipation, enst
     if 1 == 0:
         import re
@@ -490,8 +597,6 @@ if __name__ == "__main__":
 
             break
 
-
-
     # ~~~~ Compute POD basis 
     if 1 == 0:
         print('pod basis')
@@ -545,16 +650,85 @@ if __name__ == "__main__":
         ax.plot(coeffs)
         ax.set_xscale('log')
         plt.show(block=False)
-         
+ 
 
 
 
+    # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
+    if 1 == 1:
+        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekRS-GNN-devel/examples/tgv/Re_1600_poly_7/snapshots_target/tgv0.f00001'
+        field = readnek(nrs_snap_dir)
+        first_element = field.elem[0]
+        print("Type =", type(first_element))
+        print(first_element)
+
+
+        # Test reshaping : 
+        if 1 == 0:
+            pos_1 = torch.tensor(first_element.pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
+            x_1 = torch.tensor(first_element.vel).reshape((3, -1)).T # pygeom x format -- [N, 3]
+
+            pos_orig = first_element.pos
+            x_orig = first_element.vel
+
+            pos_2 = torch.reshape(pos_1.T, (3,8,8,8))
+            x_2 = torch.reshape(x_1.T, (3,8,8,8))
+
+
+        # Test read/write: 
+        if 1 == 1:
+            # Write new file 
+            x_1 = torch.tensor(first_element.vel).reshape((3, -1)).T # pygeom x format -- [N, 3]
+            y = x_1 + 84.0
+            y = torch.reshape(y.T, (3,8,8,8))
+
+
+            # modify one lemenet data and re-write into new .f file 
+            print(f"data before: {field.elem[0].vel}")
+            field.elem[0].vel = y.numpy()
+            print(f"data after: {field.elem[0].vel}")
+
+            
+            print("Writing...")
+            writenek("./temp/tgv_override0.f00001", field)
 
 
 
+            print("Reading again...")
+            field2 = readnek("./temp/tgv_override0.f00001")
+            y_test = field.elem[0].vel
 
 
+        # Test plotting: 
+        if 1 === 0:
+            # Read in element-local edge index 
+            edge_index = torch.tensor(np.loadtxt("./temp/edge_index_element_local_rank_0_size_4").astype(np.int64).T)
 
 
+            # Plot 
+            pos = torch.tensor(first_element.pos).reshape((3, -1)).T
+            edge_xyz = pos[edge_index].permute(1,0,2)
+            
+            ms = 50
+            lw_edge = 2
+            lw_marker = 1
+            fig = plt.figure(figsize=(12,8))
+            ax = fig.add_subplot(111, projection="3d")
 
-
+            # Plot the edges
+            count = 0
+            for vizedge in edge_xyz:
+                ax.plot(*vizedge.T, color="black", lw=lw_edge, alpha=0.3)
+                #ax.plot(*vizedge.T, color="black", lw=lw_edge * edge_weights[RANK][count], alpha=0.3)
+                count += 1
+            ax.scatter(*pos.T, s=ms, ec='black', lw=lw_marker, c='black', alpha=1)
+            
+            ax.grid(False)
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.view_init(elev=34, azim=-24, roll=0)
+            ax.set_aspect('equal')
+            fig.tight_layout()
+            plt.show(block=False)
+        
