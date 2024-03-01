@@ -120,13 +120,6 @@ class Trainer:
         self.loss_hist_test = np.zeros(self.cfg.epochs)
         self.lr_hist = np.zeros(self.cfg.epochs)
 
-        # ~~~~ Noise setup
-        self.noise_dist = []
-        if self.cfg.use_noise:
-            mu = 0.0 
-            std = 1e-2 
-            self.noise_dist = tdist.Normal(torch.tensor([mu]), torch.tensor([std]))
-
         # ~~~~ Init datasets
         self.data = self.setup_data()
         # if WITH_CUDA: 
@@ -302,8 +295,8 @@ class Trainer:
         out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
         # 3) set the target -- target = data.x + GNN(x_scaled)  
-        # target = (data.y - data.x)/(data.x_std + eps)
-        target = data.y - data.x
+        target = (data.y - data.x)/(data.x_std + eps)
+        #target = data.y - data.x
 
         # 4) evaluate loss 
         loss = self.loss_fn(out_gnn, target)
@@ -400,8 +393,8 @@ class Trainer:
                 out_gnn = self.model(x_scaled, data.edge_index, data.pos_norm, data.batch)
 
                 # 3) set the target 
-                #target = (data.y - data.x)/(data.x_std + eps)
-                target = data.y - data.x
+                target = (data.y - data.x)/(data.x_std + eps)
+                #target = data.y - data.x
 
                 # 4) evaluate loss 
                 loss = self.loss_fn(out_gnn, target)

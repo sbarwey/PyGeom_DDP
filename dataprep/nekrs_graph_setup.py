@@ -118,13 +118,13 @@ def get_pygeom_dataset_pymech(data_x_path: str,
         lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
 
         # create data 
-        data_temp = Data( x = vel_x_i, 
-                          y = vel_y_i,
-                          x_mean = x_mean_element, 
-                          x_std = x_std_element,
-                          L = lengthscale_element,
-                          pos = pos_i,
-                          pos_norm = pos_i/lengthscale_element,
+        data_temp = Data( x = vel_x_i.to(dtype=TORCH_FLOAT), 
+                          y = vel_y_i.to(dtype=TORCH_FLOAT),
+                          x_mean = x_mean_element.to(dtype=TORCH_FLOAT), 
+                          x_std = x_std_element.to(dtype=TORCH_FLOAT),
+                          L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                          pos = pos_i.to(dtype=TORCH_FLOAT),
+                          pos_norm = (pos_i/lengthscale_element).to(dtype=TORCH_FLOAT),
                           edge_index = edge_index)
 
         data_temp = data_temp.to(device_for_loading)

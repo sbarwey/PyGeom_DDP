@@ -116,8 +116,7 @@ def write_full_dataset(cfg: DictConfig):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
             snap = snap_list[snap_id]
-            #input_path = f"{case_path}/Re_{Re}_poly_7/snapshots_interp_1to7/{snap}" 
-            input_path = f"{case_path}/Re_{Re}_poly_7/snapshots_target/{snap}" 
+            input_path = f"{case_path}/Re_{Re}_poly_7/snapshots_interp_1to7/{snap}" 
             target_path = f"{case_path}/Re_{Re}_poly_7/snapshots_target/{snap}" 
 
             # element-local edge index 
@@ -133,13 +132,28 @@ def write_full_dataset(cfg: DictConfig):
                                  data_x_path = input_path, 
                                  data_y_path = target_path,
                                  edge_index_path = edge_index_path,
-                                 edge_index_vertex_path = edge_index_vertex_path,
+                                 #edge_index_vertex_path = edge_index_vertex_path,
                                  device_for_loading = device_for_loading,
                                  fraction_valid = fraction_valid)
 
             train_dataset += train_dataset_temp
             test_dataset += test_dataset_temp
 
+    # try torch.save 
+    t_save = time.time()
+    torch.save(train_dataset, cfg.data_dir + "train_dataset.pt")
+    torch.save(test_dataset, cfg.data_dir + "valid_dataset.pt")
+    t_save = time.time() - t_save 
+    
+    # load the dataset 
+    t_load = time.time()
+    train_dataset = torch.load(cfg.data_dir + "train_dataset.pt")
+    test_dataset = torch.load(cfg.data_dir + "valid_dataset.pt")
+    t_load = time.time() - t_load
+
+    if RANK == 0:
+        log.info('t_save: %g sec ' %(t_save))
+        log.info('t_load: %g sec ' %(t_load))
 
 
 def write_full_dataset_from_textfiles(cfg: DictConfig):
