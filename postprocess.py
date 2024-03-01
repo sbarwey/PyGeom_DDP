@@ -642,31 +642,41 @@ if __name__ == "__main__":
         plt.show(block=False)
  
 
-
-
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
     if 1 == 1:
-        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7/snapshots_target_orig'
-        field1 = readnek(nrs_snap_dir + '/tgv0.f00010')
+        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+        field1 = readnek(nrs_snap_dir + '/snapshots_target/newtgv0.f00010')
         first_element = field1.elem[0]
         print("Type =", type(first_element))
         print(first_element)
 
-        field2 = readnek(nrs_snap_dir + '/tgv0.f00001')
+        field2 = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
 
 
+        i_err = []
         for i in range(len(field1.elem)):
             pos_1 = field1.elem[i].pos
             pos_2 = field2.elem[i].pos
 
+            x_gll = pos_1[0,0,0,:]
+            dx_min = x_gll[1] - x_gll[0] 
+
+            # x = pos_1[0,0,0,:]
+            # y = np.ones_like(x)
+            # fig, ax = plt.subplots()
+            # ax.plot(x, y, marker='o', ms=20)
+            # plt.show(block=False)
+            # asdf
+
             error_max = (pos_1 - pos_2).max()
-            print(f"i={i} \t error_max = {error_max}")
+            rel_error = (error_max / dx_min)*100
 
-            if error_max > 0:
-                print("WARNING --- error in positions.")
-                exit()  
+            if rel_error> 1e-2:
+                print(f"i={i} \t error_max = {error_max} \t rel_error = {rel_error}")
+                print("WARNING --- relative error in positions exceeds 0.01%")
+                i_err.append(i)
 
-
+        
         # Test reshaping : 
         if 1 == 0:
             pos_1 = torch.tensor(first_element.pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
