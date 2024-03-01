@@ -92,9 +92,15 @@ def get_pygeom_dataset_pymech(data_x_path: str,
         vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
         vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
 
+        x_gll = x_field.elem[i].pos[0,0,0,:]
+        dx_min = x_gll[1] - x_gll[0]
+
+        error_max = (pos_x_i - pos_y_i).max()
+        rel_error = (error_max / dx_min)*100
+    
         # Check positions 
-        if (pos_x_i - pos_y_i).max() > 0:
-            print(f"Node position inconsistency in element i={i}.")
+        if rel_error > 1e-2:
+            print(f"Relative error in positions exceeds 0.01% in element i={i}.")
             sys.exit()
         if (pos_x_i.max() == 0. and pos_x_i.min() == 0.): 
             print(f"Node positions are not stored in {data_x_path}.")
