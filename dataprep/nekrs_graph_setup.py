@@ -7,6 +7,7 @@ from torch_geometric.data import Data
 import torch_geometric.utils as utils
 import torch_geometric.nn as tgnn 
 from typing import Optional, Union, Callable, List, Tuple
+from pymech.neksuite import readnek
 
 Tensor = torch.Tensor 
 TORCH_FLOAT = torch.float32
@@ -30,6 +31,108 @@ def get_element_lengthscale(pos_batch: Tensor) -> Tensor:
     pos_min = pos_batch.min(dim=1)[0]
     pos_max = pos_batch.max(dim=1)[0]
     return torch.norm(pos_max - pos_min, p=2, dim=1)
+
+
+
+
+def get_pygeom_dataset_pymech(data_x_path: str,
+                       data_y_path: str,
+                       edge_index_path: str,
+                       edge_index_vertex_path: Optional[str] = None,
+                       device_for_loading : Optional[str] = 'cpu',
+                       fraction_valid : Optional[float] = 0.1) -> Tuple[List,List,List,List]:
+    t_load = time.time()
+   
+    print('Loading data and making pygeom dataset...')
+    edge_index = np.loadtxt(edge_index_path, dtype=np.int64).T 
+    if edge_index_vertex_path: 
+        print('Adding p1 connectivity...')
+        print('\tEdge index shape before: ', edge_index.shape)
+        edge_index_vertex = np.loadtxt(edge_index_vertex_path, dtype=np.int64).T 
+        edge_index = np.concatenate((edge_index, edge_index_vertex), axis=1)
+        print('\tEdge index shape after: ', edge_index.shape)
+    edge_index = torch.tensor(edge_index)
+
+    # Load data 
+    x_field = readnek(data_x_path)
+    y_field = readnek(data_y_path)
+
+    # Train / valid split 
+    n_snaps = len(x_field.elem)
+
+    if fraction_valid > 0:
+        # How many total snapshots to extract 
+        n_full = n_snaps
+        n_valid = int(np.floor(fraction_valid * n_full))
+
+        # Get validation set indices 
+        idx_valid = np.sort(np.random.choice(n_full, n_valid, replace=False))
+
+        # Get training set indices 
+        idx_train = np.array(list(set(list(range(n_full))) - set(list(idx_valid))))
+
+        n_train = len(idx_train)
+        n_valid = len(idx_valid)
+    else:
+        n_full = n_snaps
+        n_valid = 0 
+        n_train = n_full
+        idx_train = list(range(n_train))
+        idx_valid = []
+
+    idx_train_mask = np.zeros(n_snaps, dtype=int)
+    idx_train_mask[idx_train] = 1
+
+    data_train_list = []
+    data_valid_list = []
+    for i in range(n_snaps):
+        N_i = x_field.elem[i].pos.shape[1]
+        pos_x_i = torch.tensor(x_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        pos_y_i = torch.tensor(y_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
+        vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
+        vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
+
+        # Check positions 
+        if (pos_x_i - pos_y_i).max() > 0:
+            print(f"Node position inconsistency in element i={i}.")
+            sys.exit()
+        if (pos_x_i.max() == 0. and pos_x_i.min() == 0.): 
+            print(f"Node positions are not stored in {data_x_path}.")
+            sys.exit()
+        if (pos_y_i.max() == 0. and pos_y_i.min() == 0.): 
+            print(f"Node positions are not stored in {data_y_path}.")
+            sys.exit()
+        pos_i = pos_x_i
+        
+        # get x_mean and x_std 
+        x_mean_element = torch.mean(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1) 
+        x_std_element = torch.std(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
+
+        # element lengthscale 
+        lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
+
+        # create data 
+        data_temp = Data( x = vel_x_i, 
+                          y = vel_y_i,
+                          x_mean = x_mean_element, 
+                          x_std = x_std_element,
+                          L = lengthscale_element,
+                          pos = pos_i,
+                          pos_norm = pos_i/lengthscale_element,
+                          edge_index = edge_index)
+
+        data_temp = data_temp.to(device_for_loading)
+
+        if idx_train_mask[i] == 1:
+            data_train_list.append(data_temp)
+        else:
+            data_valid_list.append(data_temp)
+
+    t_load = time.time() - t_load 
+    print('\ttook %g sec' %(t_load))
+    return data_train_list, data_valid_list
+
+
 
 def get_pygeom_dataset(data_x_path: str,
                        data_y_path: str,
@@ -158,3 +261,5 @@ def get_pygeom_dataset(data_x_path: str,
     t_load = time.time() - t_load 
     print('\ttook %g sec' %(t_load))
     return data_train_list, data_valid_list, data_mean, data_var, n_samples
+
+

@@ -646,11 +646,26 @@ if __name__ == "__main__":
 
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
     if 1 == 1:
-        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekRS-GNN-devel/examples/tgv/Re_1600_poly_7/snapshots_target/tgv0.f00001'
-        field = readnek(nrs_snap_dir)
-        first_element = field.elem[0]
+        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7/snapshots_target_orig'
+        field1 = readnek(nrs_snap_dir + '/tgv0.f00010')
+        first_element = field1.elem[0]
         print("Type =", type(first_element))
         print(first_element)
+
+        field2 = readnek(nrs_snap_dir + '/tgv0.f00001')
+
+
+        for i in range(len(field1.elem)):
+            pos_1 = field1.elem[i].pos
+            pos_2 = field2.elem[i].pos
+
+            error_max = (pos_1 - pos_2).max()
+            print(f"i={i} \t error_max = {error_max}")
+
+            if error_max > 0:
+                print("WARNING --- error in positions.")
+                exit()  
+
 
         # Test reshaping : 
         if 1 == 0:
@@ -689,7 +704,7 @@ if __name__ == "__main__":
 
 
         # Test plotting: 
-        if 1 === 0:
+        if 1 == 0:
             # Read in element-local edge index 
             edge_index = torch.tensor(np.loadtxt("./temp/edge_index_element_local_rank_0_size_4").astype(np.int64).T)
 
