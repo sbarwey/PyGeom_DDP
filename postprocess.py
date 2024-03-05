@@ -24,34 +24,10 @@ def count_parameters(mdl):
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
     if 1 == 0:
-        mp = [6]
-        mp = [2,4,6,8]
-
-        conv_loss_train = []
-        conv_loss_valid = []
- 
-        for i in mp:
-            a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(i))
-            conv_loss_train.append(np.mean(a['loss_hist_train'][-10:]))
-            conv_loss_valid.append(np.mean(a['loss_hist_test'][-10:]))
-     
-        plt.rcParams.update({'font.size': 18})
-        ms=15
-        mew=2
-        lw=1
-        fig, ax = plt.subplots()
-        ax.plot(mp, conv_loss_train, marker='o', fillstyle='none', lw=lw, ms=ms, mew=mew, color='black')
-        ax.plot(mp, conv_loss_valid, marker='s', fillstyle='none', lw=lw, ms=ms, mew=mew, color='blue')
-        ax.set_ylabel('Super-Resolution Loss')
-        ax.set_xlabel('Message Passing Layers')
-        #ax.set_ylim([0.05, 0.07])
-        ax.set_yscale('log')
-        plt.show(block=False)
-
         mp = 6 
-        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_unscaledResidual_3_7_128_3_2_%d.tar' %(mp))
+        a = torch.load('./saved_models/old/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        b = torch.load('./saved_models/old/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
 
@@ -78,12 +54,115 @@ if __name__ == "__main__":
 
         plt.show(block=False)
 
+
+
+    # ~~~~ Save predicted flowfield into .f file 
+    if 1 == 1:
+        mode = "multi_scale"
+        data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+        test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+        edge_index = test_dataset[0].edge_index
+
+
+        # Load model 
+        mp = 6 
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels = input_dict['input_edge_channels'] 
+        hidden_channels = input_dict['hidden_channels']
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
+
+        model = gnn.GNN(input_node_channels,
+                           input_edge_channels,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
+        model.load_state_dict(a['state_dict'])
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+        model.to(device)
+        model.eval()
+
+        # Load eval and target snapshot 
+        TORCH_FLOAT = torch.float32
+        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+        x_field = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
+        y_field = readnek(nrs_snap_dir + '/snapshots_target/newtgv0.f00010')
+
+        n_snaps = len(x_field.elem)
+
+        with torch.no_grad():
+            for i in range(n_snaps):
+                print(f"Evaluating snap {i}/{n_snaps}")
+                pos_i = torch.tensor(x_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
+                vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
+
+                # get x_mean and x_std 
+                x_mean_element = torch.mean(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
+                x_std_element = torch.std(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
+
+                # element lengthscale 
+                lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
+
+                # create data 
+                data = Data( x = vel_x_i.to(dtype=TORCH_FLOAT),
+                                  y = vel_y_i.to(dtype=TORCH_FLOAT),
+                                  x_mean = x_mean_element.to(dtype=TORCH_FLOAT),
+                                  x_std = x_std_element.to(dtype=TORCH_FLOAT),
+                                  L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                                  pos = pos_i.to(dtype=TORCH_FLOAT),
+                                  pos_norm = (pos_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                                  edge_index = edge_index)
+
+                data = data.to(device)
+
+                # ~~~~ Model evaluation ~~~~ # 
+                # 1) Preprocessing: scale input  
+                eps = 1e-10
+                x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
+
+                # 2) evaluate model 
+                out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                    
+                # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
+                y_pred = out_gnn * (data.x_std + eps) + data.x 
+
+                # ~~~~ Making the .f file ~~~~ # 
+                # Re-shape the prediction, convert back to fp64 numpy 
+                orig_shape = x_field.elem[i].vel.shape
+                y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+
+                # Place back in the snapshot data 
+                x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+
+
+
+        # plt.rcParams.update({'font.size': 14})
+        # fig, ax = plt.subplots(1,3, figsize=(10,4))
+        # for comp in range(3):
+        #     ax[comp].scatter(data.x[:,comp], data.y[:,comp], color='red')
+        #     ax[comp].scatter(y_pred[:,comp], data.y[:,comp], color='lime')
+        #     ax[comp].plot([data.y[:,comp].min(), data.y[:,comp].max()],
+        #             [data.y[:,comp].min(), data.y[:,comp].max()],
+        #             color='black', lw=2)
+        #     ax[comp].set_title('n_mp=%d, comp=%d' %(mp,comp))
+        #     ax[comp].set_xlabel('Prediction')
+        #     ax[comp].set_ylabel('Target')
+        # plt.show(block=False)
+
     # ~~~~ Analyze predictions -- all elements 
     if 1 == 0:
-        mode = "single_scale"
+        mode = "multi_scale"
         data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
-        pod_compute = True
-
         # Load data 
         train_dataset = torch.load(data_dir + "/train_dataset.pt")
         test_dataset = torch.load(data_dir + "/valid_dataset.pt")
@@ -108,10 +187,12 @@ if __name__ == "__main__":
                            n_messagePassing_layers,
                            name)
         model.load_state_dict(a['state_dict'])
-        device = 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
         model.to(device)
         model.eval()
-
 
         with torch.no_grad():
             x_input_list = [] 
@@ -125,8 +206,6 @@ if __name__ == "__main__":
 
             sample = dataset[0]
 
-            if pod_compute:
-                X = torch.zeros((3, N, sample.x.shape[0], sample.x.shape[1])) 
 
             for i in range(N):
                 print('evaluating %d/%d' %(i+1, N))
@@ -141,36 +220,12 @@ if __name__ == "__main__":
                     
                 # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
                 y_pred = out_gnn * (data.x_std + eps) + data.x 
-
-                if pod_compute: 
-                    X[0,i,:,:] = data.x 
-                    X[1,i,:,:] = data.y
-                    X[2,i,:,:] = y_pred
-    
+  
                 # loss before gnn 
                 mse_before_gnn[i] = F.mse_loss(data.x, data.y)
 
                 # loss after gnn 
                 mse_after_gnn[i] = F.mse_loss(y_pred, data.y) 
-
-        if pod_compute:
-
-            # X[0] -- input 
-            # X[1] -- target 
-            # X[2] -- prediction 
-            names = ['input', 'target', 'pred']
-            for i in range(3):
-                for comp in range(3):
-                    print('saving pod -- i = %d, comp = %d' %(i, comp))
-                    X_temp = X[i,:,:,comp].to(torch.float64)
-                    X_temp = X_temp - X_temp.mean(dim=0, keepdim=True) 
-                    N = X_temp.shape[0]
-                    cov = X_temp.T @ X_temp 
-                    cov = cov/(N-1)
-                    lam, _ = np.linalg.eig(cov.numpy())
-                    fname = 'single_scale_pod_eigenvalues_%s_comp_%d.npy' %(names[i], comp)
-                    np.save('./outputs/postproc/%s' %(fname), lam)
-
 
         # Visualize
         element_ids = torch.arange(N) 
@@ -194,59 +249,9 @@ if __name__ == "__main__":
         #ax.plot(element_ids, difference_sorted.abs(), lw=2)
         ax.set_xlabel('Element IDs (Sorted)')
         ax.set_ylabel('Model Gain')
-        #ax.set_yscale('log')
+        ax.set_yscale('log')
         plt.show(block=False)
-
-        # # Plotting error difference versus RMS 
-        # fig, ax = plt.subplots()
-        # ax.scatter(difference, rms_target)
-        # ax.set_xlabel('Model Gain')
-        # ax.set_ylabel('Target RMS Velocity')
-        # plt.show(block=False)
-
-    # ~~~~ Plot some POD 
-    if 1 == 0:
-        lw = 1.5 
-        fig, ax = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
-        fig2, ax2 = plt.subplots(1,3,figsize=(10,4), sharex=True, sharey=True)
-        for comp in range(3):
-            lam_input = np.load('./outputs/postproc/pod_eigenvalues_input_comp_%d.npy' %(comp)).real
-            lam_target = np.load('./outputs/postproc/pod_eigenvalues_target_comp_%d.npy' %(comp)).real 
-            lam_pred = np.load('./outputs/postproc/pod_eigenvalues_pred_comp_%d.npy' %(comp)).real 
-            lam_pred_ss = np.load('./outputs/postproc/single_scale_pod_eigenvalues_pred_comp_%d.npy' %(comp)).real 
-
-            lam_input = np.sort(lam_input)[::-1]
-            lam_target = np.sort(lam_target)[::-1]
-            lam_pred = np.sort(lam_pred)[::-1]
-            lam_pred_ss = np.sort(lam_pred_ss)[::-1]
-
-            mode_ids = list(range(1, len(lam_input)+1))
-            ax[comp].plot(mode_ids, lam_target, color='black', lw=lw, label='y')
-            ax[comp].plot(mode_ids, lam_input, color='blue', lw=lw, label='x')
-            ax[comp].plot(mode_ids, lam_pred_ss, color='lime', lw=lw, ls='--', label='GNN_SS(x)')
-            ax[comp].plot(mode_ids, lam_pred, color='red', lw=lw, ls='--', label='GNN_MS(x)')
-            ax[comp].set_yscale('log')
-            ax[comp].set_xscale('log')
-            ax[comp].set_ylabel('Eigenvalue')
-            ax[comp].set_xlabel('Index')
-            ax[comp].set_ylim([1e-9, 1e2])
-            ax[comp].legend(fancybox=False, framealpha=1)
-
-            # Error 
-            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_input)/lam_target, 
-                           color='blue', lw=lw, label='x')
-            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_pred_ss)/lam_target, 
-                           color='lime', lw=lw, ls='--', label='GNN_SS(x)')
-            ax2[comp].plot(mode_ids, np.abs(lam_target - lam_pred)/lam_target, 
-                           color='red', lw=lw, ls='--', label='GNN_MS(x)')
-            ax2[comp].set_yscale('log')
-            ax2[comp].set_xscale('log')
-            ax2[comp].set_ylabel('Relative Error')
-            ax2[comp].set_xlabel('Index')
-            #ax2[comp].set_title('Error')
-            ax2[comp].legend(fancybox=False, framealpha=1)
-        plt.show(block=False)
-        
+    
     # ~~~~ Visualize model predictions -- a single element  
     if 1 == 0:
         mode = "multi_scale"
@@ -258,8 +263,7 @@ if __name__ == "__main__":
 
         # Load model 
         mp = 6 
-        #a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_unscaledResidual_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -277,19 +281,18 @@ if __name__ == "__main__":
                            n_messagePassing_layers,
                            name)
         model.load_state_dict(a['state_dict'])
-        device = 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+
+
         model.to(device)
         model.eval()
 
         with torch.no_grad():
-
-            #element 1: 100 
-            #element 2: 1000
-            #element 3: 23 
-            #element 4: 1100
-            # eids = torch.load('./outputs/postproc/element_ids_sorted.pt')
-            # data = test_dataset[ eids[0] ]
-            data = test_dataset[150]
+            #data = test_dataset[4000]
+            data = train_dataset[4000]
              
             # 1) Preprocessing: scale input  
             eps = 1e-10
@@ -299,8 +302,7 @@ if __name__ == "__main__":
             out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
                 
             # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
-            #y_pred = out_gnn * (data.x_std + eps) + data.x 
-            y_pred = out_gnn + data.x 
+            y_pred = out_gnn * (data.x_std + eps) + data.x 
 
         plt.rcParams.update({'font.size': 14})
         fig, ax = plt.subplots(1,3, figsize=(10,4))
@@ -643,7 +645,7 @@ if __name__ == "__main__":
  
 
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
-    if 1 == 1:
+    if 1 == 0:
         nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
         field1 = readnek(nrs_snap_dir + '/snapshots_target/newtgv0.f00010')
         first_element = field1.elem[0]
