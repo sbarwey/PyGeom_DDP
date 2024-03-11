@@ -32,12 +32,10 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-import models.cnn as cnn
 import models.gnn as gnn
 
 # Data preparation
-import dataprep.unstructured_mnist as umnist
-import dataprep.backward_facing_step as bfs
+import dataprep.speedy as speedy
 
 
 
@@ -140,7 +138,7 @@ class Trainer:
             self.noise_dist = tdist.Normal(torch.tensor([mu]), torch.tensor([std]))
 
         # ~~~~ Init datasets
-        self.bounding_box = [0.0, 0.0, 0.0, 0.0] # domain bounding box for node positions. [xlo, xhi, ylo, yhi]
+        self.SMALL = 1e-10
         self.data = self.setup_data()
 
         # ~~~~ Init model and move to gpu 
@@ -238,98 +236,46 @@ class Trainer:
         #    self.loss_fn = self.loss_fn.cuda()
 
     def build_model(self) -> nn.Module:
-         
-        bbox = [tnsr.item() for tnsr in self.bounding_box]
-
-        # MMP unet + topk 
-        preamble = 'LAM_TEST_NO_INV_B_' 
-
+        preamble = ''
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
-
-        if not self.cfg.use_radius:
-            preamble += 'NO_RADIUS_LR_1em5_' 
-
         if self.cfg.mask_regularization:
             preamble += 'BUDGET_REG_'
+        modelname = 'GNN_ROLLOUT_%d_SEED_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
 
-        #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
-        modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
+        sample = self.data['train']['sample']
+        input_node_channels = sample.x.shape[1]
+        input_edge_channels = sample.edge_attr.shape[1]
+        hidden_channels = self.cfg.hidden_channels
+        output_node_channels = input_node_channels
+        n_mlp_hidden_layers = self.cfg.n_mlp_hidden_layers
+        n_mmp_layers = self.cfg.n_mmp_layers
+        n_messagePassing_layers = self.cfg.n_messagePassing_layers
+        max_level_mmp = self.cfg.max_level_mmp
+        max_level_topk = self.cfg.max_level_topk
+        rf_topk = self.cfg.topk_rf
 
-        topk_reduction_factor = self.cfg.topk_rf
-        model = gnn.GNN_TopK_NoReduction(
-                in_channels_node = 2,
-                in_channels_edge = 3,
-                hidden_channels = 128,
-                out_channels = 2, 
-                n_mlp_encode = 3, 
-                n_mlp_mp = 2,
-                n_mp_down_topk = [1,1], # [2], #[1,1],
-                n_mp_up_topk = [1], #[], #[1],
-                pool_ratios = [1./topk_reduction_factor],
-                n_mp_down_enc = [2,2,2], # [4,4,4],
-                n_mp_up_enc = [2,2], # [4,4],
-                n_mp_down_dec = [2,2,2],
-                n_mp_up_dec = [2,2], 
-                lengthscales_enc = [0.01, 0.02],
-                lengthscales_dec = [0.01, 0.02], 
-                bounding_box = bbox, 
-                interpolation_mode = 'knn',
-                act = F.elu,
-                param_sharing = False,
-                name = preamble + modelname)
+        # get l_char
+        edge_attr = sample.edge_attr
+        mean_edge_length = edge_attr[:,2].mean()
+        l_char = mean_edge_length 
+
+        model = gnn.TopkMultiscaleGNN(
+            input_node_channels,
+            input_edge_channels,
+            hidden_channels,
+            output_node_channels,
+            n_mlp_hidden_layers,
+            n_mmp_layers,
+            n_messagePassing_layers,
+            max_level_mmp,
+            l_char,
+            max_level_topk,
+            rf_topk,
+            name = preamble+modelname) 
 
         if RANK == 0:
-            log.info('NAME: ' + preamble + modelname)
-            log.info('SAVE HEADER: ' + model.get_save_header())
-
-        # ~~~~ FINE-TUNING: 
-        # first, read a trained baseline model (a baseline model without top-k) 
-        #modelpath = self.cfg.work_dir + '/saved_models/big_data/dt_gnn_1em4/%s_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(baseline_modelname)
-        modelpath = self.cfg.baseline_modelpath
-        if RANK == 0:
-            log.info('BASELINE MODEL PATH: ' + modelpath)
-
-        p = torch.load(modelpath)
-        input_dict = p['input_dict']
-        model_read = gnn.GNN_TopK_NoReduction(
-            in_channels_node = input_dict['in_channels_node'],
-            in_channels_edge = input_dict['in_channels_edge'],
-            hidden_channels = input_dict['hidden_channels'],
-            out_channels = input_dict['out_channels'],
-            n_mlp_encode = input_dict['n_mlp_encode'],
-            n_mlp_mp = input_dict['n_mlp_mp'],
-            n_mp_down_topk = input_dict['n_mp_down_topk'],
-            n_mp_up_topk = input_dict['n_mp_up_topk'],
-            pool_ratios = input_dict['pool_ratios'],
-            n_mp_down_enc = input_dict['n_mp_down_enc'],
-            n_mp_up_enc = input_dict['n_mp_up_enc'],
-            n_mp_down_dec = input_dict['n_mp_down_dec'],
-            n_mp_up_dec = input_dict['n_mp_up_dec'], 
-            lengthscales_enc = input_dict['lengthscales_enc'],
-            lengthscales_dec = input_dict['lengthscales_dec'], 
-            bounding_box = input_dict['bounding_box'], 
-            interpolation_mode = input_dict['interp'], 
-            act = input_dict['act'], 
-            param_sharing = input_dict['param_sharing'],
-            filter_lengthscale = input_dict['filter_lengthscale'], 
-            name = input_dict['name'])
-
-        model_read.load_state_dict(p['state_dict'])
-
-        def count_parameters(mdl):
-            return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
-
-        if RANK == 0: 
-            print('number of parameters before overwriting: ', count_parameters(model))
-
-        # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
-        model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
-        model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
-        model.set_node_edge_encoder_decoder(model_read)
-
-        if RANK == 0: 
-            print('number of parameters after overwriting: ', count_parameters(model))
+            log.info('Model name: ' + model.get_save_header())
 
         return model
 
@@ -370,90 +316,18 @@ class Trainer:
 
     def setup_data(self):
         kwargs = {}
-        #if self.device == 'gpu':
-        #    kwargs = {'num_workers': 1, 'pin_memory': True}
 
         device_for_loading = 'cpu'
-
-        # # ~~~~ BFS: CROPPED
-        # # Get statistics using combined dataset:
-        # path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/Backward_Facing_Step_Cropped_Re_26214_29307_39076_45589.vtk'
-        # data_mean, data_std = bfs.get_data_statistics(
-        #         path_to_vtk, 
-        #         multiple_cases = True)
-
-        # # Load rollout dataset
-        # filenames = ['Backward_Facing_Step_Cropped_Re_26214.vtk', 
-        #              'Backward_Facing_Step_Cropped_Re_29307.vtk', 
-        #              'Backward_Facing_Step_Cropped_Re_39076.vtk', 
-        #              'Backward_Facing_Step_Cropped_Re_45589.vtk'] 
-        # train_dataset = []
-        # test_dataset = []
-        # for f in filenames: 
-        #     path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/%s' %(f)
-
-        #     train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data(
-        #         path_to_vtk, 
-        #         self.cfg.path_to_ei, 
-        #         self.cfg.path_to_ea,
-        #         self.cfg.path_to_pos, 
-        #         device_for_loading, 
-        #         self.cfg.use_radius,
-        #         time_lag = self.cfg.rollout_steps,
-        #         scaling = [data_mean, data_std],
-        #         features_to_keep = [1,2], 
-        #         fraction_valid = 0.1, 
-        #         multiple_cases = False)
-        #     
-        #     train_dataset = train_dataset + train_dataset_temp
-        #     test_dataset = test_dataset + test_dataset_temp
-        
-        # ~~~~ BFS: FULL-GEOM
-        # Get statistics using combined dataset:
-        stats = np.load(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/stats.npz')
-        data_mean = stats['mean']
-        data_std = stats['std']
-
-        # Load rollout dataset
-        filenames = [] # this contains the vtk locations 
-        filenames = os.listdir(self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/')
-        filenames = sorted([item for item in filenames if 'Re_' in item])
-
-        filenames = filenames[::2]
-
-        train_dataset = []
-        test_dataset = []
-        for item in filenames: 
-            if RANK == 0: 
-                log.info('loading %s...' %(item))
-            path_to_vtk = self.cfg.data_dir + '/BACKWARD_FACING_STEP/full/20_cases/' + item + '/VTK/Backward_Facing_Step_0_final_smooth.vtk' 
-
-            train_dataset_temp, test_dataset_temp = bfs.get_pygeom_dataset_cell_data(
-                path_to_vtk, 
-                self.cfg.path_to_ei, 
-                self.cfg.path_to_ea,
-                self.cfg.path_to_pos, 
-                device_for_loading, 
-                self.cfg.use_radius,
-                time_skip = self.cfg.gnn_dt,
+        train_dataset, test_dataset = speedy.get_pygeom_dataset(
+                path_to_data = self.cfg.data_dir + "speedy_numpy_file_train.npz",
+                device_for_loading = device_for_loading,
                 time_lag = self.cfg.rollout_steps,
-                scaling = [data_mean, data_std],
-                features_to_keep = [1,2], 
-                fraction_valid = 0.05, 
-                multiple_cases = False)
-            
-            if RANK == 0:
-                log.info('\tnumber of training graphs: %d' %(len(train_dataset_temp)))
-                log.info('\tnumber of validation graphs: %d' %(len(test_dataset_temp)))
-
-            train_dataset = train_dataset + train_dataset_temp
-            test_dataset = test_dataset + test_dataset_temp
-
+                fraction_valid = 0.1)
         self.bounding_box = train_dataset[0].bounding_box
 
         # DDP: use DistributedSampler to partition training data
         train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=SIZE, rank=RANK,
+            train_dataset, num_replicas=SIZE, rank=RANK, shuffle=True,
         )
         train_loader = torch_geometric.loader.DataLoader(
             train_dataset,
@@ -464,20 +338,24 @@ class Trainer:
 
         # DDP: use DistributedSampler to partition the test data
         test_sampler = torch.utils.data.distributed.DistributedSampler(
-            test_dataset, num_replicas=SIZE, rank=RANK
+            test_dataset, num_replicas=SIZE, rank=RANK, shuffle=False,
         )
         test_loader = torch_geometric.loader.DataLoader(
-            test_dataset, batch_size=self.cfg.test_batch_size
+            test_dataset, 
+            batch_size=self.cfg.test_batch_size,
+            sampler=test_sampler,
         )
 
         return {
             'train': {
                 'sampler': train_sampler,
                 'loader': train_loader,
+                'sample': train_dataset[0]
             },
             'test': {
                 'sampler': test_sampler,
                 'loader': test_loader,
+                'sample': test_dataset[0]
             }
         }
 
@@ -496,6 +374,10 @@ class Trainer:
         #loss_dict['lam'] = torch.tensor([0.0001])
         loss_dict['lam'] = torch.tensor([-0.0002459254785])
 
+        # for scaling 
+        data_mean = self.data['train']['sample'].data_mean
+        data_std = self.data['train']['sample'].data_std
+
         if WITH_CUDA:
             data.x = data.x.cuda()
             data.edge_index = data.edge_index.cuda()
@@ -507,16 +389,18 @@ class Trainer:
             loss_dict['comp1'] = loss_dict['comp1'].cuda()
             loss_dict['comp2'] = loss_dict['comp2'].cuda()
             loss_dict['lam'] = loss_dict['lam'].cuda()
+            data_mean = self.data['train']['sample'].data_mean.cuda()
+            data_std = self.data['train']['sample'].data_std.cuda()
         
         self.optimizer.zero_grad()
 
         ## Single prediction:
         #out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
         #loss = self.loss_fn(out, data.x)
-
                 
         # Rollout prediction: 
-        x_new = data.x
+        x_new = (data.x - data_mean)/(data_std + self.SMALL) # scaled input 
+
         for t in range(rollout_length):
             if self.cfg.use_noise and t == 0:
                 noise = self.noise_dist.sample((data.x.shape[0],))
@@ -526,12 +410,12 @@ class Trainer:
             else:
                 x_old = torch.clone(x_new)
 
-            x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-            #x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+            x_src, mask = self.model(x_old, data.edge_index, data.pos, data.edge_attr, data.batch)
             x_new = x_old + x_src
 
             # Accumulate loss 
-            target = data.y[t]
+            target = (data.y[t] - data_mean)/(data_std + self.SMALL) # scaled target
+
             if WITH_CUDA:
                 target = target.cuda()
 
@@ -661,6 +545,10 @@ class Trainer:
                 #loss_dict['lam'] = torch.tensor([0.0001])
                 loss_dict['lam'] = torch.tensor([-0.0002459254785])
 
+                # for scaling 
+                data_mean = self.data['train']['sample'].data_mean
+                data_std = self.data['train']['sample'].data_std
+
                 if WITH_CUDA:
                     data.x = data.x.cuda()
                     data.edge_index = data.edge_index.cuda()
@@ -672,9 +560,12 @@ class Trainer:
                     loss_dict['comp1'] = loss_dict['comp1'].cuda() 
                     loss_dict['comp2'] = loss_dict['comp2'].cuda()
                     loss_dict['lam'] = loss_dict['lam'].cuda()
+                    data_mean = self.data['train']['sample'].data_mean.cuda()
+                    data_std = self.data['train']['sample'].data_std.cuda()
+
                 
                 # Rollout prediction: 
-                x_new = data.x
+                x_new = (data.x - data_mean)/(data_std + self.SMALL) # scaled input
                 for t in range(rollout_length):
                     x_old = torch.clone(x_new)
                     x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
@@ -682,7 +573,7 @@ class Trainer:
                     x_new = x_old + x_src
 
                     # Accumulate loss 
-                    target = data.y[t]
+                    target = (data.y[t] - data_mean)/(data_std + self.SMALL) # scaled target
                     if WITH_CUDA:
                         target = target.cuda()
                     

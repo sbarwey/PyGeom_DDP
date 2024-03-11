@@ -1,17 +1,10 @@
 # @package _global_
-
-#seed: 42
-#seed: 65
-#seed: 82
-#seed: 105
 seed: 122
-epochs: 300
-backend: nccl
-#lr_init: 0.0001
+epochs: 2
+backend: gloo
 lr_init: 0.00001
 # momentum: 0.5
-use_radius : False
-use_noise : True
+use_noise : False
 num_threads: 0
 logfreq: 10
 ckptfreq: 5
@@ -20,19 +13,22 @@ test_batch_size: 2
 fp16_allreduce: False
 restart: False
 
-# GNN timestep factor
-gnn_dt: 10
-
-# Top-K reduction factor 
-topk_rf: 4
+# Model params 
+hidden_channels: 128
+n_mlp_hidden_layers: 2
+n_mmp_layers: 1
+n_messagePassing_layers: 2
+max_level_mmp: 2
+max_level_topk: 1
+topk_rf: 16
 
 # Loss function parameters 
 rollout_steps: 1
 use_rollout_schedule : False
-mask_regularization : True
+mask_regularization : False
 
 # baseline model path
-baseline_modelpath : ${work_dir}/saved_models/big_data/dt_gnn_1em4/NO_RADIUS_LR_1em5_topk_unet_rollout_1_seed_82_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar
+baseline_modelpath : None 
 
 hydra:
   job:
@@ -53,20 +49,3 @@ data_dir: ${work_dir}/datasets/
 ckpt_dir: ${work_dir}/ckpt/ 
 # path to saved model directory
 model_dir: ${work_dir}/saved_models/ 
-
-
-## pytorch geometric data (eagle) 
-#path_to_vtk: ${work_dir}/datasets/unstructured_mnist/mnist_unstruct_16_2d_0_final.vtk
-#path_to_ei: ${work_dir}/datasets/unstructured_mnist/edge_index
-#path_to_ea: ${work_dir}/datasets/unstructured_mnist/edge_attr
-#path_to_pos: ${work_dir}/datasets/unstructured_mnist/pos
-
-## pytorch geometric data (local)
-#path_to_vtk: ${work_dir}/datasets/UNSTRUCTURED_MNIST/mnist_unstruct_16_2d_0_final.vtk
-#path_to_ei: ${work_dir}/datasets/UNSTRUCTURED_MNIST/edge_index
-#path_to_ea: ${work_dir}/datasets/UNSTRUCTURED_MNIST/edge_attr
-#path_to_pos: ${work_dir}/datasets/UNSTRUCTURED_MNIST/pos
-
-path_to_ei: ${data_dir}/BACKWARD_FACING_STEP/full/edge_index
-path_to_ea: ${data_dir}/BACKWARD_FACING_STEP/full/edge_attr
-path_to_pos: ${data_dir}/BACKWARD_FACING_STEP/full/pos

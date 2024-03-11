@@ -77,6 +77,7 @@ def filter_adj(edge_index, edge_attr, perm, num_nodes=None):
     return torch.stack([row, col], dim=0), edge_attr, mask
 
 
+
 class TopKPooling_Mod(torch.nn.Module):
     r""":math:`\mathrm{top}_k` pooling operator from the `"Graph U-Nets"
     <https://arxiv.org/abs/1905.05178>`_, `"Towards Sparse
@@ -182,19 +183,14 @@ class TopKPooling_Mod(torch.nn.Module):
         return (f'{self.__class__.__name__}({self.in_channels}, {ratio}, '
                 f'multiplier={self.multiplier})')
 
-
-
 # Edge pooling
-def pool_edge_mean(cluster, edge_index, edge_attr: Optional[torch.Tensor] = None):
+def pool_edge_mean(cluster, edge_index, edge_attr):
     num_nodes = cluster.size(0)
     edge_index = cluster[edge_index.view(-1)].view(2, -1) 
     edge_index, edge_attr = remove_self_loops(edge_index, edge_attr)
     if edge_index.numel() > 0:
         edge_index, edge_attr = coalesce(edge_index, edge_attr, reduce='mean')
     return edge_index, edge_attr
-
-
-
 
 # avg pooling 
 def avg_pool_mod(cluster, x, edge_index, edge_attr, batch, pos):
@@ -217,9 +213,6 @@ def avg_pool_mod(cluster, x, edge_index, edge_attr, batch, pos):
     pos_pool = None if pos is None else scatter_mean(pos, cluster, dim=0)
 
     return x_pool, edge_index_pool, edge_attr_pool, batch_pool, pos_pool, cluster, perm
-
-
-
 
 def avg_pool_mod_no_x(cluster, edge_index, edge_attr, batch, pos):
     # Makes cluster indices consecutive, to allow for scatter operations 
