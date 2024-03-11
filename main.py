@@ -389,8 +389,8 @@ class Trainer:
             loss_dict['comp1'] = loss_dict['comp1'].cuda()
             loss_dict['comp2'] = loss_dict['comp2'].cuda()
             loss_dict['lam'] = loss_dict['lam'].cuda()
-            data_mean = self.data['train']['sample'].data_mean.cuda()
-            data_std = self.data['train']['sample'].data_std.cuda()
+            data_mean = data_mean.cuda()
+            data_std = data_std.cuda()
         
         self.optimizer.zero_grad()
 
@@ -414,11 +414,10 @@ class Trainer:
             x_new = x_old + x_src
 
             # Accumulate loss 
-            target = (data.y[t] - data_mean)/(data_std + self.SMALL) # scaled target
-
             if WITH_CUDA:
-                target = target.cuda()
-
+                data.y[t] = data.y[t].cuda()
+            target = (data.y[t] - data_mean)/(data_std + self.SMALL) # scaled target
+            
             if self.cfg.mask_regularization:
                 mse_total = self.loss_fn(x_new, target) 
                 mask = mask.view((-1,1))
@@ -560,8 +559,8 @@ class Trainer:
                     loss_dict['comp1'] = loss_dict['comp1'].cuda() 
                     loss_dict['comp2'] = loss_dict['comp2'].cuda()
                     loss_dict['lam'] = loss_dict['lam'].cuda()
-                    data_mean = self.data['train']['sample'].data_mean.cuda()
-                    data_std = self.data['train']['sample'].data_std.cuda()
+                    data_mean = data_mean.cuda()
+                    data_std = data_std.cuda()
 
                 
                 # Rollout prediction: 
@@ -573,6 +572,8 @@ class Trainer:
                     x_new = x_old + x_src
 
                     # Accumulate loss 
+                    if WITH_CUDA:
+                        data.y[t] = data.y[t].cuda()
                     target = (data.y[t] - data_mean)/(data_std + self.SMALL) # scaled target
                     if WITH_CUDA:
                         target = target.cuda()
