@@ -567,8 +567,7 @@ class Trainer:
                 x_new = (data.x - data_mean)/(data_std + self.SMALL) # scaled input
                 for t in range(rollout_length):
                     x_old = torch.clone(x_new)
-                    x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-                    #x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
+                    x_src, mask = self.model(x_old, data.edge_index, data.pos, data.edge_attr, data.batch)
                     x_new = x_old + x_src
 
                     # Accumulate loss 
