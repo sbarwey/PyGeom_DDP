@@ -23,10 +23,10 @@ def count_parameters(mdl):
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 0:
+    if 1 == 1:
         mp = 6 
-        a = torch.load('./saved_models/old/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        b = torch.load('./saved_models/old/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
         c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
@@ -36,8 +36,8 @@ if __name__ == "__main__":
         ax.plot(epochs, a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
         ax.plot(epochs, b['loss_hist_train'][1:], lw=2, color='black', label='Multi-Scale')
         ax.plot(epochs, b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
-        ax.plot(epochs, c['loss_hist_train'][1:], lw=2, color='blue', label='Multi-Scale (UR)')
-        ax.plot(epochs, c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
+        #ax.plot(epochs, c['loss_hist_train'][1:], lw=2, color='blue', label='Multi-Scale (UR)')
+        #ax.plot(epochs, c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
 
         ax.set_yscale('log')
         ax.legend()
@@ -57,8 +57,8 @@ if __name__ == "__main__":
 
 
     # ~~~~ Save predicted flowfield into .f file 
-    if 1 == 1:
-        mode = "multi_scale"
+    if 1 == 0:
+        mode = "single_scale"
         data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
         test_dataset = torch.load(data_dir + "/valid_dataset.pt")
         edge_index = test_dataset[0].edge_index
@@ -143,6 +143,9 @@ if __name__ == "__main__":
 
                 # Place back in the snapshot data 
                 x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+
+            # Write 
+            writenek(nrs_snap_dir + f"/snapshots_interp_1to7_gnn_{mode}/newtgv0.f00010", x_field)
 
 
 
