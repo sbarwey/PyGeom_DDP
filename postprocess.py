@@ -42,7 +42,7 @@ SMALL = 1e-10
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     a = torch.load('./saved_models/NO_NOISE_GNN_ROLLOUT_1_SEED_122_4_3_128_4_2_2_2_1_16.tar')
     fig, ax = plt.subplots()
     ax.plot(a['loss_hist_train'][1:], lw=2)
@@ -57,7 +57,7 @@ if 1 == 1:
 if 1 == 0:
     path_to_data = "./datasets/speedy_numpy_file_train.npz"
     device_for_loading = "cpu"
-    rollout_length = 100
+    rollout_length = 10
     print('Loading dataset...')
     data_list, _ = spd.get_pygeom_dataset(
             path_to_data = path_to_data,
@@ -100,13 +100,14 @@ if 1 == 0:
 
     # ~~~~~~~~~~~~~~~~~~~~
     # Predictions 
-    i = 0
+    i = 6000
     data = data_list[i]
     
     n_nodes = data.x.shape[0]
     n_features = data.x.shape[1]
     traj_input_ss = np.zeros((rollout_length, n_nodes, n_features)) 
     traj_output_ss = np.zeros_like(traj_input_ss)
+    traj_error_ss = np.zeros_like(traj_input_ss)
     traj_mask_ss = np.zeros((rollout_length, n_nodes)) 
     traj_target = np.zeros_like(traj_input_ss)
 
@@ -139,42 +140,59 @@ if 1 == 0:
         # store 
         traj_input_ss[t] = x_old_ss_unscaled
         traj_output_ss[t] = x_new_ss_unscaled
+        traj_error_ss[t] = x_new_ss_unscaled - target
         traj_mask_ss[t] = mask_ss
         traj_target[t] = target
 
-    # Plot predictions 
-    sample = data_list[0]
-    for sid in range(rollout_length):
-        print(f"Plotting step {sid}")
-        fig, ax = plt.subplots(3,4,figsize=(15,7),gridspec_kw = {'wspace':0.01, 'hspace':0.01})
+
+
+    # Plot error 
+    if 1 == 1:
+        sid = 0
+        fig, ax = plt.subplots(1,4,figsize=(15,4), sharex=True)
         for fid in range(n_features):
-            f_plt = traj_input_ss[sid,:,fid].reshape(sample.field_shape)
-            ax[0,fid].imshow(f_plt)
-            #ax[0,fid].set_aspect('equal')
-            ax[0,fid].grid(False)
-            ax[0,fid].set_xticklabels([])
-            ax[0,fid].set_yticklabels([])
-            ax[0,fid].set_title(f"Step {sid}")
-            ax[0,0].set_ylabel('Input')
+            ax[fid].hist((traj_error_ss[sid, :, fid])/(data_std[0,fid] + SMALL), bins=100)
+            ax[fid].set_ylabel('Freq')
+            ax[fid].set_xlabel('Error -- field %d' %(fid))
+            ax[fid].set_ylim([0, 400])
+        plt.show(block=False)
 
-            f_plt = traj_mask_ss[sid,:].reshape(sample.field_shape)
-            ax[1,fid].imshow(f_plt)
-            #ax[1,fid].set_aspect('equal')
-            ax[1,fid].grid(False)
-            ax[1,fid].set_xticklabels([])
-            ax[1,fid].set_yticklabels([])
-            ax[1,0].set_ylabel('Mask')
+        pass 
 
-            f_plt = traj_output_ss[sid,:,fid].reshape(sample.field_shape)
-            ax[2,fid].imshow(f_plt)
-            #ax[2,fid].set_aspect('equal')
-            ax[2,fid].grid(False)
-            ax[2,fid].set_xticklabels([])
-            ax[2,fid].set_yticklabels([])
-            ax[2,0].set_ylabel('Forecast (SS)')
-        plt.savefig("./outputs/movies/step_%.4d.png" %(sid), dpi=600)
-        plt.close()
-        #plt.show(block=False)
+    # Plot predictions 
+    if 1 == 0:
+        sample = data_list[0]
+        for sid in range(rollout_length):
+            print(f"Plotting step {sid}")
+            fig, ax = plt.subplots(3,4,figsize=(15,7),gridspec_kw = {'wspace':0.01, 'hspace':0.01})
+            for fid in range(n_features):
+                f_plt = traj_input_ss[sid,:,fid].reshape(sample.field_shape)
+                ax[0,fid].imshow(f_plt)
+                #ax[0,fid].set_aspect('equal')
+                ax[0,fid].grid(False)
+                ax[0,fid].set_xticklabels([])
+                ax[0,fid].set_yticklabels([])
+                ax[0,fid].set_title(f"Step {sid}")
+                ax[0,0].set_ylabel('Input')
+
+                f_plt = traj_mask_ss[sid,:].reshape(sample.field_shape)
+                ax[1,fid].imshow(f_plt)
+                #ax[1,fid].set_aspect('equal')
+                ax[1,fid].grid(False)
+                ax[1,fid].set_xticklabels([])
+                ax[1,fid].set_yticklabels([])
+                ax[1,0].set_ylabel('Mask')
+
+                f_plt = traj_output_ss[sid,:,fid].reshape(sample.field_shape)
+                ax[2,fid].imshow(f_plt)
+                #ax[2,fid].set_aspect('equal')
+                ax[2,fid].grid(False)
+                ax[2,fid].set_xticklabels([])
+                ax[2,fid].set_yticklabels([])
+                ax[2,0].set_ylabel('Forecast (SS)')
+            plt.savefig("./outputs/movies/step_%.4d.png" %(sid), dpi=600)
+            plt.close()
+            #plt.show(block=False)
 
 
 
@@ -204,11 +222,12 @@ if 1 == 0:
     pos_rot = torch.cat( (Y.reshape(-1,1), -X.reshape(-1,1) + 1), axis=1 )
 
     i = 3 
+    data = data_4
     fig, ax = plt.subplots(1,4)
-    ax[0].pcolormesh(Y, X, data_1[i])
-    ax[1].imshow(data_1[i])
-    ax[2].scatter(pos[:,0], pos[:,1], c=data_1[i].reshape((-1,1)))
-    ax[3].scatter(pos_rot[:,0], pos_rot[:,1], c=data_1[i].reshape((-1,1)))
+    ax[0].pcolormesh(Y, X, data[i])
+    ax[1].imshow(data[i])
+    ax[2].scatter(pos[:,0], pos[:,1], c=data[i].reshape((-1,1)))
+    ax[3].scatter(pos_rot[:,0], pos_rot[:,1], c=data[i].reshape((-1,1)))
 
     ax[0].set_title(f"{i}")
     ax[1].set_title(f"{i}")
@@ -264,37 +283,39 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Test PyGeom data 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
     path_to_data = "./datasets/speedy_numpy_file_train.npz"
     device_for_loading = "cpu"
     data_train_list, data_valid_list = spd.get_pygeom_dataset(
             path_to_data = path_to_data,
             device_for_loading = device_for_loading,
-            time_lag = 3, 
+            time_lag = 1, 
             fraction_valid = 0.1)
     
     # Get data: 
     sample = data_train_list[0]
-    field_id = 3 
-    f_plt = sample.x[:,field_id].reshape(sample.field_shape) 
-    fig, ax = plt.subplots()
-    ax.imshow(f_plt)
-    plt.show(block=False)
+    # field_id = 3 
+    # f_plt = sample.x[:,field_id].reshape(sample.field_shape) 
+    # fig, ax = plt.subplots()
+    # ax.imshow(f_plt)
+    # plt.show(block=False)
 
     # Test model 
+    # for baseline -- n_mmp_layers = 2, max_level_topk = 0 
+    # for finetune -- n_mmp_layers = 1, max_level_topk = 1
     input_node_channels = sample.x.shape[1]
     input_edge_channels = sample.edge_attr.shape[1]
     hidden_channels = 128
     output_node_channels = input_node_channels
     n_mlp_hidden_layers = 2 
-    n_mmp_layers = 1
+    n_mmp_layers = 2 
     n_messagePassing_layers = 2 
     max_level_mmp = 1
     l_char = 1
-    max_level_topk = 1
+    max_level_topk = 0
     rf_topk = 4
 
-    model_topk = gnn.TopkMultiscaleGNN(
+    model = gnn.TopkMultiscaleGNN(
             input_node_channels,
             input_edge_channels,
             hidden_channels,
@@ -305,7 +326,8 @@ if 1 == 0:
             max_level_mmp,
             l_char,
             max_level_topk,
-            rf_topk)
+            rf_topk,
+            name='gnn')
 
     # Forward pass 
     with torch.no_grad(): 
@@ -313,7 +335,7 @@ if 1 == 0:
         # Scale input  
         eps = 1e-10
         x_scaled = (sample.x - sample.data_mean)/(sample.data_std + eps)
-        out_gnn = model_topk(x_scaled, sample.edge_index, sample.pos, sample.edge_attr)
+        out_gnn = model(x_scaled, sample.edge_index, sample.pos, sample.edge_attr)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot graphs at different lengthscales 
