@@ -358,10 +358,12 @@ if 1 == 1:
     # mmp_layer.copy(mmp_layer) 
     # model.set_mmp_layer(model_bl.mmp_down[0][1], 
 
-    
+    w_bl = model_bl.mmp_down[0][1].processors_up[0][0].edge_updater.mlp[1].weight
+    w = model.mmp_up[0][0].processors_up[0][0].edge_updater.mlp[1].weight
+    print(f"w_bl_before: {w_bl}")
+    print(f"w_before: {w}")
 
     print('params before:', count_parameters(model))
-
     # copy mmp layers  
     model.mmp_down[0][0].copy(model_bl.mmp_down[0][0], freeze_params=True)
     model.mmp_up[0][0].copy(model_bl.mmp_down[0][1], freeze_params=True)
@@ -371,8 +373,13 @@ if 1 == 1:
     model.edge_encoder.copy(model_bl.edge_encoder, freeze_params=True)
     # copy node decoder 
     model.node_decoder.copy(model_bl.node_decoder, freeze_params=True)
-
     print('params after:', count_parameters(model))
+
+    w_bl = model_bl.mmp_down[0][1].processors_up[0][0].edge_updater.mlp[1].weight
+    w = model.mmp_up[0][0].processors_up[0][0].edge_updater.mlp[1].weight
+    print(f"w_bl_after: {w_bl}")
+    print(f"w_after: {w}")
+
 
     # # processors_down 
     # for i in range(mmp_layer.n_levels):
