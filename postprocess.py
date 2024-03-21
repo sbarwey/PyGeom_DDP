@@ -39,6 +39,9 @@ np.random.seed(122)
 torch.set_grad_enabled(False)
 SMALL = 1e-10
 
+def count_parameters(mdl):
+    return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -303,19 +306,22 @@ if 1 == 1:
     # Test model 
     # for baseline -- n_mmp_layers = 2, max_level_topk = 0 
     # for finetune -- n_mmp_layers = 1, max_level_topk = 1
+
+
+    # Baseline model 
     input_node_channels = sample.x.shape[1]
     input_edge_channels = sample.edge_attr.shape[1]
-    hidden_channels = 128
+    hidden_channels = 32
     output_node_channels = input_node_channels
     n_mlp_hidden_layers = 2 
     n_mmp_layers = 2 
     n_messagePassing_layers = 2 
-    max_level_mmp = 1
+    max_level_mmp = 2
     l_char = 1
     max_level_topk = 0
     rf_topk = 4
 
-    model = gnn.TopkMultiscaleGNN(
+    model_bl = gnn.TopkMultiscaleGNN(
             input_node_channels,
             input_edge_channels,
             hidden_channels,
@@ -329,13 +335,77 @@ if 1 == 1:
             rf_topk,
             name='gnn')
 
-    # Forward pass 
-    with torch.no_grad(): 
-        
-        # Scale input  
-        eps = 1e-10
-        x_scaled = (sample.x - sample.data_mean)/(sample.data_std + eps)
-        out_gnn = model(x_scaled, sample.edge_index, sample.pos, sample.edge_attr)
+    input_dict_bl = model_bl.input_dict()
+    
+    # Topk model 
+    model = gnn.TopkMultiscaleGNN(
+            input_node_channels = input_dict_bl['input_node_channels'],
+            input_edge_channels = input_dict_bl['input_edge_channels'],
+            hidden_channels = input_dict_bl['hidden_channels'],
+            output_node_channels = input_dict_bl['output_node_channels'],
+            n_mlp_hidden_layers = input_dict_bl['n_mlp_hidden_layers'],
+            n_mmp_layers = 1,
+            n_messagePassing_layers = input_dict_bl['n_messagePassing_layers'],
+            max_level_mmp = input_dict_bl['max_level_mmp'],
+            l_char = input_dict_bl['l_char'],
+            max_level_topk = 1,
+            rf_topk = 4,
+            name='gnn')
+
+
+    # weight.detach().clone()
+    # bias.detach().clone()
+    # mmp_layer.copy(mmp_layer) 
+    # model.set_mmp_layer(model_bl.mmp_down[0][1], 
+
+    
+
+    print('params before:', count_parameters(model))
+
+    # copy mmp layers  
+    model.mmp_down[0][0].copy(model_bl.mmp_down[0][0], freeze_params=True)
+    model.mmp_up[0][0].copy(model_bl.mmp_down[0][1], freeze_params=True)
+    # copy node encoder 
+    model.node_encoder.copy(model_bl.node_encoder, freeze_params=True)
+    # copy edge encoder 
+    model.edge_encoder.copy(model_bl.edge_encoder, freeze_params=True)
+    # copy node decoder 
+    model.node_decoder.copy(model_bl.node_decoder, freeze_params=True)
+
+    print('params after:', count_parameters(model))
+
+    # # processors_down 
+    # for i in range(mmp_layer.n_levels):
+    #     for j in range(model.n_messagePassing_layers):
+    #         print(i,j)
+    #         # ~~~~ Enter processor layer copy 
+    #         mp_layer = mmp_layer.processors_down[i][j]
+    #         mp_layer_bl = mmp_layer_bl.processors_down[i][j]
+    #         
+    #         # ~~~~ Enter MP layer copy 
+    #         # 1) edge updater MLP 
+    #         mlp = mp_layer.edge_updater
+    #         mlp_bl = mp_layer_bl.edge_updater 
+
+    #         # ~~~~ Enter MLP copy 
+    #         mlp.norm_layer.weight[:] = mlp_bl.norm_layer.weight.detach().clone()
+    #         mlp.norm_layer.bias[:] = mlp_bl.norm_layer.bias.detach().clone() 
+    #         for k in range(len(mlp.mlp)):
+    #             mlp.mlp[k].weight[:,:] = mlp_bl.mlp[k].weight.detach().clone()
+    #             mlp.mlp[k].bias[:] = mlp_bl.mlp[k].bias.detach().clone()
+
+    #         asdf
+    #         pass
+
+
+
+    # # Forward pass 
+    # with torch.no_grad(): 
+    #     
+    #     # Scale input  
+    #     eps = 1e-10
+    #     x_scaled = (sample.x - sample.data_mean)/(sample.data_std + eps)
+    #     out_gnn = model(x_scaled, sample.edge_index, sample.pos, sample.edge_attr)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot graphs at different lengthscales 
@@ -389,7 +459,6 @@ if 1 == 0:
     edge_xyz = pos_crse[ei_crse].permute(1,0,2)
     for vizedge in edge_xyz:
         ax.plot(*vizedge.T, color="red", lw=1, alpha=0.3)
-
 
     # second 
     x_fine = x_crse

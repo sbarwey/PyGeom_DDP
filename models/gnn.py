@@ -523,6 +523,24 @@ class MLP(torch.nn.Module):
             self.norm_layer.reset_parameters()
         return
 
+    def copy(self, mlp_bl, freeze_params=False):
+        """
+        Copy parameters from another identically structured MLP, given as "mlp_bl". 
+        """
+        if self.norm_layer:
+            if freeze_params:
+                self.norm_layer.weight.requires_grad=False
+                self.norm_layer.bias.requires_grad=False
+            self.norm_layer.weight[:] = mlp_bl.norm_layer.weight.detach().clone()
+            self.norm_layer.bias[:] = mlp_bl.norm_layer.bias.detach().clone()
+        for k in range(len(self.mlp)):
+            if freeze_params:
+                self.mlp[k].weight.requires_grad = False
+                self.mlp[k].bias.requires_grad = False
+            self.mlp[k].weight[:,:] = mlp_bl.mlp[k].weight.detach().clone()
+            self.mlp[k].bias[:] = mlp_bl.mlp[k].bias.detach().clone()
+        return
+
 class MessagePassingLayer(torch.nn.Module):
     def __init__(self, 
                  channels: int, 
@@ -583,6 +601,14 @@ class MessagePassingLayer(torch.nn.Module):
     def reset_parameters(self):
         self.edge_updater.reset_parameters()
         self.node_updater.reset_parameters()
+        return
+
+    def copy(self, mp_layer_bl, freeze_params=False):
+        """
+        Copy parameters from another identically structured mesage passing layer, given as "mp_layer_bl". 
+        """
+        self.edge_updater.copy(mp_layer_bl.edge_updater, freeze_params)
+        self.node_updater.copy(mp_layer_bl.node_updater, freeze_params)
         return
 
 class MultiscaleMessagePassingLayer(torch.nn.Module):
@@ -722,6 +748,24 @@ class MultiscaleMessagePassingLayer(torch.nn.Module):
         for processor in self.processors_up:
             for module in processor:
                 module.reset_parameters()
+        return
+
+
+    def copy(self, mmp_layer_bl, freeze_params=False):
+        """
+        Copy parameters from another identically structured MMP layer, given as "mmp_layer_bl". 
+        """
+        print('Copying, processors_down...')
+        for i in range(self.n_levels):
+            for j in range(self.n_messagePassing_layers):
+                print('level %d, mp layer %d' %(i,j))
+                self.processors_down[i][j].copy(mmp_layer_bl.processors_down[i][j], freeze_params)
+
+        print('Copying, processors_up...')
+        for i in range(self.n_levels - 1):
+            for j in range(self.n_messagePassing_layers):
+                print('level %d, mp layer %d' %(i,j))
+                self.processors_up[i][j].copy(mmp_layer_bl.processors_up[i][j], freeze_params)
         return
 
 class EdgeAggregation(MessagePassing):
