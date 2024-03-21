@@ -228,6 +228,7 @@ class TopkMultiscaleGNN(torch.nn.Module):
              'hidden_channels': self.hidden_channels, 
              'output_node_channels': self.output_node_channels,
              'n_mlp_hidden_layers': self.n_mlp_hidden_layers,
+             'n_mmp_layers': self.n_mmp_layers,
              'n_messagePassing_layers': self.n_messagePassing_layers,
              'max_level_mmp': self.max_level_mmp,
              'l_char': self.l_char, 
