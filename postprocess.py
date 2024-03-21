@@ -34,12 +34,149 @@ import models.gnn as gnn
 # Data preparation
 import dataprep.speedy as spd
 
+torch.manual_seed(122)
+np.random.seed(122)
+torch.set_grad_enabled(False)
+SMALL = 1e-10
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
-    print('Postprocess training losses (original)')
+if 1 == 1: 
+    a = torch.load('./saved_models/NO_NOISE_GNN_ROLLOUT_1_SEED_122_4_3_128_4_2_2_2_1_16.tar')
+    fig, ax = plt.subplots()
+    ax.plot(a['loss_hist_train'][1:], lw=2)
+    ax.plot(a['loss_hist_test'], lw=2)
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss')
+    plt.show(block=False)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Load model, and evaluate on training set 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if 1 == 0:
+    path_to_data = "./datasets/speedy_numpy_file_train.npz"
+    device_for_loading = "cpu"
+    rollout_length = 100
+    print('Loading dataset...')
+    data_list, _ = spd.get_pygeom_dataset(
+            path_to_data = path_to_data,
+            device_for_loading = device_for_loading,
+            time_lag = rollout_length, 
+            fraction_valid = 0.0)
+    print('Done loading dataset.')
+
+    # # Get data: 
+    # sample = data_list[0]
+    # field_id = 3 
+    # f_plt = sample.x[:,field_id].reshape(sample.field_shape) 
+    # fig, ax = plt.subplots()
+    # ax.imshow(f_plt)
+    # plt.show(block=False)
+
+    # Load model 
+    device = 'cpu'
+    modelpath_topk = './saved_models/NO_NOISE_GNN_ROLLOUT_1_SEED_122_4_3_128_4_2_2_2_1_16.tar'
+    p = torch.load(modelpath_topk)
+    input_dict = p['input_dict']
+    if 'n_mmp_layers' not in input_dict:
+        input_dict['n_mmp_layers'] = 1
+    model_topk = gnn.TopkMultiscaleGNN(
+            input_dict['input_node_channels'],
+            input_dict['input_edge_channels'],
+            input_dict['hidden_channels'],
+            input_dict['output_node_channels'],
+            input_dict['n_mlp_hidden_layers'],
+            input_dict['n_mmp_layers'],
+            input_dict['n_messagePassing_layers'],
+            input_dict['max_level_mmp'],
+            input_dict['l_char'],
+            input_dict['max_level_topk'],
+            input_dict['rf_topk'],
+            input_dict['name']) 
+    model_topk.load_state_dict(p['state_dict'])
+    model_topk.to(device)
+    model_topk.eval()
+
+    # ~~~~~~~~~~~~~~~~~~~~
+    # Predictions 
+    i = 0
+    data = data_list[i]
+    
+    n_nodes = data.x.shape[0]
+    n_features = data.x.shape[1]
+    traj_input_ss = np.zeros((rollout_length, n_nodes, n_features)) 
+    traj_output_ss = np.zeros_like(traj_input_ss)
+    traj_mask_ss = np.zeros((rollout_length, n_nodes)) 
+    traj_target = np.zeros_like(traj_input_ss)
+
+    # Rollout prediction: 
+    data_mean = data.data_mean
+    data_std = data.data_std
+    x_new = (data.x - data_mean)/(data_std + SMALL) # scaled input
+    for t in range(rollout_length):
+        print(f"Iter {t+1}")
+        # ~~~~ Rollout predictions ~~~~ #
+        x_old = torch.clone(x_new)
+        x_src, mask = model_topk(x_old, data.edge_index, data.pos, data.edge_attr, data.batch)
+        x_new = x_old + x_src
+        # ~~~~ Single-step predictions ~~~~ #
+        if t == 0:
+            x_old_ss = x_old
+        else:
+            x_old_ss = (data.y[t-1] - data_mean)/(data_std + SMALL)
+        x_src, mask_ss = model_topk(x_old_ss, data.edge_index, data.pos, data.edge_attr, data.batch)
+        x_new_ss = x_old_ss + x_src
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+        # QoIs 
+        x_old_unscaled = x_old*(data_std + SMALL) + data_mean
+        x_new_unscaled = x_new*(data_std + SMALL) + data_mean
+        x_old_ss_unscaled = x_old_ss*(data_std + SMALL) + data_mean
+        x_new_ss_unscaled = x_new_ss*(data_std + SMALL) + data_mean
+        target = data.y[t]
+
+        # store 
+        traj_input_ss[t] = x_old_ss_unscaled
+        traj_output_ss[t] = x_new_ss_unscaled
+        traj_mask_ss[t] = mask_ss
+        traj_target[t] = target
+
+    # Plot predictions 
+    sample = data_list[0]
+    for sid in range(rollout_length):
+        print(f"Plotting step {sid}")
+        fig, ax = plt.subplots(3,4,figsize=(15,7),gridspec_kw = {'wspace':0.01, 'hspace':0.01})
+        for fid in range(n_features):
+            f_plt = traj_input_ss[sid,:,fid].reshape(sample.field_shape)
+            ax[0,fid].imshow(f_plt)
+            #ax[0,fid].set_aspect('equal')
+            ax[0,fid].grid(False)
+            ax[0,fid].set_xticklabels([])
+            ax[0,fid].set_yticklabels([])
+            ax[0,fid].set_title(f"Step {sid}")
+            ax[0,0].set_ylabel('Input')
+
+            f_plt = traj_mask_ss[sid,:].reshape(sample.field_shape)
+            ax[1,fid].imshow(f_plt)
+            #ax[1,fid].set_aspect('equal')
+            ax[1,fid].grid(False)
+            ax[1,fid].set_xticklabels([])
+            ax[1,fid].set_yticklabels([])
+            ax[1,0].set_ylabel('Mask')
+
+            f_plt = traj_output_ss[sid,:,fid].reshape(sample.field_shape)
+            ax[2,fid].imshow(f_plt)
+            #ax[2,fid].set_aspect('equal')
+            ax[2,fid].grid(False)
+            ax[2,fid].set_xticklabels([])
+            ax[2,fid].set_yticklabels([])
+            ax[2,0].set_ylabel('Forecast (SS)')
+        plt.savefig("./outputs/movies/step_%.4d.png" %(sid), dpi=600)
+        plt.close()
+        #plt.show(block=False)
+
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,7 +264,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Test PyGeom data 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     path_to_data = "./datasets/speedy_numpy_file_train.npz"
     device_for_loading = "cpu"
     data_train_list, data_valid_list = spd.get_pygeom_dataset(
@@ -208,9 +345,9 @@ if 1 == 0:
     
     fig, ax = plt.subplots(figsize=(8,7))
     ax.scatter(pos_fine[:,0], pos_fine[:,1], color='gray')
-    # edge_xyz = pos_fine[ei_fine].permute(1,0,2)
-    # for vizedge in edge_xyz:
-    #     ax.plot(*vizedge.T, color="black", lw=0.1, alpha=0.3)
+    edge_xyz = pos_fine[ei_fine].permute(1,0,2)
+    for vizedge in edge_xyz:
+        ax.plot(*vizedge.T, color="black", lw=0.1, alpha=0.3)
 
     cluster = tgnn.voxel_grid(
                     pos = pos_fine,
@@ -229,7 +366,7 @@ if 1 == 0:
     ax.scatter(pos_crse[:,0], pos_crse[:,1], color='red')
     edge_xyz = pos_crse[ei_crse].permute(1,0,2)
     for vizedge in edge_xyz:
-        ax.plot(*vizedge.T, color="red", lw=0.2, alpha=0.3)
+        ax.plot(*vizedge.T, color="red", lw=1, alpha=0.3)
 
 
     # second 
@@ -255,7 +392,7 @@ if 1 == 0:
     ax.scatter(pos_crse[:,0], pos_crse[:,1], color='blue')
     edge_xyz = pos_crse[ei_crse].permute(1,0,2)
     for vizedge in edge_xyz:
-        ax.plot(*vizedge.T, color="blue", lw=0.2, alpha=0.3)
+        ax.plot(*vizedge.T, color="blue", lw=1, alpha=0.3)
 
     ax.grid(False)
     plt.show(block=False)
