@@ -25,19 +25,28 @@ if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
     if 1 == 1:
         mp = 6 
-        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        # a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        # b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        # #c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
+        # c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_%d.tar' %(mp))
+
+        a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_6.tar')
+        a_label = '8x4'
+        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_multisnap_3_7_128_3_2_6.tar')
+        b_label = '8x8'
+        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_6.tar')
+        c_label = '8x16'
+
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
 
         fig, ax = plt.subplots()
-        ax.plot(epochs, a['loss_hist_train'][1:], lw=2, color='red', label='Single-Scale')
-        ax.plot(epochs, a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
-        ax.plot(epochs, b['loss_hist_train'][1:], lw=2, color='black', label='Multi-Scale')
-        ax.plot(epochs, b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
-        #ax.plot(epochs, c['loss_hist_train'][1:], lw=2, color='blue', label='Multi-Scale (UR)')
-        #ax.plot(epochs, c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
+        ax.plot(a['loss_hist_train'][1:], lw=2, color='red', label=a_label)
+        ax.plot(a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
+        ax.plot(b['loss_hist_train'][1:], lw=2, color='black', label=b_label)
+        ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
+        ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label)
+        ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
 
         ax.set_yscale('log')
         ax.legend()
@@ -655,33 +664,54 @@ if __name__ == "__main__":
         print("Type =", type(first_element))
         print(first_element)
 
-        field2 = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
+        #field2 = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
+        field2 = readnek(nrs_snap_dir + '/snapshots_coarse_7to1/newtgv0.f00010')
 
+        # i_err = []
+        # for i in range(len(field1.elem)):
+        #     pos_1 = field1.elem[i].pos
+        #     pos_2 = field2.elem[i].pos
 
-        i_err = []
-        for i in range(len(field1.elem)):
-            pos_1 = field1.elem[i].pos
-            pos_2 = field2.elem[i].pos
+        #     x_gll = pos_1[0,0,0,:]
+        #     dx_min = x_gll[1] - x_gll[0] 
 
-            x_gll = pos_1[0,0,0,:]
-            dx_min = x_gll[1] - x_gll[0] 
+        #     # x = pos_1[0,0,0,:]
+        #     # y = np.ones_like(x)
+        #     # fig, ax = plt.subplots()
+        #     # ax.plot(x, y, marker='o', ms=20)
+        #     # plt.show(block=False)
+        #     # asdf
 
-            # x = pos_1[0,0,0,:]
-            # y = np.ones_like(x)
-            # fig, ax = plt.subplots()
-            # ax.plot(x, y, marker='o', ms=20)
-            # plt.show(block=False)
-            # asdf
+        #     error_max = (pos_1 - pos_2).max()
+        #     rel_error = (error_max / dx_min)*100
 
-            error_max = (pos_1 - pos_2).max()
-            rel_error = (error_max / dx_min)*100
-
-            if rel_error> 1e-2:
-                print(f"i={i} \t error_max = {error_max} \t rel_error = {rel_error}")
-                print("WARNING --- relative error in positions exceeds 0.01%")
-                i_err.append(i)
+        #     if rel_error> 1e-2:
+        #         print(f"i={i} \t error_max = {error_max} \t rel_error = {rel_error}")
+        #         print("WARNING --- relative error in positions exceeds 0.01%")
+        #         i_err.append(i)
 
         
+        field_fine = field1
+        field_crse = field2
+
+        eid = 145 
+        pos_fine = (field_fine.elem[eid].pos).reshape((3,-1)).T
+        pos_crse = (field_crse.elem[eid].pos).reshape((3,-1)).T
+
+        fig, ax = plt.subplots()
+        ax.scatter(pos_fine[:,0], pos_fine[:,1])
+        ax.scatter(pos_crse[:,0], pos_crse[:,1])
+        plt.show(block=False)
+
+
+        # construct interpolation matrices 
+        #pos_fine = (field_fine.elem[eid].pos).reshape((3,-1)).T
+        #pos_crse = (field_crse.elem[eid].pos).reshape((3,-1)).T
+        eid = 0
+        pos_fine = field_fine.elem[eid].pos 
+        pos_crse = field_crse.elem[eid].pos
+
+
         # Test reshaping : 
         if 1 == 0:
             pos_1 = torch.tensor(first_element.pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
@@ -751,3 +781,4 @@ if __name__ == "__main__":
             fig.tight_layout()
             plt.show(block=False)
         
+
