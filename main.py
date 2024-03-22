@@ -231,8 +231,13 @@ class Trainer:
     def setup_data(self):
         kwargs = {}
         
-        train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/train_dataset.pt")
-        test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
+        # single snapshot 
+        #train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/train_dataset.pt")
+        #test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
+
+        # multi snapshot 
+        train_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/valid_dataset.pt")
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
