@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         # Load model 
         mp = 6 
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -103,12 +103,12 @@ if __name__ == "__main__":
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
         nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset'
         
-        t_str_list = ['00017','00019','00021']
-        t_str_list = ['000%02d' %(i) for i in range(12,41)]
+        t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
+        #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
             x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to7/newtgv0.f{t_str}')
-            y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
+            # y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
 
             n_snaps = len(x_field.elem)
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
                     print(f"Evaluating snap {i}/{n_snaps}")
                     pos_i = torch.tensor(x_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
                     vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
-                    vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
+                    # vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
 
                     # get x_mean and x_std 
                     x_mean_element = torch.mean(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
                     # create data 
                     data = Data( x = vel_x_i.to(dtype=TORCH_FLOAT),
-                                      y = vel_y_i.to(dtype=TORCH_FLOAT),
+                                      # y = vel_y_i.to(dtype=TORCH_FLOAT),
                                       x_mean = x_mean_element.to(dtype=TORCH_FLOAT),
                                       x_std = x_std_element.to(dtype=TORCH_FLOAT),
                                       L = lengthscale_element.to(dtype=TORCH_FLOAT),
