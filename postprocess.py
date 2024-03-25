@@ -102,9 +102,9 @@ if __name__ == "__main__":
         TORCH_FLOAT = torch.float32
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
         nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset'
-
-
+        
         t_str_list = ['00017','00019','00021']
+        t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
             x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to7/newtgv0.f{t_str}')
