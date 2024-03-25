@@ -23,7 +23,7 @@ def count_parameters(mdl):
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 1:
+    if 1 == 0:
         mp = 6 
         # a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
         # b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
@@ -63,19 +63,16 @@ if __name__ == "__main__":
 
         plt.show(block=False)
 
-
-
     # ~~~~ Save predicted flowfield into .f file 
-    if 1 == 0:
-        mode = "single_scale"
-        data_dir = "/Volumes/Novus_SB_14TB/ml/DDP_PyGeom_SR/datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+    if 1 == 1:
+        mode = "multi_scale"
+        data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
         test_dataset = torch.load(data_dir + "/valid_dataset.pt")
         edge_index = test_dataset[0].edge_index
 
-
         # Load model 
         mp = 6 
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -92,6 +89,7 @@ if __name__ == "__main__":
                            n_mlp_hidden_layers,
                            n_messagePassing_layers,
                            name)
+
         model.load_state_dict(a['state_dict'])
         if torch.cuda.is_available():
             device = 'cuda:0'
@@ -102,59 +100,68 @@ if __name__ == "__main__":
 
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
-        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
-        x_field = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
-        y_field = readnek(nrs_snap_dir + '/snapshots_target/newtgv0.f00010')
+        #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+        nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset'
 
-        n_snaps = len(x_field.elem)
 
-        with torch.no_grad():
-            for i in range(n_snaps):
-                print(f"Evaluating snap {i}/{n_snaps}")
-                pos_i = torch.tensor(x_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-                vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
-                vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
+        t_str_list = ['00017','00019','00021']
 
-                # get x_mean and x_std 
-                x_mean_element = torch.mean(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
-                x_std_element = torch.std(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
+        for t_str in t_str_list:
+            x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to7/newtgv0.f{t_str}')
+            y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
 
-                # element lengthscale 
-                lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
+            n_snaps = len(x_field.elem)
 
-                # create data 
-                data = Data( x = vel_x_i.to(dtype=TORCH_FLOAT),
-                                  y = vel_y_i.to(dtype=TORCH_FLOAT),
-                                  x_mean = x_mean_element.to(dtype=TORCH_FLOAT),
-                                  x_std = x_std_element.to(dtype=TORCH_FLOAT),
-                                  L = lengthscale_element.to(dtype=TORCH_FLOAT),
-                                  pos = pos_i.to(dtype=TORCH_FLOAT),
-                                  pos_norm = (pos_i/lengthscale_element).to(dtype=TORCH_FLOAT),
-                                  edge_index = edge_index)
+            with torch.no_grad():
+                for i in range(n_snaps):
+                    print(f"Evaluating snap {i}/{n_snaps}")
+                    pos_i = torch.tensor(x_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    vel_x_i = torch.tensor(x_field.elem[i].vel).reshape((3, -1)).T
+                    vel_y_i = torch.tensor(y_field.elem[i].vel).reshape((3, -1)).T
 
-                data = data.to(device)
+                    # get x_mean and x_std 
+                    x_mean_element = torch.mean(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
+                    x_std_element = torch.std(vel_x_i, dim=0).unsqueeze(0).repeat(vel_x_i.shape[0], 1)
 
-                # ~~~~ Model evaluation ~~~~ # 
-                # 1) Preprocessing: scale input  
-                eps = 1e-10
-                x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
+                    # element lengthscale 
+                    lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
 
-                # 2) evaluate model 
-                out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
-                    
-                # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
-                y_pred = out_gnn * (data.x_std + eps) + data.x 
+                    # create data 
+                    data = Data( x = vel_x_i.to(dtype=TORCH_FLOAT),
+                                      y = vel_y_i.to(dtype=TORCH_FLOAT),
+                                      x_mean = x_mean_element.to(dtype=TORCH_FLOAT),
+                                      x_std = x_std_element.to(dtype=TORCH_FLOAT),
+                                      L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                                      pos = pos_i.to(dtype=TORCH_FLOAT),
+                                      pos_norm = (pos_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                                      edge_index = edge_index)
 
-                # ~~~~ Making the .f file ~~~~ # 
-                # Re-shape the prediction, convert back to fp64 numpy 
-                orig_shape = x_field.elem[i].vel.shape
-                y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+                    data = data.to(device)
 
-                # Place back in the snapshot data 
-                x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+                    # ~~~~ Model evaluation ~~~~ # 
+                    # 1) Preprocessing: scale input  
+                    eps = 1e-10
+                    x_scaled = (data.x - data.x_mean)/(data.x_std + eps)
 
-            # Write 
-            writenek(nrs_snap_dir + f"/snapshots_interp_1to7_gnn_{mode}/newtgv0.f00010", x_field)
+                    # 2) evaluate model 
+                    out_gnn = model(x_scaled, data.edge_index, data.pos_norm, data.batch)
+                        
+                    # 3) get prediction: out_gnn = (data.y - data.x)/(data.x_std + eps)
+                    y_pred = out_gnn * (data.x_std + eps) + data.x 
+
+                    # ~~~~ Making the .f file ~~~~ # 
+                    # Re-shape the prediction, convert back to fp64 numpy 
+                    y_pred = y_pred.cpu()
+                    orig_shape = x_field.elem[i].vel.shape
+                    y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+
+                    # Place back in the snapshot data 
+                    x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+
+                # Write 
+                print('Writing...')
+                writenek(nrs_snap_dir + f"/snapshots_interp_1to7_gnn_{mode}/newtgv0.f{t_str}", x_field)
+                print(f'finished writing {t_str}') 
 
 
 
