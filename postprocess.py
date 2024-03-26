@@ -64,7 +64,7 @@ if __name__ == "__main__":
         plt.show(block=False)
 
     # ~~~~ Save predicted flowfield into .f file 
-    if 1 == 1:
+    if 1 == 0:
         mode = "multi_scale"
         data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
         test_dataset = torch.load(data_dir + "/valid_dataset.pt")
@@ -429,7 +429,7 @@ if __name__ == "__main__":
         plt.show(block=False)
        
     # ~~~~ Postprocess run logs: KE, dissipation, enst
-    if 1 == 0:
+    if 1 == 1:
         import re
 
         def read_nrs_log(file_path):
@@ -462,7 +462,7 @@ if __name__ == "__main__":
         lw = 2
         fig, ax = plt.subplots()
         ax.plot(values_1600[:,0], values_1600[:,2], label='Re=1600, 36^3, P=7', lw=lw)
-        ax.plot(values_1600_2[:,0], values_1600_2[:,2], label='Re=1600, 72^3, P=7', lw=lw)
+        #ax.plot(values_1600_2[:,0], values_1600_2[:,2], label='Re=1600, 72^3, P=7', lw=lw)
         # ax.plot(values_2000[:,0], values_2000[:,2], label='Re=2000', lw=lw)
         # ax.plot(values_2400[:,0], values_2400[:,2], label='Re=2400', lw=lw)
         ax.set_title('Kinetic Energy')
@@ -472,12 +472,18 @@ if __name__ == "__main__":
         # dissipation rate ( dEk/dt )
         fig, ax = plt.subplots()
         ax.plot(values_1600[:,0], -values_1600[:,4], label='Re=1600, 36^3, P=7', lw=lw)
-        ax.plot(values_1600_2[:,0], -values_1600_2[:,4], label='Re=1600, 72^3, P=7', lw=lw, ls='--')
+        ax.vlines(x=8,  ymin =0, ymax = 0.013, color='black', lw=2)
+        ax.vlines(x=9,  ymin =0, ymax = 0.013, color='black', lw=2)
+        ax.vlines(x=10, ymin =0, ymax = 0.013, color='black', lw=2)
+        ax.vlines(x=8.5, ymin =0, ymax = 0.013, color='red', lw=2, ls='--')
+        ax.vlines(x=9.5, ymin =0, ymax = 0.013, color='red', lw=2, ls='--')
+        ax.vlines(x=10.5, ymin =0, ymax = 0.013, color='red', lw=2, ls='--')
+        #ax.plot(values_1600_2[:,0], -values_1600_2[:,4], label='Re=1600, 72^3, P=7', lw=lw, ls='--')
         #ax.plot(values_2000[:,0], -values_2000[:,5], label='Re=2000', lw=lw)
         #ax.plot(values_2400[:,0], -values_2400[:,5], label='Re=2400', lw=lw)
         ax.set_title('Dissipation Rate')
-        #ax.set_xlim([7.5, 10.5])
-        ax.legend()
+        ax.set_xlim([7.5, 11])
+        #ax.legend()
         ax.set_xlabel('t_c')
         #ax.set_ylabel('-dEk/dt')
         ax.set_ylabel('-dEk/dt')
