@@ -231,13 +231,23 @@ class Trainer:
     def setup_data(self):
         kwargs = {}
         
-        # single snapshot 
+        # single snapshot - oneshot  
         #train_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/train_dataset.pt")
         #test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
 
-        # multi snapshot 
-        train_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/train_dataset.pt")
-        test_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/valid_dataset.pt")
+        # multi snapshot - oneshot  
+        # train_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/train_dataset.pt")
+        # test_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/valid_dataset.pt")
+    
+        # multi snapshot - incr 
+        train_dataset = [] 
+        test_dataset = [] 
+        train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/train_dataset_p3.pt")
+        # train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/train_dataset_p5.pt")
+        # train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/train_dataset_p7.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/valid_dataset_p3.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/valid_dataset_p5.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/valid_dataset_p7.pt")
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -285,13 +295,14 @@ class Trainer:
             data.x = data.x.cuda()
             data.x_mean = data.x_mean.cuda()
             data.x_std = data.x_std.cuda()
+            data.node_weight = data.node_weight.cuda()
             data.y = data.y.cuda()
             data.edge_index = data.edge_index.cuda()
             data.pos_norm = data.pos_norm.cuda()
             data.batch = data.batch.cuda()
                     
         self.optimizer.zero_grad()
-        
+
         # 1) Preprocessing: scale input  
         eps = 1e-10
         x_scaled = (data.x - data.x_mean)/(data.x_std + eps) 
@@ -304,7 +315,8 @@ class Trainer:
         #target = data.y - data.x
 
         # 4) evaluate loss 
-        loss = self.loss_fn(out_gnn, target)
+        # loss = self.loss_fn(out_gnn, target) # vanilla mse 
+        loss = torch.mean( data.node_weight * (out_gnn - target)**2 ) # weighted mse 
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
             self.scaler.scale(loss).backward()
@@ -313,7 +325,7 @@ class Trainer:
         else:
             loss.backward()
             self.optimizer.step()
-    
+
         return loss
 
     def train_epoch(
@@ -385,6 +397,7 @@ class Trainer:
                     data.x = data.x.cuda()
                     data.x_mean = data.x_mean.cuda()
                     data.x_std = data.x_std.cuda()
+                    data.node_weight = data.node_weight.cuda()
                     data.y = data.y.cuda()
                     data.edge_index = data.edge_index.cuda()
                     data.pos_norm = data.pos_norm.cuda()
@@ -402,7 +415,8 @@ class Trainer:
                 #target = data.y - data.x
 
                 # 4) evaluate loss 
-                loss = self.loss_fn(out_gnn, target)
+                # loss = self.loss_fn(out_gnn, target) # vanilla mse 
+                loss = torch.mean( data.node_weight * (out_gnn - target)**2 ) # weighted mse 
 
                 running_loss += loss.item()
                 count += 1

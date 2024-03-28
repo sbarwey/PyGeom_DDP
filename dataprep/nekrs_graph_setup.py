@@ -39,6 +39,7 @@ def get_pygeom_dataset_pymech(data_x_path: str,
                        data_y_path: str,
                        edge_index_path: str,
                        edge_index_vertex_path: Optional[str] = None,
+                       node_weight: Optional[float] = 1.0,
                        device_for_loading : Optional[str] = 'cpu',
                        fraction_valid : Optional[float] = 0.1) -> Tuple[List,List,List,List]:
     t_load = time.time()
@@ -117,11 +118,15 @@ def get_pygeom_dataset_pymech(data_x_path: str,
         # element lengthscale 
         lengthscale_element = torch.norm(pos_i.max(dim=0)[0] - pos_i.min(dim=0)[0], p=2)
 
+        # node weight 
+        nw = torch.ones((vel_x_i.shape[0], 1)) * node_weight
+
         # create data 
         data_temp = Data( x = vel_x_i.to(dtype=TORCH_FLOAT), 
                           y = vel_y_i.to(dtype=TORCH_FLOAT),
                           x_mean = x_mean_element.to(dtype=TORCH_FLOAT), 
                           x_std = x_std_element.to(dtype=TORCH_FLOAT),
+                          node_weight = nw.to(dtype=TORCH_FLOAT), 
                           L = lengthscale_element.to(dtype=TORCH_FLOAT),
                           pos = pos_i.to(dtype=TORCH_FLOAT),
                           pos_norm = (pos_i/lengthscale_element).to(dtype=TORCH_FLOAT),
