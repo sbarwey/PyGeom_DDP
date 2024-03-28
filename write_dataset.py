@@ -114,6 +114,8 @@ def write_full_dataset(cfg: DictConfig):
     p_list = [3, 5, 7]
     n_nodes_max = (7. + 1.)**3 
     for poly in p_list:
+        train_dataset = []
+        test_dataset = []
         for Re_id in range(len(Re_list)):
             for snap_id in range(len(snap_list)):
                 Re = Re_list[Re_id]
