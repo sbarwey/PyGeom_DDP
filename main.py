@@ -241,7 +241,11 @@ class Trainer:
             preamble += 'NO_NOISE_'
         if self.cfg.mask_regularization:
             preamble += 'BUDGET_REG_'
-        modelname = 'GNN_ROLLOUT_%d_SEED_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
+
+        if self.cfg.baseline_modelpath: # if we supply a baseline model path, assume we are training finetuned model 
+            modelname = 'TOPK_GNN_ROLLOUT_%d_SEED_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetuned -- with topk
+        else: # if baseline_modelpath is null, assume we are training the baseline 
+            modelname = 'GNN_ROLLOUT_%d_SEED_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline -- no topk
 
         sample = self.data['train']['sample']
         input_node_channels = sample.x.shape[1]
@@ -276,6 +280,38 @@ class Trainer:
 
         if RANK == 0:
             log.info('Model name: ' + model.get_save_header())
+
+        # Load baseline if training fine-tuned model  
+        if self.cfg.baseline_modelpath:
+            modelpath = self.cfg.baseline_modelpath
+            if RANK == 0: log.info('INITIALIZING TOP-K MODEL WITH BASELINE.\nBASELINE MODEL PATH: ' + modelpath)
+            p = torch.load(modelpath)
+            input_dict = p['input_dict']
+            model_bl = gnn.TopkMultiscaleGNN(
+                input_dict['input_node_channels'],
+                input_dict['input_edge_channels'],
+                input_dict['hidden_channels'],
+                input_dict['output_node_channels'],
+                input_dict['n_mlp_hidden_layers'],
+                input_dict['n_mmp_layers'],
+                input_dict['n_messagePassing_layers'],
+                input_dict['max_level_mmp'],
+                input_dict['l_char'],
+                input_dict['max_level_topk'],
+                input_dict['rf_topk'],
+                name = input_dict['name'])
+            model_bl.load_state_dict(p['state_dict'])
+
+            # write parameters from baseline trained model into new model, and freeze the level 0 praams 
+            # copy mmp layers 
+            model.mmp_down[0][0].copy(model_bl.mmp_down[0][0], freeze_params=True)
+            model.mmp_up[0][0].copy(model_bl.mmp_down[0][1], freeze_params=True)
+            # copy node encoder
+            model.node_encoder.copy(model_bl.node_encoder, freeze_params=True)
+            # copy edge encoder
+            model.edge_encoder.copy(model_bl.edge_encoder, freeze_params=True)
+            # copy node decoder
+            model.node_decoder.copy(model_bl.node_decoder, freeze_params=True)
 
         return model
 

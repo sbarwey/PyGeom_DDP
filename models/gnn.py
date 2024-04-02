@@ -755,16 +755,16 @@ class MultiscaleMessagePassingLayer(torch.nn.Module):
         """
         Copy parameters from another identically structured MMP layer, given as "mmp_layer_bl". 
         """
-        print('Copying, processors_down...')
+        #print('Copying, processors_down...')
         for i in range(self.n_levels):
             for j in range(self.n_messagePassing_layers):
-                print('level %d, mp layer %d' %(i,j))
+                #print('level %d, mp layer %d' %(i,j))
                 self.processors_down[i][j].copy(mmp_layer_bl.processors_down[i][j], freeze_params)
 
-        print('Copying, processors_up...')
+        #print('Copying, processors_up...')
         for i in range(self.n_levels - 1):
             for j in range(self.n_messagePassing_layers):
-                print('level %d, mp layer %d' %(i,j))
+                #print('level %d, mp layer %d' %(i,j))
                 self.processors_up[i][j].copy(mmp_layer_bl.processors_up[i][j], freeze_params)
         return
 
