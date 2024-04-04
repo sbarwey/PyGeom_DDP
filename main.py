@@ -236,18 +236,18 @@ class Trainer:
         #test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
 
         # multi snapshot - oneshot  
-        # train_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/train_dataset.pt")
-        # test_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/valid_dataset.pt")
+        train_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7/valid_dataset.pt")
     
-        # multi snapshot - incr 
-        train_dataset = [] 
-        test_dataset = [] 
-        train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/train_dataset_p3.pt")
-        train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/train_dataset_p5.pt")
-        train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/train_dataset_p7.pt")
-        test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/valid_dataset_p3.pt")
-        test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/valid_dataset_p5.pt")
-        test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/valid_dataset_p7.pt")
+        # # multi snapshot - incr 
+        # train_dataset = [] 
+        # test_dataset = [] 
+        # train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/train_dataset_p3.pt")
+        # train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/train_dataset_p5.pt")
+        # train_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/train_dataset_p7.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to3/valid_dataset_p3.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_3to5/valid_dataset_p5.pt")
+        # test_dataset += torch.load(self.cfg.data_dir + "Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_5to7/valid_dataset_p7.pt")
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
