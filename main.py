@@ -291,6 +291,10 @@ class Trainer:
         self,
         data: DataBatch
     ) -> Tensor:
+        try: 
+            _ = data.node_weight
+        except AttributeError: 
+            data.node_weight = data.x.new_ones(data.x.shape[0], 1)
         if WITH_CUDA:
             data.x = data.x.cuda()
             data.x_mean = data.x_mean.cuda()
