@@ -23,30 +23,45 @@ def count_parameters(mdl):
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 0:
+    if 1 == 1:
         mp = 6 
-        # a = torch.load('./saved_models/single_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        # b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        # #c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_3_7_128_3_2_%d.tar' %(mp))
-        # c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_%d.tar' %(mp))
 
+        # incremental
         a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_6.tar')
-        a_label = '8x4'
-        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_multisnap_3_7_128_3_2_6.tar')
-        b_label = '8x8'
+        a_label = '8x32'
+        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_64_multisnap_3_7_128_3_2_6.tar')
+        b_label = '8x64'
         c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_6.tar')
-        c_label = '8x16'
+        c_label = '8x128'
 
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
 
         fig, ax = plt.subplots()
         ax.plot(a['loss_hist_train'][1:], lw=2, color='red', label=a_label)
-        ax.plot(a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
+        #ax.plot(a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
         ax.plot(b['loss_hist_train'][1:], lw=2, color='black', label=b_label)
-        ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
+        #ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
         ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label)
-        ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
+        #ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
+        #ax.plot(d['loss_hist_train'][1:], lw=2, color='magenta', label=d_label)
+        #ax.plot(d['loss_hist_test'][:-1], lw=2, color='magenta', ls='--')
+
+
+        # incremental
+        a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        a_label = '8x32'
+        b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_64_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        b_label = '8x64'
+        c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        c_label = '8x128'
+
+        ax.plot(a['loss_hist_train'][1:], lw=2, color='red', label=a_label)
+        #ax.plot(a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
+        ax.plot(b['loss_hist_train'][1:], lw=2, color='black', label=b_label)
+        #ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
+        ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label)
+        #ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
 
         ax.set_yscale('log')
         ax.legend()
