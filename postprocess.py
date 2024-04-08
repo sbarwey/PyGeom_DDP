@@ -37,15 +37,23 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 0:
+    if 1 == 1:
         mp = 6 
 
-        # incremental
+        # one-shot
         a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_6.tar')
         a_label = '8x32'
         b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_64_multisnap_3_7_128_3_2_6.tar')
         b_label = '8x64'
         c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_6.tar')
+        c_label = '8x128'
+
+        # incremental - singlescale 
+        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        a_label = '8x32'
+        b = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_64_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        b_label = '8x64'
+        c = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_128_multisnap_incr_v2_3_7_128_3_2_6.tar')
         c_label = '8x128'
 
         epochs = list(range(1, 300))
@@ -62,7 +70,7 @@ if __name__ == "__main__":
         #ax.plot(d['loss_hist_test'][:-1], lw=2, color='magenta', ls='--')
 
 
-        # incremental
+        # incremental - multiscale
         a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
         a_label = '8x32'
         b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_64_multisnap_incr_v2_3_7_128_3_2_6.tar')
@@ -91,6 +99,7 @@ if __name__ == "__main__":
         # ax2.grid(False)
 
         plt.show(block=False)
+        asdf
 
     # ~~~~ Save predicted flowfield into .f file 
     if 1 == 1:
