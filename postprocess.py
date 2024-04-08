@@ -11,6 +11,7 @@ import dataprep.nekrs_graph_setup as ngs
 import models.gnn as gnn
 from pymech.neksuite import readnek,writenek
 from pymech.dataset import open_dataset
+from typing import Optional, Union, Callable, List, Tuple
 
 
 seed = 122
@@ -21,9 +22,22 @@ torch.set_grad_enabled(False)
 def count_parameters(mdl):
     return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
 
+def get_edge_index(edge_index_path: str,
+                   edge_index_vertex_path: Optional[str] = None) -> torch.Tensor:
+    print('Loading edge index')
+    edge_index = np.loadtxt(edge_index_path, dtype=np.int64).T
+    if edge_index_vertex_path:
+        print('Adding p1 connectivity...')
+        print('\tEdge index shape before: ', edge_index.shape)
+        edge_index_vertex = np.loadtxt(edge_index_vertex_path, dtype=np.int64).T
+        edge_index = np.concatenate((edge_index, edge_index_vertex), axis=1)
+        print('\tEdge index shape after: ', edge_index.shape)
+    edge_index = torch.tensor(edge_index)
+    return edge_index 
+
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 1:
+    if 1 == 0:
         mp = 6 
 
         # incremental
@@ -79,15 +93,16 @@ if __name__ == "__main__":
         plt.show(block=False)
 
     # ~~~~ Save predicted flowfield into .f file 
-    if 1 == 0:
+    if 1 == 1:
         mode = "multi_scale"
-        data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
-        test_dataset = torch.load(data_dir + "/valid_dataset.pt")
-        edge_index = test_dataset[0].edge_index
+        #data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
+        #test_dataset = torch.load(data_dir + "/valid_dataset.pt")
+        #edge_index = test_dataset[0].edge_index
 
         # Load model 
         mp = 6 
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
+        #a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -116,15 +131,30 @@ if __name__ == "__main__":
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
-        nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset'
+        nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr'
         
+        
+        # Load in edge index 
+        poly = 7
+        case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
+        Re = '1600'
+        edge_index_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly}/edge_index_element_local_rank_0_size_4"
+        if mode == "single_scale":
+            edge_index = get_edge_index(edge_index_path)
+        elif mode == "multi_scale":
+            edge_index_vertex_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly}/edge_index_element_local_vertex_rank_0_size_4"
+            edge_index = get_edge_index(edge_index_path,
+                                        edge_index_vertex_path)
+
+
         t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
         #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
-            x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to7/newtgv0.f{t_str}')
+            #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to3/newtgv0.f{t_str}')
+            #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
+            x_field = readnek(nrs_snap_dir + f'/snapshots_gnn_correction_{mode}_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
             # y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
-
             n_snaps = len(x_field.elem)
 
             with torch.no_grad():
@@ -175,7 +205,11 @@ if __name__ == "__main__":
 
                 # Write 
                 print('Writing...')
-                writenek(nrs_snap_dir + f"/snapshots_interp_1to7_gnn_{mode}/newtgv0.f{t_str}", x_field)
+                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
+                if not os.path.exists(directory_path):
+                    os.makedirs(directory_path)
+                    print(f"Directory '{directory_path}' created.")
+                writenek(directory_path +  f"/newtgv0.f{t_str}", x_field)
                 print(f'finished writing {t_str}') 
 
 
@@ -444,7 +478,7 @@ if __name__ == "__main__":
         plt.show(block=False)
        
     # ~~~~ Postprocess run logs: KE, dissipation, enst
-    if 1 == 1:
+    if 1 == 0:
         import re
 
         def read_nrs_log(file_path):
