@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses 
-    if 1 == 1:
+    if 1 == 0:
         mp = 6 
 
         # one-shot
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     if 1 == 1:
-        mode = "multi_scale"
+        mode = "single_scale"
         #data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
         #test_dataset = torch.load(data_dir + "/valid_dataset.pt")
         #edge_index = test_dataset[0].edge_index
@@ -157,12 +157,13 @@ if __name__ == "__main__":
 
 
         t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
+        t_str_list = ['00017', '00020']
         #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
             #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to3/newtgv0.f{t_str}')
-            #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
-            x_field = readnek(nrs_snap_dir + f'/snapshots_gnn_correction_{mode}_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
+            x_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
+            #x_field = readnek(nrs_snap_dir + f'/snapshots_gnn_correction_{mode}_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
             # y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
             n_snaps = len(x_field.elem)
 
@@ -214,7 +215,8 @@ if __name__ == "__main__":
 
                 # Write 
                 print('Writing...')
-                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
+                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
+                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_{poly-2}to{poly}"
                 if not os.path.exists(directory_path):
                     os.makedirs(directory_path)
                     print(f"Directory '{directory_path}' created.")
