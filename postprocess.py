@@ -110,8 +110,8 @@ if __name__ == "__main__":
 
         # Load model 
         mp = 6 
-        #a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
-        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_%d.tar' %(mode,mp))
+        a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_4_multisnap_3_7_128_3_2_%d.tar' %(mode,mp))
+        #a = torch.load('./saved_models/%s/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_%d.tar' %(mode,mp))
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
         input_edge_channels = input_dict['input_edge_channels'] 
@@ -140,8 +140,8 @@ if __name__ == "__main__":
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
-        nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr'
-        
+        #nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr'
+        nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/one_shot'
         
         # Load in edge index 
         poly = 7
@@ -161,9 +161,13 @@ if __name__ == "__main__":
         #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
+            # Incremental: 
             #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to3/newtgv0.f{t_str}')
-            x_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
+            #x_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
             #x_field = readnek(nrs_snap_dir + f'/snapshots_gnn_correction_{mode}_interp_{poly-2}to{poly}/newtgv0.f{t_str}')
+            # One-shot
+            x_field = readnek(nrs_snap_dir + f'/snapshots_interp_1to{poly}/newtgv0.f{t_str}')
+
             # y_field = readnek(nrs_snap_dir + f'/snapshots_target/tgv0.f{t_str}')
             n_snaps = len(x_field.elem)
 
@@ -215,8 +219,11 @@ if __name__ == "__main__":
 
                 # Write 
                 print('Writing...')
+                # incremental: 
                 #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
-                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_{poly-2}to{poly}"
+                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_{poly-2}to{poly}"
+                # One shot: 
+                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_1to{poly}"
                 if not os.path.exists(directory_path):
                     os.makedirs(directory_path)
                     print(f"Directory '{directory_path}' created.")
