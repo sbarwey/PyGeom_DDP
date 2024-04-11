@@ -203,8 +203,8 @@ def write_full_dataset(cfg: DictConfig):
 
     # try torch.save 
     t_save = time.time()
-    torch.save(train_dataset, cfg.data_dir + "train_dataset.pt")
-    torch.save(test_dataset, cfg.data_dir + "valid_dataset.pt")
+    torch.save(train_dataset[:10], cfg.data_dir + "train_dataset.pt")
+    torch.save(test_dataset[:10], cfg.data_dir + "valid_dataset.pt")
     t_save = time.time() - t_save 
     
     # load the dataset 

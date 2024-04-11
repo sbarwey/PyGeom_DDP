@@ -32,6 +32,27 @@ def get_element_lengthscale(pos_batch: Tensor) -> Tensor:
     pos_max = pos_batch.max(dim=1)[0]
     return torch.norm(pos_max - pos_min, p=2, dim=1)
 
+def get_edge_index_coincident(batch, pos, edge_index):
+    if batch is None:
+        batch = edge_index.new_zeros(x.size(0))
+
+    pos_unbatch = utils.unbatch(pos, batch)
+    ei_coin_unbatch = []
+    n_nodes_unbatch = []
+    n_nodes_incr = [0] 
+    for b in range(batch.max()+1):
+        pos = pos_unbatch[b]
+        ei_coin = tgnn.radius_graph(pos, r = 1e-9, max_num_neighbors=32)
+        n_nodes_unbatch.append(pos.shape[0])
+        ei_coin_unbatch.append(ei_coin)
+        if b > 0:
+            n_nodes_incr.append(n_nodes_unbatch[b] + n_nodes_incr[b-1])
+
+    for b in range(batch.max()+1):
+        ei_coin_unbatch[b] = ei_coin_unbatch[b] + n_nodes_incr[b] 
+
+    ei_coin = torch.concat(ei_coin_unbatch, dim=1)
+    return ei_coin
 
 
 
