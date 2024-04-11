@@ -42,7 +42,7 @@ def get_pygeom_dataset_pymech(data_x_path: str,
                        node_weight: Optional[float] = 1.0,
                        device_for_loading : Optional[str] = 'cpu',
                        fraction_valid : Optional[float] = 0.1,
-                       n_element_neighbors : Optional[int] = 1) -> Tuple[List,List]:
+                       n_element_neighbors : Optional[int] = 0) -> Tuple[List,List]:
     t_load = time.time()
    
     print('Loading data and making pygeom dataset...')
