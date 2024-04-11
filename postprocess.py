@@ -920,7 +920,6 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if 1 == 1:
     print('Write model predictions, small trajectories...')
-
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
@@ -986,7 +985,9 @@ if 1 == 1:
                 device_for_loading = device
                 use_radius = False
                 gnn_dt = 10
-                rollout_steps = 50
+
+                #rollout_steps = 50
+                rollout_steps = 300
                 test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
                     path_to_vtk_test, 
                     path_to_ei, 
@@ -1015,7 +1016,8 @@ if 1 == 1:
                 #u_vec_pred = np.zeros((n_nodes,3))
 
                 # randomly select some integers 
-                traj_index_list = [50, 150, 250]
+                # traj_index_list = [50, 150, 250]
+                traj_index_list = [250]
                 for traj_id in traj_index_list: 
                     # This is where openfoam cases will be saved. 
                     #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
