@@ -34,7 +34,7 @@ def get_element_lengthscale(pos_batch: Tensor) -> Tensor:
 
 def get_edge_index_coincident(batch, pos, edge_index):
     if batch is None:
-        batch = edge_index.new_zeros(x.size(0))
+        batch = edge_index.new_zeros(pos.size(0))
 
     pos_unbatch = utils.unbatch(pos, batch)
     ei_coin_unbatch = []
