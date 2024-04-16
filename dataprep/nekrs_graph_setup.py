@@ -146,7 +146,7 @@ def get_pygeom_dataset_pymech(data_x_path: str,
         dx_min = x_gll[1] - x_gll[0]
 
         error_max = (pos_x_i - pos_y_i).max()
-        rel_error = (error_max / dx_min)*100
+        rel_error = torch.abs(error_max / dx_min)*100
     
         # Check positions 
         if rel_error > 1e-2:
@@ -295,8 +295,24 @@ def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
         pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
         vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
 
-        x_gll = xlo_field.elem[i].pos[0,0,0,:]
+        x_gll = xhi_field.elem[i].pos[0,0,0,:]
         dx_min = x_gll[1] - x_gll[0]
+
+        error_max = (pos_xlo_i.max(dim=0)[0] - pos_xhi_i.max(dim=0)[0]).max()
+        error_min = (pos_xlo_i.min(dim=0)[0] - pos_xhi_i.min(dim=0)[0]).max()
+        rel_error_max = torch.abs(error_max / dx_min)*100
+        rel_error_min = torch.abs(error_min / dx_min)*100
+    
+        # Check positions 
+        if (rel_error_max > 1e-2) or (rel_error_min > 1e-2):
+            print(f"Relative error in positions exceeds 0.01% in element i={i}.")
+            sys.exit()
+        if (pos_xlo_i.max() == 0. and pos_xlo_i.min() == 0.): 
+            print(f"Node positions are not stored in {data_xlo_path}.")
+            sys.exit()
+        if (pos_xhi_i.max() == 0. and pos_xhi_i.min() == 0.): 
+            print(f"Node positions are not stored in {data_xhi_path}.")
+            sys.exit()
 
         # get x_mean and x_std 
         x_mean_element_lo = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
