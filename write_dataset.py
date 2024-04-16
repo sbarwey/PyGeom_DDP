@@ -167,7 +167,43 @@ def write_full_dataset(cfg: DictConfig):
     # ~~~~ # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-    # ~~~~ one-shot setup 
+    # ~~~~ # # ~~~~ one-shot setup -- standard  
+    # ~~~~ # #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
+    # ~~~~ # case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
+    # ~~~~ # Re_list = ['1600'] #['1600', '2000', '2400']
+    # ~~~~ # snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
+    # ~~~~ # n_element_neighbors = 6
+    # ~~~~ # for Re_id in range(len(Re_list)):
+    # ~~~~ #     for snap_id in range(len(snap_list)):
+    # ~~~~ #         Re = Re_list[Re_id]
+    # ~~~~ #         snap = snap_list[snap_id]
+    # ~~~~ #         input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_interp_1to7/{snap}" 
+    # ~~~~ #         target_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_target/{snap}" 
+
+    # ~~~~ #         # element-local edge index 
+    # ~~~~ #         edge_index_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
+
+    # ~~~~ #         # Super-impose P1 connectivity:
+    # ~~~~ #         edge_index_vertex_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_vertex_rank_0_size_4"
+
+    # ~~~~ #         if RANK == 0:
+    # ~~~~ #                 log.info('in get_pygeom_dataset...')
+
+    # ~~~~ #         train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_pymech(
+    # ~~~~ #                              data_x_path = input_path, 
+    # ~~~~ #                              data_y_path = target_path,
+    # ~~~~ #                              edge_index_path = edge_index_path,
+    # ~~~~ #                              #edge_index_vertex_path = edge_index_vertex_path,
+    # ~~~~ #                              device_for_loading = device_for_loading,
+    # ~~~~ #                              fraction_valid = fraction_valid,
+    # ~~~~ #                              n_element_neighbors = n_element_neighbors)
+
+    # ~~~~ #         train_dataset += train_dataset_temp
+    # ~~~~ #         test_dataset += test_dataset_temp
+
+
+    # ~~~~ one-shot setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field 
+    # GNN is end-to-end .. i.e., it does the interpolation.
     #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
     case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
     Re_list = ['1600'] #['1600', '2000', '2400']
@@ -177,23 +213,21 @@ def write_full_dataset(cfg: DictConfig):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
             snap = snap_list[snap_id]
-            input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_interp_1to7/{snap}" 
+            input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_coarse_7to1/{snap}" 
             target_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_target/{snap}" 
 
             # element-local edge index 
-            edge_index_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
-
-            # Super-impose P1 connectivity:
-            edge_index_vertex_path = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_vertex_rank_0_size_4"
+            edge_index_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4"
+            edge_index_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
 
             if RANK == 0:
                     log.info('in get_pygeom_dataset...')
 
-            train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_pymech(
-                                 data_x_path = input_path, 
-                                 data_y_path = target_path,
-                                 edge_index_path = edge_index_path,
-                                 #edge_index_vertex_path = edge_index_vertex_path,
+            train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_lo_hi_pymech(
+                                 data_xlo_path = input_path, 
+                                 data_xhi_path = target_path,
+                                 edge_index_path_lo = edge_index_path_lo,
+                                 edge_index_path_hi = edge_index_path_hi,
                                  device_for_loading = device_for_loading,
                                  fraction_valid = fraction_valid,
                                  n_element_neighbors = n_element_neighbors)
