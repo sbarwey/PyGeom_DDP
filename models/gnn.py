@@ -255,6 +255,184 @@ class GNN_Element_Neighbor(torch.nn.Module):
         return header
 
 
+class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
+    def __init__(self, 
+                 input_node_channels: int, 
+                 input_edge_channels_coarse: int, 
+                 input_edge_channels_fine: int, 
+                 hidden_channels: int, 
+                 output_node_channels: int, 
+                 n_mlp_hidden_layers: int, 
+                 n_messagePassing_layers: int,
+                 name: Optional[str] = 'gnn'):
+        super().__init__()
+        
+        self.input_node_channels = input_node_channels
+        self.input_edge_channels_coarse = input_edge_channels_coarse
+        self.input_edge_channels_fine = input_edge_channels_fine
+        self.hidden_channels = hidden_channels
+        self.output_node_channels = output_node_channels 
+        self.n_mlp_hidden_layers = n_mlp_hidden_layers
+        self.n_messagePassing_layers = n_messagePassing_layers
+        self.name = name 
+
+        # ~~~~ node encoder MLP  
+        self.node_encoder = MLP(
+                input_channels = self.input_node_channels,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
+
+        # ~~~~ edge encoder MLP coarse 
+        self.edge_encoder_coarse = MLP(
+                input_channels = self.input_edge_channels_coarse,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
+
+        # ~~~~ edge encoder MLP fine
+        self.edge_encoder_fine = MLP(
+                input_channels = self.input_edge_channels_fine,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
+
+        # ~~~~ node decoder MLP  
+        self.node_decoder = MLP(
+                input_channels = self.hidden_channels,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.output_node_channels,
+                activation_layer = torch.nn.ELU(),
+                )
+        
+        # ~~~~ Processor coarse 
+        self.processor_coarse = torch.nn.ModuleList()
+        for i in range(self.n_messagePassing_layers):
+            self.processor_coarse.append( 
+                          MessagePassingLayer(
+                                     channels = hidden_channels,
+                                     n_mlp_hidden_layers = self.n_mlp_hidden_layers, 
+                                     ) 
+                                  )
+
+        # ~~~~ Processor fine  
+        self.processor_fine = torch.nn.ModuleList()
+        for i in range(self.n_messagePassing_layers):
+            self.processor_fine.append( 
+                          MessagePassingLayer(
+                                     channels = hidden_channels,
+                                     n_mlp_hidden_layers = self.n_mlp_hidden_layers, 
+                                     ) 
+                                  )
+        
+        self.reset_parameters()
+
+    def forward(
+            self,
+            x: Tensor,
+            mask: Tensor,
+            edge_index_lo: LongTensor,
+            edge_index_hi: LongTensor,
+            pos_lo: Tensor,
+            pos_hi: Tensor,
+            batch_lo: Optional[LongTensor] = None,
+            batch_hi: Optional[LongTensor] = None,
+            edge_index_coin: Optional[LongTensor] = None,
+            degree: Optional[Tensor] = None) -> Tensor:
+
+        if batch_lo is None:
+            batch_lo = edge_index_lo.new_zeros(pos_lo.size(0))
+        if batch_hi is None:
+            batch_hi = edge_index_hi.new_zeros(pos_hi.size(0))
+
+        # ~~~~ Compute edge features 
+        x_send = x[edge_index_lo[0,:],:]
+        x_recv = x[edge_index_lo[1,:],:]
+        pos_send = pos_lo[edge_index_lo[0,:],:]
+        pos_recv = pos_lo[edge_index_lo[1,:],:]
+        e_1 = pos_send - pos_recv
+        e_2 = torch.norm(e_1, dim=1, p=2, keepdim=True)
+        e_3 = x_send - x_recv
+        e = torch.cat((e_1, e_2, e_3), dim=1)
+
+        # ~~~~ Node encoder 
+        x = self.node_encoder(x) 
+
+        # ~~~~ Edge encoder 
+        e = self.edge_encoder_coarse(e) 
+
+        # ~~~~ Coarse processor
+        for i in range(self.n_messagePassing_layers):
+            x,e = self.processor_coarse[i](x,e,edge_index_lo,batch_lo,edge_index_coin,degree)
+
+        # ~~~~ Interpolate 
+        x = tgnn.unpool.knn_interpolate(
+                x = x[mask,:], 
+                pos_x = pos_lo[mask,:],
+                pos_y = pos_hi,
+                batch_x = batch_lo[mask],
+                batch_y = batch_hi,
+                k = 8)
+
+        # ~~~~ Fine edge features
+        x_send = x[edge_index_hi[0,:],:]
+        x_recv = x[edge_index_hi[1,:],:]
+        pos_send = pos_hi[edge_index_hi[0,:],:]
+        pos_recv = pos_hi[edge_index_hi[1,:],:]
+        e_1 = pos_send - pos_recv
+        e_2 = torch.norm(e_1, dim=1, p=2, keepdim=True)
+        e_3 = x_send - x_recv
+        e = torch.cat((e_1, e_2, e_3), dim=1)
+        e = self.edge_encoder_fine(e)
+
+        for i in range(self.n_messagePassing_layers):
+            x,e = self.processor_fine[i](x,e,edge_index_hi,batch_hi)
+
+        # ~~~~ Node decoder 
+        x = self.node_decoder(x)
+        
+        return x 
+
+    def reset_parameters(self):
+        self.node_encoder.reset_parameters()
+        self.edge_encoder_coarse.reset_parameters()
+        self.edge_encoder_fine.reset_parameters()
+        self.node_decoder.reset_parameters()
+        for module in self.processor_coarse:
+            module.reset_parameters()
+        for module in self.processor_fine:
+            module.reset_parameters()
+        return
+
+    def input_dict(self) -> dict:
+        a = {'input_node_channels': self.input_node_channels,
+             'input_edge_channels_coarse': self.input_edge_channels_coarse,
+             'input_edge_channels_fine': self.input_edge_channels_fine,
+             'hidden_channels': self.hidden_channels, 
+             'output_node_channels': self.output_node_channels,
+             'n_mlp_hidden_layers': self.n_mlp_hidden_layers,
+             'n_messagePassing_layers': self.n_messagePassing_layers,
+             'name': self.name} 
+        return a
+
+    def get_save_header(self) -> str:
+        a = self.input_dict()
+        header = a['name']
+        
+        for key in a.keys():
+            if key != 'name': 
+                header += '_' + str(a[key])
+
+        #for item in self.input_dict():
+        return header
+
+
 
  
 

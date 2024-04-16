@@ -54,8 +54,6 @@ def get_edge_index_coincident(batch, pos, edge_index):
     ei_coin = torch.concat(ei_coin_unbatch, dim=1)
     return ei_coin
 
-
-
 def get_pygeom_dataset_pymech(data_x_path: str,
                        data_y_path: str,
                        edge_index_path: str,
@@ -215,6 +213,161 @@ def get_pygeom_dataset_pymech(data_x_path: str,
     print('\ttook %g sec' %(t_load))
     return data_train_list, data_valid_list
 
+
+def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
+                       data_xhi_path: str,
+                       edge_index_path_lo: str,
+                       edge_index_path_hi: str,
+                       node_weight: Optional[float] = 1.0,
+                       device_for_loading : Optional[str] = 'cpu',
+                       fraction_valid : Optional[float] = 0.1,
+                       n_element_neighbors : Optional[int] = 0) -> Tuple[List,List]:
+    t_load = time.time()
+    print('In get_pygeom_dataset_lo_hi_pymech. Loading data and making pygeom dataset...')
+    edge_index_lo = np.loadtxt(edge_index_path_lo, dtype=np.int64).T
+    edge_index_lo = torch.tensor(edge_index_lo)
+    edge_index_hi = np.loadtxt(edge_index_path_hi, dtype=np.int64).T
+    edge_index_hi = torch.tensor(edge_index_hi)
+
+    edge_index = edge_index_lo
+    n_nodes_per_element = edge_index.max() + 1
+    if n_element_neighbors > 0:
+        node_max_per_element = edge_index.max()
+        n_edges_per_element = edge_index.shape[1]
+        edge_index_full = torch.zeros((2, n_edges_per_element*(n_element_neighbors+1)), dtype=edge_index.dtype)
+        edge_index_full[:, :n_edges_per_element] = edge_index
+        for i in range(1,n_element_neighbors+1):
+            start = n_edges_per_element*i
+            end = n_edges_per_element*(i+1)
+            edge_index_full[:, start:end] = edge_index + (node_max_per_element+1)*i
+        edge_index = edge_index_full
+
+    # Load data
+    xlo_field = readnek(data_xlo_path)
+    xhi_field = readnek(data_xhi_path)
+
+    # Train / valid split
+    n_snaps = len(xlo_field.elem)
+
+    if fraction_valid > 0:
+        # How many total snapshots to extract 
+        n_full = n_snaps
+        n_valid = int(np.floor(fraction_valid * n_full))
+
+        # Get validation set indices 
+        idx_valid = np.sort(np.random.choice(n_full, n_valid, replace=False))
+
+        # Get training set indices 
+        idx_train = np.array(list(set(list(range(n_full))) - set(list(idx_valid))))
+
+        n_train = len(idx_train)
+        n_valid = len(idx_valid)
+    else:
+        n_full = n_snaps
+        n_valid = 0
+        n_train = n_full
+        idx_train = list(range(n_train))
+        idx_valid = []
+
+    idx_train_mask = np.zeros(n_snaps, dtype=int)
+    idx_train_mask[idx_train] = 1
+
+    # Get the element neighborhoods
+    if n_element_neighbors > 0:
+        Nelements = len(xlo_field.elem)
+        pos_c = torch.zeros((Nelements, 3))
+        for i in range(Nelements):
+            pos_c[i] = torch.tensor(xlo_field.elem[i].centroid)
+        edge_index_c = tgnn.knn_graph(x = pos_c, k = n_element_neighbors)
+
+    # Get the element masks
+    central_element_mask = torch.concat(
+            (torch.ones((n_nodes_per_element), dtype=torch.int64),
+             torch.zeros((n_nodes_per_element * n_element_neighbors), dtype=torch.int64))
+            )
+    central_element_mask = central_element_mask.to(torch.bool)
+
+    data_train_list = []
+    data_valid_list = []
+    for i in range(n_snaps):
+        pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
+        pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
+
+        x_gll = xlo_field.elem[i].pos[0,0,0,:]
+        dx_min = x_gll[1] - x_gll[0]
+
+        # get x_mean and x_std 
+        x_mean_element_lo = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+        x_std_element_lo = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+        x_mean_element_hi = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+        x_std_element_hi = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+
+        # element lengthscale 
+        lengthscale_element = torch.norm(pos_xlo_i.max(dim=0)[0] - pos_xlo_i.min(dim=0)[0], p=2)
+
+        # node weight 
+        nw = torch.ones((vel_xhi_i.shape[0], 1)) * node_weight
+
+        # Get the element neighbors for the input  
+        if n_element_neighbors > 0:
+            send = edge_index_c[0,:]
+            recv = edge_index_c[1,:]
+            nbrs = send[recv == i]
+
+            pos_x_full = [pos_xlo_i]
+            vel_x_full = [vel_xlo_i]
+            for j in nbrs:
+                pos_x_full.append( torch.tensor(xlo_field.elem[j].pos).reshape((3, -1)).T )
+                vel_x_full.append( torch.tensor(xlo_field.elem[j].vel).reshape((3, -1)).T )
+            pos_x_full = torch.concat(pos_x_full)
+            vel_x_full = torch.concat(vel_x_full)
+
+            # reset pos 
+            pos_xlo_i = pos_x_full
+            vel_xlo_i = vel_x_full
+
+        # create data 
+        data_temp = Data( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
+                          y = vel_xhi_i.to(dtype=TORCH_FLOAT),
+                          x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
+                          x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
+                          x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
+                          x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
+                          node_weight = nw.to(dtype=TORCH_FLOAT),
+                          L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                          pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                          pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                          edge_index_lo = edge_index,
+                          edge_index_hi = edge_index_hi,
+                          central_element_mask = central_element_mask,
+                          eid = torch.tensor(i))
+
+        # for synchronizing across element boundaries  
+        if n_element_neighbors > 0:
+            batch = None
+            edge_index_coin = get_edge_index_coincident(
+                    batch, data_temp.pos_norm_lo, data_temp.edge_index_lo)
+            degree = utils.degree(edge_index_coin[1,:], num_nodes = data_temp.pos_norm_lo.shape[0])
+            degree += 1.
+            data_temp.edge_index_coin = edge_index_coin 
+            data_temp.degree = degree
+        else:
+            data_temp.edge_index_coin = None
+            data_temp.degree = None
+
+        data_temp = data_temp.to(device_for_loading)
+
+        if idx_train_mask[i] == 1:
+            data_train_list.append(data_temp)
+        else:
+            data_valid_list.append(data_temp)
+
+    t_load = time.time() - t_load 
+    print('\ttook %g sec' %(t_load))
+    return data_train_list, data_valid_list                           
+    
 
 
 def get_pygeom_dataset(data_x_path: str,
