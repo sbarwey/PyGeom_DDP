@@ -36,11 +36,64 @@ def get_edge_index(edge_index_path: str,
     return edge_index 
 
 if __name__ == "__main__":
-    # ~~~~ postprocessing: training losses 
+    # ~~~~ postprocessing: training losses -- comparing a set of different models 
+    if 1 == 1:
+        mp = 6 
+
+        # one-shot -- single-scale 
+        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_multisnap_3_7_128_3_2_6.tar')
+        a_label = '1shot'
+        a_color = 'black'
+        a_ls = '-'
+
+        # incremental - singlescale 
+        b = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        b_label = 'Incr'
+        b_color = 'blue'
+        b_ls = '-'
+
+        # fine-scale neighbors -- single-scale 
+        c = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_multisnap_3_7_128_3_2_6.tar')
+        c_label = '1shot+6nei, FineNeighbors'
+        c_color = 'red'
+        c_ls = '-'
+
+        # coarse-scale neighbors -- single-scale 
+        d = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_3_7_132_128_3_2_6.tar')
+        d_label = '1shot+6nei, CoarseNeighbors'
+        d_color = 'lime'
+        d_ls = '-'
+
+        # coarse-scale neighbors -- single-scale 
+        e = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_3_7_132_128_3_2_6.tar')
+        e_label = '1shot+26nei, CoarseNeighbors'
+        e_color = 'gray'
+        e_ls = '-'
+    
+        plt.rcParams.update({'font.size': 18})
+        
+        fig, ax = plt.subplots()
+
+        ax.plot(a['loss_hist_train'][0:], lw=2, color=a_color, label=a_label, ls=a_ls)
+        ax.plot(b['loss_hist_train'][0:], lw=2, color=b_color, label=b_label, ls=b_ls)
+        ax.plot(c['loss_hist_train'][0:], lw=2, color=c_color, label=c_label, ls=c_ls)
+        ax.plot(d['loss_hist_train'][0:], lw=2, color=d_color, label=d_label, ls=d_ls)
+        ax.plot(e['loss_hist_train'][0:], lw=2, color=e_color, label=e_label, ls=e_ls)
+
+        ax.set_yscale('log')
+        ax.legend()
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel('Loss')
+        ax.set_title('n_mp_layers = %d' %(mp))
+        #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
+        
+        plt.show(block=False)
+
+    # ~~~~ postprocessing: training losses -- comparing effect of batch size  
     if 1 == 0:
         mp = 6 
 
-        # one-shot
+        # one-shot -- multiscale 
         a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_3_7_128_3_2_6.tar')
         a_label = '8x32'
         b = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_64_multisnap_3_7_128_3_2_6.tar')
@@ -48,13 +101,13 @@ if __name__ == "__main__":
         c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_3_7_128_3_2_6.tar')
         c_label = '8x128'
 
-        # incremental - singlescale 
-        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
-        a_label = '8x32'
-        b = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_64_multisnap_incr_v2_3_7_128_3_2_6.tar')
-        b_label = '8x64'
-        c = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_128_multisnap_incr_v2_3_7_128_3_2_6.tar')
-        c_label = '8x128'
+        # # incremental - singlescale 
+        # a = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        # a_label = '8x32'
+        # b = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_64_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        # b_label = '8x64'
+        # c = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_128_multisnap_incr_v2_3_7_128_3_2_6.tar')
+        # c_label = '8x128'
 
         epochs = list(range(1, 300))
         plt.rcParams.update({'font.size': 18})
@@ -66,9 +119,6 @@ if __name__ == "__main__":
         #ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
         ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label)
         #ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
-        #ax.plot(d['loss_hist_train'][1:], lw=2, color='magenta', label=d_label)
-        #ax.plot(d['loss_hist_test'][:-1], lw=2, color='magenta', ls='--')
-
 
         # incremental - multiscale
         a = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
@@ -78,11 +128,11 @@ if __name__ == "__main__":
         c = torch.load('./saved_models/multi_scale/gnn_lr_1em4_bs_128_multisnap_incr_v2_3_7_128_3_2_6.tar')
         c_label = '8x128'
 
-        ax.plot(a['loss_hist_train'][1:], lw=2, color='red', label=a_label)
+        ax.plot(a['loss_hist_train'][1:], lw=2, color='red', label=a_label, ls='--')
         #ax.plot(a['loss_hist_test'][:-1], lw=2, color='red', ls='--')
-        ax.plot(b['loss_hist_train'][1:], lw=2, color='black', label=b_label)
+        ax.plot(b['loss_hist_train'][1:], lw=2, color='black', label=b_label, ls='--')
         #ax.plot(b['loss_hist_test'][:-1], lw=2, color='black', ls='--')
-        ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label)
+        ax.plot(c['loss_hist_train'][1:], lw=2, color='blue', label=c_label, ls='--')
         #ax.plot(c['loss_hist_test'][:-1], lw=2, color='blue', ls='--')
 
         ax.set_yscale('log')
@@ -99,10 +149,9 @@ if __name__ == "__main__":
         # ax2.grid(False)
 
         plt.show(block=False)
-        asdf
 
     # ~~~~ Save predicted flowfield into .f file 
-    if 1 == 1:
+    if 1 == 0:
         mode = "single_scale"
         #data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
         #test_dataset = torch.load(data_dir + "/valid_dataset.pt")
