@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
-    if 1 == 1:
+    if 1 == 0:
         mp = 6 
 
         # one-shot -- single-scale 
@@ -151,6 +151,7 @@ if __name__ == "__main__":
         plt.show(block=False)
 
     # ~~~~ Save predicted flowfield into .f file 
+    # ONE-SHOT and INCREMENTAL, WITHOUT NEIGHBORS
     if 1 == 0:
         mode = "single_scale"
         #data_dir = "./datasets/%s/Single_Snapshot_Re_1600_T_10.0_Interp_1to7/" %(mode)
@@ -293,6 +294,266 @@ if __name__ == "__main__":
         #     ax[comp].set_xlabel('Prediction')
         #     ax[comp].set_ylabel('Target')
         # plt.show(block=False)
+
+    
+    # ~~~~ Save predicted flowfield into .f file 
+    # COARSE-TO-FINE GNN 
+    if 1 == 0:
+        local = True
+        mode = "single_scale"
+
+        # Load model 
+        mp = 6 
+        n_element_neighbors = 26
+        batch_size = 4
+        a = torch.load(f"./saved_models/{mode}/gnn_lr_1em4_bs_{batch_size}_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{mp}.tar")
+
+        input_dict = a['input_dict'] 
+        input_node_channels = input_dict['input_node_channels']
+        input_edge_channels_coarse = input_dict['input_edge_channels_coarse'] 
+        input_edge_channels_fine = input_dict['input_edge_channels_fine'] 
+        hidden_channels = input_dict['hidden_channels']
+        output_node_channels = input_dict['output_node_channels']
+        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+        n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        name = input_dict['name']
+
+        model = gnn.GNN_Element_Neighbor_Lo_Hi(
+                           input_node_channels,
+                           input_edge_channels_coarse,
+                           input_edge_channels_fine,
+                           hidden_channels,
+                           output_node_channels,
+                           n_mlp_hidden_layers,
+                           n_messagePassing_layers,
+                           name)
+
+        model.load_state_dict(a['state_dict'])
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        else:
+            device = 'cpu'
+        model.to(device)
+        model.eval()
+
+        # Load eval and target snapshot 
+        TORCH_FLOAT = torch.float32
+        if local: 
+            #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+            nrs_snap_dir = './temp'
+        else:
+            nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/one_shot'
+        
+        # Load in edge index 
+        poly_lo = 1
+        poly_hi = 7
+        Re = '1600'
+        if local:
+            case_path = "./temp"
+        else: 
+            case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re}_poly_7"
+        edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
+        edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
+
+        if mode == "single_scale":
+            edge_index_lo = get_edge_index(edge_index_path_lo)
+            edge_index_hi = get_edge_index(edge_index_path_hi)
+        elif mode == "multi_scale":
+            edge_index_vertex_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly_lo}/edge_index_element_local_vertex_rank_0_size_4"
+            edge_index_vertex_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly_hi}/edge_index_element_local_vertex_rank_0_size_4"
+            edge_index_lo = get_edge_index(edge_index_path_lo,
+                                        edge_index_vertex_path_lo)
+            edge_index_hi = get_edge_index(edge_index_path_hi,
+                                        edge_index_vertex_path_hi)
+
+        t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
+        t_str_list = ['00017', '00020']
+        #t_str_list = ['000%02d' %(i) for i in range(12,41)]
+
+
+        # Get full edge index 
+        edge_index = edge_index_lo
+        n_nodes_per_element = edge_index.max() + 1
+        if n_element_neighbors > 0:
+            node_max_per_element = edge_index.max()
+            n_edges_per_element = edge_index.shape[1]
+            edge_index_full = torch.zeros((2, n_edges_per_element*(n_element_neighbors+1)), dtype=edge_index.dtype)
+            edge_index_full[:, :n_edges_per_element] = edge_index
+            for i in range(1,n_element_neighbors+1):
+                start = n_edges_per_element*i
+                end = n_edges_per_element*(i+1)
+                edge_index_full[:, start:end] = edge_index + (node_max_per_element+1)*i
+            edge_index = edge_index_full
+
+        for t_str in t_str_list:
+            # One-shot
+            xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
+            #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newtgv0.f{t_str}')
+            xhi_field = xlo_field
+            n_snaps = len(xlo_field.elem)
+
+
+            # Get the element neighborhoods
+            if n_element_neighbors > 0:
+                Nelements = len(xlo_field.elem)
+                pos_c = torch.zeros((Nelements, 3))
+                for i in range(Nelements):
+                    pos_c[i] = torch.tensor(xlo_field.elem[i].centroid)
+                edge_index_c = tgnn.knn_graph(x = pos_c, k = n_element_neighbors)
+
+            # Get the element masks
+            central_element_mask = torch.concat(
+                    (torch.ones((n_nodes_per_element), dtype=torch.int64),
+                     torch.zeros((n_nodes_per_element * n_element_neighbors), dtype=torch.int64))
+                    )
+            central_element_mask = central_element_mask.to(torch.bool)
+
+            with torch.no_grad():
+                for i in range(n_snaps):
+                    print(f"Evaluating snap {i}/{n_snaps}")
+                    
+                    pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
+                    pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
+
+                    x_gll = xhi_field.elem[i].pos[0,0,0,:]
+                    dx_min = x_gll[1] - x_gll[0]
+
+                    error_max = (pos_xlo_i.max(dim=0)[0] - pos_xhi_i.max(dim=0)[0]).max()
+                    error_min = (pos_xlo_i.min(dim=0)[0] - pos_xhi_i.min(dim=0)[0]).max()
+                    rel_error_max = torch.abs(error_max / dx_min)*100
+                    rel_error_min = torch.abs(error_min / dx_min)*100
+
+                    # Check positions 
+                    if (rel_error_max > 1e-2) or (rel_error_min > 1e-2):
+                        print(f"Relative error in positions exceeds 0.01% in element i={i}.")
+                        sys.exit()
+                    if (pos_xlo_i.max() == 0. and pos_xlo_i.min() == 0.):
+                        print(f"Node positions are not stored in {data_xlo_path}.")
+                        sys.exit()
+                    if (pos_xhi_i.max() == 0. and pos_xhi_i.min() == 0.):
+                        print(f"Node positions are not stored in {data_xhi_path}.")
+                        sys.exit()
+
+                    # get x_mean and x_std 
+                    x_mean_element_lo = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+                    x_std_element_lo = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+                    x_mean_element_hi = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+                    x_std_element_hi = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+
+                    # element lengthscale 
+                    lengthscale_element = torch.norm(pos_xlo_i.max(dim=0)[0] - pos_xlo_i.min(dim=0)[0], p=2)
+
+                    # Get the element neighbors for the input  
+                    if n_element_neighbors > 0:
+                        send = edge_index_c[0,:]
+                        recv = edge_index_c[1,:]
+                        nbrs = send[recv == i]
+
+                        pos_x_full = [pos_xlo_i]
+                        vel_x_full = [vel_xlo_i]
+                        for j in nbrs:
+                            pos_x_full.append( torch.tensor(xlo_field.elem[j].pos).reshape((3, -1)).T )
+                            vel_x_full.append( torch.tensor(xlo_field.elem[j].vel).reshape((3, -1)).T )
+                        pos_x_full = torch.concat(pos_x_full)
+                        vel_x_full = torch.concat(vel_x_full)
+
+                        # reset pos 
+                        pos_xlo_i = pos_x_full
+                        vel_xlo_i = vel_x_full
+
+                    # create data 
+                    data = Data( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
+                                      x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
+                                      x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
+                                      x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
+                                      x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
+                                      pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                                      pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                                      edge_index_lo = edge_index,
+                                      edge_index_hi = edge_index_hi,
+                                      central_element_mask = central_element_mask,
+                                      eid = torch.tensor(i))
+
+                    # for synchronizing across element boundaries  
+                    if n_element_neighbors > 0:
+                        batch = None
+                        edge_index_coin = ngs.get_edge_index_coincident(
+                                batch, data.pos_norm_lo, data.edge_index_lo)
+                        degree = utils.degree(edge_index_coin[1,:], num_nodes = data.pos_norm_lo.shape[0])
+                        degree += 1.
+                        data.edge_index_coin = edge_index_coin
+                        data.degree = degree
+                    else:
+                        data.edge_index_coin = None
+                        data.degree = None
+
+                    data = data.to(device)
+                    
+                    # ~~~~ Model evaluation ~~~~ # 
+                    
+                    # ~~~~ SB: put model evaluation here!!! 
+
+                    # ~~~~ Making the .f file ~~~~ # 
+                    # Re-shape the prediction, convert back to fp64 numpy 
+                    y_pred = y_pred.cpu()
+                    orig_shape = x_field.elem[i].vel.shape
+                    y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+
+                    # Place back in the snapshot data 
+                    x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+
+                # Write 
+                print('Writing...')
+                # incremental: 
+                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
+                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_{poly-2}to{poly}"
+                # One shot: 
+                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_1to{poly}"
+                if not os.path.exists(directory_path):
+                    os.makedirs(directory_path)
+                    print(f"Directory '{directory_path}' created.")
+                writenek(directory_path +  f"/newtgv0.f{t_str}", x_field)
+                print(f'finished writing {t_str}') 
+
+    # ~~~~ Save predicted flowfield into .f file 
+    # Just the KNN interpolation!!! 
+    if 1 == 1:
+        # Load eval and target snapshot 
+        TORCH_FLOAT = torch.float32
+
+        xlo_field = readnek('./temp/p1_newtgv0.f00001')
+        xhi_field = readnek('./temp/p7_newtgv0.f00001')
+        n_snaps = len(xlo_field.elem)
+
+        with torch.no_grad():
+            for i in range(n_snaps):
+                print(f"knn interp -- Evaluating snap {i}/{n_snaps}")
+                
+                pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
+                pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                
+                # ~~~~ kNN evaluation ~~~~ # 
+                y_pred = tgnn.unpool.knn_interpolate(
+                        x = vel_xlo_i,
+                        pos_x = pos_xlo_i,
+                        pos_y = pos_xhi_i,
+                        k = 8)
+
+                # ~~~~ Making the .f file ~~~~ # 
+                # Re-shape the prediction, convert back to fp64 numpy 
+                y_pred = y_pred.cpu()
+                orig_shape = xhi_field.elem[i].vel.shape
+                y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+
+                # Place back in the snapshot data 
+                xhi_field.elem[i].vel[:,:,:,:] = y_pred_rs
+
+            # Write 
+            print('Writing...')
+            writenek(f"./temp/p7_knninterp_newtgv0.f00001", xhi_field)
 
     # ~~~~ Analyze predictions -- all elements 
     if 1 == 0:
