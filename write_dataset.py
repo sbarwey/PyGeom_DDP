@@ -208,7 +208,7 @@ def write_full_dataset(cfg: DictConfig):
     case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
     Re_list = ['1600'] #['1600', '2000', '2400']
     snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
-    n_element_neighbors = 6
+    n_element_neighbors = 0
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
@@ -237,8 +237,8 @@ def write_full_dataset(cfg: DictConfig):
 
     # try torch.save 
     t_save = time.time()
-    torch.save(train_dataset[:10], cfg.data_dir + "train_dataset.pt")
-    torch.save(test_dataset[:10], cfg.data_dir + "valid_dataset.pt")
+    torch.save(train_dataset, cfg.data_dir + "train_dataset.pt")
+    torch.save(test_dataset, cfg.data_dir + "valid_dataset.pt")
     t_save = time.time() - t_save 
     
     # load the dataset 
