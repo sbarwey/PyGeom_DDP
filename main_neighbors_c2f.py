@@ -30,6 +30,7 @@ Tensor = torch.Tensor
 
 # PyTorch Geometric
 import torch_geometric
+import torch_geometric.nn as tgnn
 
 import models.gnn as gnn
 
@@ -349,8 +350,23 @@ class Trainer:
             degree = degree)
         #t_2 = time.time() - t_2
         
-        # 3) set the target -- target = data.x + GNN(x_scaled)  
-        target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+        # 3) set the target
+        if self.cfg.use_residual:
+            mask = data.central_element_mask
+            if data.x_batch is None:
+                data.x_batch = data.edge_index_lo.new_zeros(data.pos_norm_lo.size(0))
+            if data.y_batch is None:
+                data.y_batch = data.edge_index_hi.new_zeros(data.pos_norm_hi.size(0))
+            x_interp = tgnn.unpool.knn_interpolate(
+                    x = data.x[mask,:],
+                    pos_x = data.pos_norm_lo[mask,:],
+                    pos_y = data.pos_norm_hi,
+                    batch_x = data.x_batch[mask],
+                    batch_y = data.y_batch,
+                    k = 8)
+            target = (data.y - x_interp)/(data.x_std_hi + eps)
+        else:
+            target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
 
         # 4) evaluate loss 
         # loss = self.loss_fn(out_gnn, target) # vanilla mse 
@@ -485,7 +501,22 @@ class Trainer:
                 #t_2 = time.time() - t_2
                 
                 # 3) set the target -- target = data.x + GNN(x_scaled)  
-                target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+                if self.cfg.use_residual:
+                    mask = data.central_element_mask
+                    if data.x_batch is None:
+                        data.x_batch = data.edge_index_lo.new_zeros(data.pos_norm_lo.size(0))
+                    if data.y_batch is None:
+                        data.y_batch = data.edge_index_hi.new_zeros(data.pos_norm_hi.size(0))
+                    x_interp = tgnn.unpool.knn_interpolate(
+                            x = data.x[mask,:],
+                            pos_x = data.pos_norm_lo[mask,:],
+                            pos_y = data.pos_norm_hi,
+                            batch_x = data.x_batch[mask],
+                            batch_y = data.y_batch,
+                            k = 8)
+                    target = (data.y - x_interp)/(data.x_std_hi + eps)
+                else:
+                    target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
 
                 # 4) evaluate loss 
                 # loss = self.loss_fn(out_gnn, target) # vanilla mse 

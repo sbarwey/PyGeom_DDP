@@ -19,6 +19,9 @@ hidden_channels: 128
 n_mlp_hidden_layers: 2
 n_messagePassing_layers: 2
 n_element_neighbors: 0
+use_residual: true
+
+
 
 hydra:
   job:
