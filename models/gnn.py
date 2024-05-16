@@ -129,8 +129,6 @@ class GNN(torch.nn.Module):
         #for item in self.input_dict():
         return header
 
-
-
 class GNN_Element_Neighbor(torch.nn.Module):
     def __init__(self, 
                  input_node_channels: int, 
@@ -254,7 +252,6 @@ class GNN_Element_Neighbor(torch.nn.Module):
         #for item in self.input_dict():
         return header
 
-
 class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
     def __init__(self, 
                  input_node_channels: int, 
@@ -264,6 +261,7 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
                  output_node_channels: int, 
                  n_mlp_hidden_layers: int, 
                  n_messagePassing_layers: int,
+                 use_fine_messagePassing: bool,
                  name: Optional[str] = 'gnn'):
         super().__init__()
         
@@ -274,6 +272,7 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
         self.output_node_channels = output_node_channels 
         self.n_mlp_hidden_layers = n_mlp_hidden_layers
         self.n_messagePassing_layers = n_messagePassing_layers
+        self.use_fine_messagePassing = use_fine_messagePassing
         self.name = name 
 
         # ~~~~ node encoder MLP  
@@ -288,15 +287,6 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
         # ~~~~ edge encoder MLP coarse 
         self.edge_encoder_coarse = MLP(
                 input_channels = self.input_edge_channels_coarse,
-                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
-                output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
-                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
-                )
-
-        # ~~~~ edge encoder MLP fine
-        self.edge_encoder_fine = MLP(
-                input_channels = self.input_edge_channels_fine,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
                 activation_layer = torch.nn.ELU(),
@@ -322,14 +312,23 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
                                   )
 
         # ~~~~ Processor fine  
-        self.processor_fine = torch.nn.ModuleList()
-        for i in range(self.n_messagePassing_layers):
-            self.processor_fine.append( 
-                          MessagePassingLayer(
-                                     channels = hidden_channels,
-                                     n_mlp_hidden_layers = self.n_mlp_hidden_layers, 
-                                     ) 
-                                  )
+        if self.use_fine_messagePassing: 
+            self.edge_encoder_fine = MLP(
+                input_channels = self.input_edge_channels_fine,
+                hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
+                output_channels = self.hidden_channels,
+                activation_layer = torch.nn.ELU(),
+                norm_layer = torch.nn.LayerNorm(self.hidden_channels)
+                )
+
+            self.processor_fine = torch.nn.ModuleList()
+            for i in range(self.n_messagePassing_layers):
+                self.processor_fine.append( 
+                              MessagePassingLayer(
+                                         channels = hidden_channels,
+                                         n_mlp_hidden_layers = self.n_mlp_hidden_layers, 
+                                         ) 
+                                      )
         
         self.reset_parameters()
 
@@ -380,19 +379,21 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
                 batch_y = batch_hi,
                 k = 8)
 
-        # ~~~~ Fine edge features
-        x_send = x[edge_index_hi[0,:],:]
-        x_recv = x[edge_index_hi[1,:],:]
-        pos_send = pos_hi[edge_index_hi[0,:],:]
-        pos_recv = pos_hi[edge_index_hi[1,:],:]
-        e_1 = pos_send - pos_recv
-        e_2 = torch.norm(e_1, dim=1, p=2, keepdim=True)
-        e_3 = x_send - x_recv
-        e = torch.cat((e_1, e_2, e_3), dim=1)
-        e = self.edge_encoder_fine(e)
+        if self.use_fine_messagePassing: 
+            # ~~~~ Fine edge features
+            x_send = x[edge_index_hi[0,:],:]
+            x_recv = x[edge_index_hi[1,:],:]
+            pos_send = pos_hi[edge_index_hi[0,:],:]
+            pos_recv = pos_hi[edge_index_hi[1,:],:]
+            e_1 = pos_send - pos_recv
+            e_2 = torch.norm(e_1, dim=1, p=2, keepdim=True)
+            e_3 = x_send - x_recv
+            e = torch.cat((e_1, e_2, e_3), dim=1)
+            e = self.edge_encoder_fine(e)
 
-        for i in range(self.n_messagePassing_layers):
-            x,e = self.processor_fine[i](x,e,edge_index_hi,batch_hi)
+            # ~~~~ Fine mp layers
+            for i in range(self.n_messagePassing_layers):
+                x,e = self.processor_fine[i](x,e,edge_index_hi,batch_hi)
 
         # ~~~~ Node decoder 
         x = self.node_decoder(x)
@@ -402,12 +403,13 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
     def reset_parameters(self):
         self.node_encoder.reset_parameters()
         self.edge_encoder_coarse.reset_parameters()
-        self.edge_encoder_fine.reset_parameters()
         self.node_decoder.reset_parameters()
         for module in self.processor_coarse:
             module.reset_parameters()
-        for module in self.processor_fine:
-            module.reset_parameters()
+        if self.use_fine_messagePassing:
+            self.edge_encoder_fine.reset_parameters()
+            for module in self.processor_fine:
+                module.reset_parameters()
         return
 
     def input_dict(self) -> dict:
@@ -418,6 +420,7 @@ class GNN_Element_Neighbor_Lo_Hi(torch.nn.Module):
              'output_node_channels': self.output_node_channels,
              'n_mlp_hidden_layers': self.n_mlp_hidden_layers,
              'n_messagePassing_layers': self.n_messagePassing_layers,
+             'use_fine_messagePassing': self.use_fine_messagePassing,
              'name': self.name} 
         return a
 

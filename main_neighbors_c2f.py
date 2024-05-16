@@ -203,6 +203,7 @@ class Trainer:
         output_node_channels = sample.y.shape[1]
         n_mlp_hidden_layers = self.cfg.n_mlp_hidden_layers
         n_messagePassing_layers = self.cfg.n_messagePassing_layers
+        use_fine_messagePassing = self.cfg.use_fine_messagePassing
         name = self.cfg.model_name
         model = gnn.GNN_Element_Neighbor_Lo_Hi(
                 input_node_channels = input_node_channels,
@@ -212,9 +213,8 @@ class Trainer:
                 output_node_channels = output_node_channels,
                 n_mlp_hidden_layers = n_mlp_hidden_layers,
                 n_messagePassing_layers = n_messagePassing_layers,
+                use_fine_messagePassing = use_fine_messagePassing,
                 name = name)
-
-                
         return model
 
     def build_optimizer(self, model: nn.Module) -> torch.optim.Optimizer:
@@ -225,7 +225,7 @@ class Trainer:
     def build_scheduler(self, optimizer: torch.optim.Optimizer) -> torch.optim.lr_scheduler:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
                                 patience=5, threshold=0.0001, threshold_mode='rel',
-                                cooldown=0, min_lr=1e-8, eps=1e-08, verbose=True)
+                                cooldown=0, min_lr=1e-8, eps=1e-08)# verbose=True)
         return scheduler
 
     def setup_torch(self):
