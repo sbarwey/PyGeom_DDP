@@ -37,52 +37,53 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
-    if 1 == 1:
-        mp = 6 
+    if 1 == 0:
+        n_mp = 12
+        fine_mp = 'False'
 
         # one-shot -- single-scale 
-        a = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_multisnap_3_7_128_3_2_6.tar')
-        a_label = '1shot'
+        a = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        a_label = '1shot+0nei'
         a_color = 'black'
         a_ls = '-'
 
         # incremental - singlescale 
-        b = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_32_multisnap_incr_v2_3_7_128_3_2_6.tar')
-        b_label = 'Incr'
+        b = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        b_label = '1shot+6nei'
         b_color = 'blue'
         b_ls = '-'
 
         # fine-scale neighbors -- single-scale 
-        c = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_multisnap_3_7_128_3_2_6.tar')
-        c_label = '1shot+6nei, FineNeighbors'
+        c = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        c_label = '1shot+26nei'
         c_color = 'red'
         c_ls = '-'
 
         # coarse-scale neighbors -- single-scale 
-        d = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_3_7_132_128_3_2_6.tar')
-        d_label = '1shot+6nei, CoarseNeighbors'
+        d = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        d_label = '1shot+0nei, Resid'
         d_color = 'lime'
         d_ls = '-'
 
         # coarse-scale neighbors -- single-scale 
-        e = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_3_7_132_128_3_2_6.tar')
-        e_label = '1shot+26nei, CoarseNeighbors'
+        e = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        e_label = '1shot+6nei, Resid'
         e_color = 'gray'
         e_ls = '-'
     
         # coarse-scale neighbors -- single-scale 
-        f = torch.load('./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_3_7_132_128_3_2_6.tar')
-        f_label = '1shot+0nei, CoarseNeighbors'
+        f = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        f_label = '1shot+26nei, Resid'
         f_color = 'magenta'
         f_ls = '-'
 
         plt.rcParams.update({'font.size': 18})
         
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8,6))
 
-        #ax.plot(a['loss_hist_train'][0:], lw=2, color=a_color, label=a_label, ls=a_ls)
-        #ax.plot(b['loss_hist_train'][0:], lw=2, color=b_color, label=b_label, ls=b_ls)
-        #ax.plot(c['loss_hist_train'][0:], lw=2, color=c_color, label=c_label, ls=c_ls)
+        ax.plot(a['loss_hist_train'][0:], lw=2, color=a_color, label=a_label, ls=a_ls)
+        ax.plot(b['loss_hist_train'][0:], lw=2, color=b_color, label=b_label, ls=b_ls)
+        ax.plot(c['loss_hist_train'][0:], lw=2, color=c_color, label=c_label, ls=c_ls)
         ax.plot(d['loss_hist_train'][0:], lw=2, color=d_color, label=d_label, ls=d_ls)
         ax.plot(e['loss_hist_train'][0:], lw=2, color=e_color, label=e_label, ls=e_ls)
         ax.plot(f['loss_hist_train'][0:], lw=2, color=f_color, label=f_label, ls=f_ls)
@@ -91,8 +92,9 @@ if __name__ == "__main__":
         ax.legend()
         ax.set_xlabel('Epochs')
         ax.set_ylabel('Loss')
-        ax.set_title('n_mp_layers = %d' %(mp))
+        ax.set_title('n_mp_layers = %d' %(n_mp))
         #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
+        ax.set_ylim([1e-4, 1e0])
         
         plt.show(block=False)
 
@@ -302,7 +304,6 @@ if __name__ == "__main__":
         #     ax[comp].set_ylabel('Target')
         # plt.show(block=False)
 
-    
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
     if 1 == 0:
@@ -526,7 +527,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # Just the KNN interpolation!!! 
-    if 1 == 0:
+    if 1 == 1:
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
 
