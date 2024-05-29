@@ -25,6 +25,28 @@ class DataLoHi(Data):
             return self.y.size(0)
         return super().__inc__(key, value, *args, **kwargs)
 
+class DataLoHiIncr(Data):
+    def __inc__(self, key, value, *args, **kwargs):
+        if key == 'edge_index_lo_0':
+            return self.x_lo_0.size(0)
+        if key == 'edge_index_coin_0':
+            return self.x_lo_0.size(0)
+        if key == 'edge_index_hi_0':
+            return self.x_hi_0.size(0)
+        if key == 'edge_index_lo_1':
+            return self.x_lo_1.size(0)
+        if key == 'edge_index_coin_1':
+            return self.x_lo_1.size(0)
+        if key == 'edge_index_hi_1':
+            return self.x_hi_1.size(0)
+        if key == 'edge_index_lo_2':
+            return self.x_lo_2.size(0)
+        if key == 'edge_index_coin_2':
+            return self.x_lo_2.size(0)
+        if key == 'edge_index_hi_2':
+            return self.x_hi_2.size(0)
+        return super().__inc__(key, value, *args, **kwargs)
+
 
 def get_rms(x_batch: Tensor) -> Tensor:
     u_var = x_batch.var(dim=1, keepdim=True)
@@ -686,7 +708,7 @@ def get_pygeom_dataset_lo_hi_pymech_incr(data_x_path: List[str],
         #         eid = [data.eid for data in data_temp_list],
         #         ) 
 
-        data_temp_agg = Data()
+        data_temp_agg = DataLoHiIncr()
 
         lev = 0
         data_temp_agg.x_lo_0 = data_temp_list[lev].x
@@ -743,7 +765,7 @@ def get_pygeom_dataset_lo_hi_pymech_incr(data_x_path: List[str],
         data_temp_agg.degree_2 = data_temp_list[lev].degree
 
         print(i)
-        if i == 100:
+        if i == 5000:
             break
         data_temp_agg = data_temp_agg.to(device_for_loading)
         if idx_train_mask[i] == 1:
