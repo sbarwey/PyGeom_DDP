@@ -208,7 +208,7 @@ def write_full_dataset(cfg: DictConfig):
     case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
     Re_list = ['1600'] #['1600', '2000', '2400']
     snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
-    n_element_neighbors = 0
+    n_element_neighbors = 26
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
