@@ -530,38 +530,43 @@ if __name__ == "__main__":
     if 1 == 1:
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
+        
+        xlo_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr/snapshots_knninterp_3to5"
+        xhi_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr/snapshots_target"
+        xknn_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/incr/snapshots_knninterp_5to7"
 
-        xlo_field = readnek('./temp/p1_newtgv0.f00001')
-        xhi_field = readnek('./temp/p7_newtgv0.f00001')
-        n_snaps = len(xlo_field.elem)
+        for snap in ["16", "17", "18", "19", "20", "21"]:
+            xlo_field = readnek(f"{xlo_path}/newtgv0.f000{snap}")
+            xhi_field = readnek(f"{xhi_path}/tgv0.f000{snap}")
+            n_snaps = len(xlo_field.elem)
 
-        with torch.no_grad():
-            for i in range(n_snaps):
-                print(f"knn interp -- Evaluating snap {i}/{n_snaps}")
-                
-                pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-                vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
-                pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-                
-                # ~~~~ kNN evaluation ~~~~ # 
-                y_pred = tgnn.unpool.knn_interpolate(
-                        x = vel_xlo_i,
-                        pos_x = pos_xlo_i,
-                        pos_y = pos_xhi_i,
-                        k = 8)
+            with torch.no_grad():
+                for i in range(n_snaps):
+                    print(f"knn interp -- Evaluating snap {i}/{n_snaps}")
+                    
+                    pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
+                    pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    
+                    # ~~~~ kNN evaluation ~~~~ # 
+                    y_pred = tgnn.unpool.knn_interpolate(
+                            x = vel_xlo_i,
+                            pos_x = pos_xlo_i,
+                            pos_y = pos_xhi_i,
+                            k = 8)
 
-                # ~~~~ Making the .f file ~~~~ # 
-                # Re-shape the prediction, convert back to fp64 numpy 
-                y_pred = y_pred.cpu()
-                orig_shape = xhi_field.elem[i].vel.shape
-                y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+                    # ~~~~ Making the .f file ~~~~ # 
+                    # Re-shape the prediction, convert back to fp64 numpy 
+                    y_pred = y_pred.cpu()
+                    orig_shape = xhi_field.elem[i].vel.shape
+                    y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
 
-                # Place back in the snapshot data 
-                xhi_field.elem[i].vel[:,:,:,:] = y_pred_rs
+                    # Place back in the snapshot data 
+                    xhi_field.elem[i].vel[:,:,:,:] = y_pred_rs
 
-            # Write 
-            print('Writing...')
-            writenek(f"./temp/p7_knninterp_newtgv0.f00001", xhi_field)
+                # Write 
+                print('Writing...')
+                writenek(f"{xknn_path}/newtgv0.f000{snap}", xhi_field)
 
     # ~~~~ Analyze predictions -- all elements 
     if 1 == 0:
