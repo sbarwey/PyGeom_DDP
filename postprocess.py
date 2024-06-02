@@ -36,6 +36,53 @@ def get_edge_index(edge_index_path: str,
     return edge_index 
 
 if __name__ == "__main__":
+    # ~~~~ Spectrum plots 
+    if 1 == 1:
+        
+        # nekrs interp : 
+        t_snap = "16"
+        data_nrs_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        data_knn_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_knninterp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        data_tgt_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        data_crs_7to1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+
+        # incr 
+        data_nrs_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_interp_full_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        data_knn_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_knninterp_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        data_crs_3to1 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_coarse_3to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+
+        # knn interp :
+        lw = 2
+        fig, ax = plt.subplots()
+        ax.plot(data_tgt_7['kspec'], data_tgt_7['spectrum'], color='black', lw=lw, label='Target')
+        ax.plot(data_crs_7to1['kspec'], data_crs_7to1['spectrum'], color='black', lw=lw, ls='--', label='P=1')
+        #ax.plot(data_crs_3to1['kspec'], data_crs_3to1['spectrum'], color='gray', lw=lw, ls='-.', label='P=1 (from 3)')
+        ax.plot(data_nrs_1to7['kspec'], data_nrs_1to7['spectrum'], color='blue', lw=lw, ls='--', label='NekRS')
+        #ax.plot(data_nrs_5to7['kspec'], data_nrs_5to7['spectrum'], color='cyan', lw=lw, ls='--', label='NekRS-incr')
+        #ax.plot(data_knn_1to7['kspec'], data_knn_1to7['spectrum'], color='red', lw=lw, ls='--', label='kNN')
+        #ax.plot(data_knn_5to7['kspec'], data_knn_5to7['spectrum'], color='magenta', lw=lw, ls='--', label='kNN-incr')
+
+        # plot vlines: p = 1 
+        ax.vlines(data_crs_7to1['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
+        ax.vlines(data_tgt_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
+
+        plt.show(block=False)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_xlim([1,300])
+        ax.set_ylim([1e-9, 1e-1])
+        ax.set_ylabel('E(k)')
+        ax.set_xlabel('k')
+        ax.grid(which='minor', alpha=0.1)
+        ax.grid(which='major', alpha=0.4)
+        ax.legend(fancybox=False, framealpha=1, edgecolor='black')
+        plt.show(block=False)
+            
+        pass
+
+
+
+
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
     if 1 == 0:
         n_mp = 12
@@ -527,7 +574,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # Just the KNN interpolation!!! 
-    if 1 == 1:
+    if 1 == 0:
         # Load eval and target snapshot 
         TORCH_FLOAT = torch.float32
         
