@@ -80,9 +80,6 @@ if __name__ == "__main__":
             
         pass
 
-
-
-
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
     if 1 == 0:
         n_mp = 12
@@ -336,8 +333,6 @@ if __name__ == "__main__":
                 writenek(directory_path +  f"/newtgv0.f{t_str}", x_field)
                 print(f'finished writing {t_str}') 
 
-
-
         # plt.rcParams.update({'font.size': 14})
         # fig, ax = plt.subplots(1,3, figsize=(10,4))
         # for comp in range(3):
@@ -353,15 +348,17 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = True
         mode = "single_scale"
-
-        # Load model 
-        mp = 6 
-        n_element_neighbors = 26
-        batch_size = 4
-        a = torch.load(f"./saved_models/{mode}/gnn_lr_1em4_bs_{batch_size}_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{mp}.tar")
+        n_mp = 12
+        fine_mp = 'False'
+        use_residual = True
+        n_element_neighbors = 6
+        if use_residual:
+            a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+        else:
+            a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
 
         input_dict = a['input_dict'] 
         input_node_channels = input_dict['input_node_channels']
@@ -371,17 +368,19 @@ if __name__ == "__main__":
         output_node_channels = input_dict['output_node_channels']
         n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
         n_messagePassing_layers = input_dict['n_messagePassing_layers']
+        use_fine_messagePassing = input_dict['use_fine_messagePassing']
         name = input_dict['name']
-
+        
         model = gnn.GNN_Element_Neighbor_Lo_Hi(
-                           input_node_channels,
-                           input_edge_channels_coarse,
-                           input_edge_channels_fine,
-                           hidden_channels,
-                           output_node_channels,
-                           n_mlp_hidden_layers,
-                           n_messagePassing_layers,
-                           name)
+                input_node_channels             = input_dict['input_node_channels'],
+                input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
+                input_edge_channels_fine        = input_dict['input_edge_channels_fine'],
+                hidden_channels                 = input_dict['hidden_channels'],
+                output_node_channels            = input_dict['output_node_channels'],
+                n_mlp_hidden_layers             = input_dict['n_mlp_hidden_layers'],
+                n_messagePassing_layers         = input_dict['n_messagePassing_layers'],
+                use_fine_messagePassing         = input_dict['use_fine_messagePassing'],
+                name                            = input_dict['name'])
 
         model.load_state_dict(a['state_dict'])
         if torch.cuda.is_available():
@@ -422,9 +421,8 @@ if __name__ == "__main__":
                                         edge_index_vertex_path_hi)
 
         t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
-        t_str_list = ['00017', '00020']
+        t_str_list = ['00017']
         #t_str_list = ['000%02d' %(i) for i in range(12,41)]
-
 
         # Get full edge index 
         edge_index = edge_index_lo
@@ -442,20 +440,23 @@ if __name__ == "__main__":
 
         for t_str in t_str_list:
             # One-shot
-            xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
+            #xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
             #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newtgv0.f{t_str}')
-            xhi_field = xlo_field
+            xlo_field = readnek(nrs_snap_dir + "/p1_newtgv0.f00001")
+            xhi_field = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
+            xhi_field_pred = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
+            xhi_field_error = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
             n_snaps = len(xlo_field.elem)
-
 
             # Get the element neighborhoods
             if n_element_neighbors > 0:
                 Nelements = len(xlo_field.elem)
-                pos_c = torch.zeros((Nelements, 3))
+                pos_c = torch.zeros((Nelements, 3)) 
                 for i in range(Nelements):
                     pos_c[i] = torch.tensor(xlo_field.elem[i].centroid)
                 edge_index_c = tgnn.knn_graph(x = pos_c, k = n_element_neighbors)
 
+            # Get the element masks
             # Get the element masks
             central_element_mask = torch.concat(
                     (torch.ones((n_nodes_per_element), dtype=torch.int64),
@@ -467,9 +468,9 @@ if __name__ == "__main__":
                 for i in range(n_snaps):
                     print(f"Evaluating snap {i}/{n_snaps}")
                     
-                    pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
                     vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
-                    pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
                     vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
 
                     x_gll = xhi_field.elem[i].pos[0,0,0,:]
@@ -500,7 +501,10 @@ if __name__ == "__main__":
                     # element lengthscale 
                     lengthscale_element = torch.norm(pos_xlo_i.max(dim=0)[0] - pos_xlo_i.min(dim=0)[0], p=2)
 
-                    # Get the element neighbors for the input  
+                    # node weight
+                    # nw = torch.ones((vel_xhi_i.shape[0], 1)) * node_weight
+
+                    # Get the element neighbors for the input
                     if n_element_neighbors > 0:
                         send = edge_index_c[0,:]
                         recv = edge_index_c[1,:]
@@ -514,24 +518,27 @@ if __name__ == "__main__":
                         pos_x_full = torch.concat(pos_x_full)
                         vel_x_full = torch.concat(vel_x_full)
 
-                        # reset pos 
+                        # reset pos
                         pos_xlo_i = pos_x_full
                         vel_xlo_i = vel_x_full
 
                     # create data 
-                    data = Data( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
-                                      x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
-                                      x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
-                                      x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
-                                      x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
-                                      pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
-                                      pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
-                                      edge_index_lo = edge_index,
-                                      edge_index_hi = edge_index_hi,
-                                      central_element_mask = central_element_mask,
-                                      eid = torch.tensor(i))
+                    data = ngs.DataLoHi( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
+                          y = vel_xhi_i.to(dtype=TORCH_FLOAT),
+                          x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
+                          x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
+                          x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
+                          x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
+                          # node_weight = nw.to(dtype=TORCH_FLOAT),
+                          L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                          pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                          pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                          edge_index_lo = edge_index,
+                          edge_index_hi = edge_index_hi,
+                          central_element_mask = central_element_mask,
+                          eid = torch.tensor(i))
 
-                    # for synchronizing across element boundaries  
+                    # for synchronizing across element boundaries
                     if n_element_neighbors > 0:
                         batch = None
                         edge_index_coin = ngs.get_edge_index_coincident(
@@ -545,31 +552,78 @@ if __name__ == "__main__":
                         data.degree = None
 
                     data = data.to(device)
-                    
-                    # ~~~~ Model evaluation ~~~~ # 
-                    
-                    # ~~~~ SB: put model evaluation here!!! 
 
+                    # ~~~~ Model evaluation ~~~~ # 
+                    with torch.no_grad():
+                        # 1) Preprocessing: scale input  
+                        eps = 1e-10
+                        x_scaled = (data.x - data.x_mean_lo)/(data.x_std_lo + eps)
+
+                        # 2) Evaluate model 
+                        out_gnn = model(
+                        x = x_scaled,
+                        mask = data.central_element_mask,
+                        edge_index_lo = data.edge_index_lo,
+                        edge_index_hi = data.edge_index_hi,
+                        pos_lo = data.pos_norm_lo,
+                        pos_hi = data.pos_norm_hi,
+                        #batch_lo = data.x_batch,
+                        #batch_hi = data.y_batch,
+                        edge_index_coin = edge_index_coin,
+                        degree = degree)
+
+                        # 3) set the target
+                        if use_residual:
+                            mask = data.central_element_mask
+                            data.x_batch = data.edge_index_lo.new_zeros(data.pos_norm_lo.size(0))
+                            data.y_batch = data.edge_index_hi.new_zeros(data.pos_norm_hi.size(0))
+                            x_interp = tgnn.unpool.knn_interpolate(
+                                    x = data.x[mask,:],
+                                    pos_x = data.pos_norm_lo[mask,:],
+                                    pos_y = data.pos_norm_hi,
+                                    batch_x = data.x_batch[mask],
+                                    batch_y = data.y_batch,
+                                    k = 8)
+                            # target = (data.y - x_interp)/(data.x_std_hi + eps)
+                            # gnn = (data.y - x_interp)/(data.x_std_hi + eps)
+                            # gnn * (data.x_std_hi + eps) = (data.y - x_interp)
+                            # data.y = x_interp + gnn * (data.x_std_hi + eps)
+                            y_pred = x_interp + out_gnn * (data.x_std_hi + eps)
+                        else:
+                            # target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+                            # gnn = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+                            # gnn * (data.x_std_hi + eps) = data.y - data.x_mean_hi
+                            # data.y = data.x_mean_hi + gnn * (data.x_std_hi + eps)
+                            y_pred = data.x_mean_hi + out_gnn * (data.x_std_hi + eps)
+                    
                     # ~~~~ Making the .f file ~~~~ # 
                     # Re-shape the prediction, convert back to fp64 numpy 
                     y_pred = y_pred.cpu()
-                    orig_shape = x_field.elem[i].vel.shape
+                    orig_shape = xhi_field.elem[i].vel.shape
                     y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+                    target = data.y
+                    target_rs = torch.reshape(target.T, orig_shape).to(dtype=torch.float64).numpy()
 
-                    # Place back in the snapshot data 
-                    x_field.elem[i].vel[:,:,:,:] = y_pred_rs
+                    # Place prediction back in the snapshot data 
+                    xhi_field_pred.elem[i].vel[:,:,:,:] = y_pred_rs
+
+                    # Place error back in snapshot data 
+                    xhi_field_error.elem[i].vel[:,:,:,:] = target_rs - y_pred_rs 
+
+                    # Sanity check to make sure reshape is correct.
+                    # target_orig = xhi_field.elem[i].vel
+                    # err_sanity = target_orig - target_rs 
+                    asdf
+
 
                 # Write 
                 print('Writing...')
-                # incremental: 
-                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_full_{poly-2}to{poly}"
-                #directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_{poly-2}to{poly}"
-                # One shot: 
-                directory_path = nrs_snap_dir + f"/snapshots_gnn_correction_{mode}_1to{poly}"
+                directory_path = nrs_snap_dir + f"/predictions/one_shot/{model.get_save_header()}"
                 if not os.path.exists(directory_path):
                     os.makedirs(directory_path)
                     print(f"Directory '{directory_path}' created.")
-                writenek(directory_path +  f"/newtgv0.f{t_str}", x_field)
+                writenek(directory_path +  f"/newtgv_pred0.f{t_str}", xhi_field_pred)
+                writenek(directory_path +  f"/newtgv_error0.f{t_str}", xhi_field_error)
                 print(f'finished writing {t_str}') 
 
     # ~~~~ Save predicted flowfield into .f file 

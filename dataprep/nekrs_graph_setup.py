@@ -765,7 +765,7 @@ def get_pygeom_dataset_lo_hi_pymech_incr(data_x_path: List[str],
         data_temp_agg.degree_2 = data_temp_list[lev].degree
 
         print(i)
-        if i == 5000:
+        if i == 500:
             break
         data_temp_agg = data_temp_agg.to(device_for_loading)
         if idx_train_mask[i] == 1:
