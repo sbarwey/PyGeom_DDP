@@ -239,29 +239,11 @@ class Trainer:
         kwargs = {}
         
         # multi snapshot - incr
-        
-        # ~~~~~~~~ Function inputs ~~~~~~~~~
-        data_x_path = [f'{self.cfg.work_dir}/temp/p1_newtgv0.f00001', 
-                       f'{self.cfg.work_dir}/temp/p3_newtgv0.f00001', 
-                       f'{self.cfg.work_dir}/temp/p5_newtgv0.f00001', 
-                       f'{self.cfg.work_dir}/temp/p7_newtgv0.f00001']
-        edge_index_path = [f'{self.cfg.work_dir}/temp/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4',
-                           f'{self.cfg.work_dir}/temp/gnn_outputs_poly_3/edge_index_element_local_rank_0_size_4',
-                           f'{self.cfg.work_dir}/temp/gnn_outputs_poly_5/edge_index_element_local_rank_0_size_4',
-                           f'{self.cfg.work_dir}/temp/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4']
-        device_for_loading = 'cpu'
-        node_weight = 1.
-        fraction_valid = 0.1
         n_element_neighbors = self.cfg.n_element_neighbors
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        train_dataset, test_dataset = ngs.get_pygeom_dataset_lo_hi_pymech_incr(
-                data_x_path = data_x_path,
-                edge_index_path = edge_index_path,
-                #node_weight = node_weight,
-                device_for_loading = device_for_loading,
-                fraction_valid = fraction_valid,
-                n_element_neighbors = n_element_neighbors)
+        #train_dataset = torch.load(self.cfg.data_dir + f"/train_dataset_nei_{n_element_neighbors}.pt")
+        #test_dataset = torch.load(self.cfg.data_dir + f"/valid_dataset_nei_{n_element_neighbors}.pt")
+        train_dataset = torch.load(self.cfg.data_dir + f"Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine_Incr/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + f"Multi_Snapshot_Re_1600_T_8.0_9.0_10.0_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine_Incr/valid_dataset.pt")
 
         if RANK == 0:
             log.info('train dataset: %d elements' %(len(train_dataset)))
@@ -311,8 +293,16 @@ class Trainer:
         self,
         data: DataBatch
     ) -> Tensor:
-        #t_total = time.time()
-        
+        t_total = time.time()
+
+        loss = torch.tensor(0.)
+        if WITH_CUDA:
+            t_transfer = time.time()
+            data = data.to("cuda:0")
+            t_transfer = time.time() - t_transfer 
+            loss = loss.cuda()
+
+
         # Set up data
         x_lo = [data.x_lo_0, data.x_lo_1, data.x_lo_2] 
         x_hi = [data.x_hi_0, data.x_hi_1, data.x_hi_2]
@@ -330,15 +320,16 @@ class Trainer:
         pos_norm_hi = [data.pos_norm_hi_0, data.pos_norm_hi_1, data.pos_norm_hi_2]
         x_lo_batch = [data.x_lo_0_batch, data.x_lo_1_batch, data.x_lo_2_batch]
         x_hi_batch = [data.x_hi_0_batch, data.x_hi_1_batch, data.x_hi_2_batch]
-        edge_index_coin = [data.edge_index_coin_0, data.edge_index_coin_1, data.edge_index_coin_2]
-        degree = [data.degree_0, data.degree_1, data.degree_2]
         node_weight = [data.node_weight_0, data.node_weight_1, data.node_weight_2]
+        if self.cfg.n_element_neighbors > 0:
+            edge_index_coin = [data.edge_index_coin_0, data.edge_index_coin_1, data.edge_index_coin_2]
+            degree = [data.degree_0, data.degree_1, data.degree_2]
+        else:
+            edge_index_coin = [None, None, None]
+            degree = [None, None, None]
 
         # Zero optimizer
         self.optimizer.zero_grad()
-
-        # Set up loss 
-        loss = torch.tensor(0.)
 
         # Update lev_max based on current epoch 
         if self.epoch < 30: 
@@ -351,7 +342,7 @@ class Trainer:
         loss_scale = 1./self.lev_max
 
         # Incremental forward pass
-        if RANK == 0: log.info(f"lev_max = {self.lev_max}")
+        # if RANK == 0: log.info(f"lev_max = {self.lev_max}")
         for lev in range(self.lev_max):
             # Preprocessing
             eps = 1e-10
@@ -402,12 +393,14 @@ class Trainer:
         else:
             loss.backward()
             self.optimizer.step()
-
-        #t_total = time.time() - t_total
+        
+        t_total = time.time() - t_total
 
         #if RANK == 0:
         #    if self.training_iter < 500:
         #        log.info(f"t_1: {t_1}s \t t_2: {t_2}s \t t_total: {t_total}s")
+        
+        #if RANK == 0: log.info(f"[RANK {RANK}] -- t_transfer = {t_transfer}s, t_total = {t_total}s")
 
         return loss
 
@@ -476,10 +469,90 @@ class Trainer:
         test_loader = self.data['test']['loader']
         with torch.no_grad():
             for data in test_loader:
-                # ~~~~ 
-                # TEST EVAL GOES HERE -- EMPTY FOR NOW 
-                # ~~~~ 
                 loss = torch.tensor(0.)
+
+                # ~~~~ 
+                if WITH_CUDA:
+                    t_transfer = time.time()
+                    data = data.to("cuda:0")
+                    t_transfer = time.time() - t_transfer 
+                    loss = loss.cuda()
+
+
+                # Set up data
+                x_lo = [data.x_lo_0, data.x_lo_1, data.x_lo_2] 
+                x_hi = [data.x_hi_0, data.x_hi_1, data.x_hi_2]
+
+                x_mean_lo = [data.x_mean_lo_0, data.x_mean_lo_1, data.x_mean_lo_2]
+                x_std_lo = [data.x_std_lo_0, data.x_std_lo_1, data.x_std_lo_2]
+         
+                x_mean_hi = [data.x_mean_hi_0, data.x_mean_hi_1, data.x_mean_hi_2]
+                x_std_hi = [data.x_std_hi_0, data.x_std_hi_1, data.x_std_hi_2]
+
+                central_element_mask = [data.central_element_mask_0, data.central_element_mask_1, data.central_element_mask_2]
+                edge_index_lo = [data.edge_index_lo_0, data.edge_index_lo_1, data.edge_index_lo_2]
+                edge_index_hi = [data.edge_index_hi_0, data.edge_index_hi_1, data.edge_index_hi_2]
+                pos_norm_lo = [data.pos_norm_lo_0, data.pos_norm_lo_1, data.pos_norm_lo_2]
+                pos_norm_hi = [data.pos_norm_hi_0, data.pos_norm_hi_1, data.pos_norm_hi_2]
+                x_lo_batch = [data.x_lo_0_batch, data.x_lo_1_batch, data.x_lo_2_batch]
+                x_hi_batch = [data.x_hi_0_batch, data.x_hi_1_batch, data.x_hi_2_batch]
+                node_weight = [data.node_weight_0, data.node_weight_1, data.node_weight_2]
+                if self.cfg.n_element_neighbors > 0:
+                    edge_index_coin = [data.edge_index_coin_0, data.edge_index_coin_1, data.edge_index_coin_2]
+                    degree = [data.degree_0, data.degree_1, data.degree_2]
+                else:
+                    edge_index_coin = [None, None, None]
+                    degree = [None, None, None]
+
+
+                loss_scale = 1./self.lev_max
+
+                # Incremental forward pass
+                # if RANK == 0: log.info(f"lev_max = {self.lev_max}")
+                for lev in range(self.lev_max):
+                    # Preprocessing
+                    eps = 1e-10
+                    x_scaled = (x_lo[lev] - x_mean_lo[lev])/(x_std_lo[lev] + eps)
+
+                    # Call the GNN once
+                    out_gnn = self.model(
+                            x = x_scaled,
+                            mask = central_element_mask[lev],
+                            edge_index_lo = edge_index_lo[lev],
+                            edge_index_hi = edge_index_hi[lev],
+                            pos_lo = pos_norm_lo[lev],
+                            pos_hi = pos_norm_hi[lev],
+                            batch_lo = x_lo_batch[lev],
+                            batch_hi = x_hi_batch[lev],
+                            edge_index_coin = edge_index_coin[lev],
+                            degree = degree[lev])
+
+                    # get target 
+                    if self.cfg.use_residual:
+                        mask = central_element_mask[lev]
+                        x_batch = x_lo_batch[lev]
+                        y_batch = x_hi_batch[lev]
+                        if x_batch is None:
+                            x_batch = edge_index_lo[lev].new_zeros(pos_norm_lo[lev].size(0))
+                        if y_batch is None:
+                            y_batch = edge_index_hi[lev].new_zeros(pos_norm_hi[lev].size(0))
+                        x_interp = tgnn.unpool.knn_interpolate(
+                                x = x_lo[lev][mask,:],
+                                pos_x = pos_norm_lo[lev][mask,:],
+                                pos_y = pos_norm_hi[lev],
+                                batch_x = x_batch[mask],
+                                batch_y = y_batch,
+                                k = 8)
+                        target = (x_hi[lev] - x_interp)/(x_std_hi[lev] + eps)
+                        y_pred = x_interp + out_gnn * (x_std_hi[lev] + eps)
+                    else:
+                        target = (x_hi[lev] - x_mean_hi[lev])/(x_std_hi[lev] + eps)
+                        y_pred = x_mean_hi[lev] + out_gnn * (x_std_hi[lev] + eps)
+
+                    # evaluate loss
+                    loss += loss_scale * torch.mean( node_weight[lev] * (out_gnn - target)**2 )
+                # ~~~~ 
+
                 running_loss += loss.item()
                 count += 1
 

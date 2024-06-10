@@ -202,49 +202,92 @@ def write_full_dataset(cfg: DictConfig):
     # ~~~~ #         test_dataset += test_dataset_temp
 
 
-    # ~~~~ one-shot setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field 
+    # ~~~~ # # ~~~~ one-shot setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field 
+    # ~~~~ # # GNN is end-to-end .. i.e., it does the interpolation.
+    # ~~~~ # #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
+    # ~~~~ # case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
+    # ~~~~ # Re_list = ['1600'] #['1600', '2000', '2400']
+    # ~~~~ # snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
+    # ~~~~ # n_element_neighbors = 26
+    # ~~~~ # for Re_id in range(len(Re_list)):
+    # ~~~~ #     for snap_id in range(len(snap_list)):
+    # ~~~~ #         Re = Re_list[Re_id]
+    # ~~~~ #         snap = snap_list[snap_id]
+    # ~~~~ #         input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_coarse_7to1/{snap}" 
+    # ~~~~ #         target_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_target/{snap}" 
+
+    # ~~~~ #         # element-local edge index 
+    # ~~~~ #         edge_index_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4"
+    # ~~~~ #         edge_index_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
+
+    # ~~~~ #         if RANK == 0:
+    # ~~~~ #                 log.info('in get_pygeom_dataset...')
+
+    # ~~~~ #         train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_lo_hi_pymech(
+    # ~~~~ #                              data_xlo_path = input_path, 
+    # ~~~~ #                              data_xhi_path = target_path,
+    # ~~~~ #                              edge_index_path_lo = edge_index_path_lo,
+    # ~~~~ #                              edge_index_path_hi = edge_index_path_hi,
+    # ~~~~ #                              device_for_loading = device_for_loading,
+    # ~~~~ #                              fraction_valid = fraction_valid,
+    # ~~~~ #                              n_element_neighbors = n_element_neighbors)
+
+    # ~~~~ #         train_dataset += train_dataset_temp
+    # ~~~~ #         test_dataset += test_dataset_temp
+
+
+    # ~~~~ incremental setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field
     # GNN is end-to-end .. i.e., it does the interpolation.
     #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
     case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
     Re_list = ['1600'] #['1600', '2000', '2400']
     snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
-    n_element_neighbors = 26
+    n_element_neighbors = 0
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
             snap = snap_list[snap_id]
-            input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_coarse_7to1/{snap}" 
-            target_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_target/{snap}" 
 
-            # element-local edge index 
-            edge_index_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4"
-            edge_index_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
+            # ~~~~~~~~ Function inputs ~~~~~~~~~
+            data_x_path = [f'{case_path}/Re_{Re}_poly_7/incr/snapshots_coarse_3to1/{snap}', 
+                           f'{case_path}/Re_{Re}_poly_7/incr/snapshots_coarse_5to3/{snap}', 
+                           f'{case_path}/Re_{Re}_poly_7/incr/snapshots_coarse_7to5/{snap}', 
+                           f'{case_path}/Re_{Re}_poly_7/incr/snapshots_target/{snap}']
+            edge_index_path = [f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4",
+                               f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_3/edge_index_element_local_rank_0_size_4",
+                               f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_5/edge_index_element_local_rank_0_size_4",
+                               f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"]
+            device_for_loading = 'cpu'
+            node_weight = 1.
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
             if RANK == 0:
-                    log.info('in get_pygeom_dataset...')
+                    log.info('in get_pygeom_dataset_lo_hi_pymech_incr...')
 
-            train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_lo_hi_pymech(
-                                 data_xlo_path = input_path, 
-                                 data_xhi_path = target_path,
-                                 edge_index_path_lo = edge_index_path_lo,
-                                 edge_index_path_hi = edge_index_path_hi,
-                                 device_for_loading = device_for_loading,
-                                 fraction_valid = fraction_valid,
-                                 n_element_neighbors = n_element_neighbors)
+            train_dataset_temp, test_dataset_temp = ngs.get_pygeom_dataset_lo_hi_pymech_incr(
+                data_x_path = data_x_path,
+                edge_index_path = edge_index_path,
+                #node_weight = node_weight,
+                device_for_loading = device_for_loading,
+                fraction_valid = fraction_valid,
+                n_element_neighbors = n_element_neighbors)
+
 
             train_dataset += train_dataset_temp
             test_dataset += test_dataset_temp
 
+            print(f"sample: {train_dataset_temp[0]}")
+
     # try torch.save 
     t_save = time.time()
-    torch.save(train_dataset, cfg.data_dir + "train_dataset.pt")
-    torch.save(test_dataset, cfg.data_dir + "valid_dataset.pt")
+    torch.save(train_dataset, cfg.data_dir + f"train_dataset.pt")
+    torch.save(test_dataset, cfg.data_dir + f"valid_dataset.pt")
     t_save = time.time() - t_save 
     
     # load the dataset 
     t_load = time.time()
-    train_dataset = torch.load(cfg.data_dir + "train_dataset.pt")
-    test_dataset = torch.load(cfg.data_dir + "valid_dataset.pt")
+    train_dataset = torch.load(cfg.data_dir + f"train_dataset.pt")
+    test_dataset = torch.load(cfg.data_dir + f"valid_dataset.pt")
     t_load = time.time() - t_load
 
     if RANK == 0:
