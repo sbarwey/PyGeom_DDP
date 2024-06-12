@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ Spectrum plots 
-    if 1 == 1:
+    if 1 == 0:
         
         # nekrs interp : 
         t_snap = "16"
@@ -349,282 +349,286 @@ if __name__ == "__main__":
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
     if 1 == 1:
-        local = True
-        mode = "single_scale"
-        n_mp = 12
-        fine_mp = 'False'
-        use_residual = True
+        local = False
+        use_residual = False
         n_element_neighbors = 6
+        # if use_residual:
+        #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+        # else:
+        #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+
         if use_residual:
-            a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+            model_list = [
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_False.tar", # crs-6
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_12_False.tar",# crs-12
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_True.tar"] # fne-6
         else:
-            a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+            model_list = [
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_False.tar",
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_12_False.tar",
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_True.tar"]
 
-        input_dict = a['input_dict'] 
-        input_node_channels = input_dict['input_node_channels']
-        input_edge_channels_coarse = input_dict['input_edge_channels_coarse'] 
-        input_edge_channels_fine = input_dict['input_edge_channels_fine'] 
-        hidden_channels = input_dict['hidden_channels']
-        output_node_channels = input_dict['output_node_channels']
-        n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
-        n_messagePassing_layers = input_dict['n_messagePassing_layers']
-        use_fine_messagePassing = input_dict['use_fine_messagePassing']
-        name = input_dict['name']
-        
-        model = gnn.GNN_Element_Neighbor_Lo_Hi(
-                input_node_channels             = input_dict['input_node_channels'],
-                input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
-                input_edge_channels_fine        = input_dict['input_edge_channels_fine'],
-                hidden_channels                 = input_dict['hidden_channels'],
-                output_node_channels            = input_dict['output_node_channels'],
-                n_mlp_hidden_layers             = input_dict['n_mlp_hidden_layers'],
-                n_messagePassing_layers         = input_dict['n_messagePassing_layers'],
-                use_fine_messagePassing         = input_dict['use_fine_messagePassing'],
-                name                            = input_dict['name'])
+        for model_path in model_list:
+            a = torch.load(f"./saved_models/single_scale/{model_path}")
+            input_dict = a['input_dict'] 
+            input_node_channels = input_dict['input_node_channels']
+            input_edge_channels_coarse = input_dict['input_edge_channels_coarse'] 
+            input_edge_channels_fine = input_dict['input_edge_channels_fine'] 
+            hidden_channels = input_dict['hidden_channels']
+            output_node_channels = input_dict['output_node_channels']
+            n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+            n_messagePassing_layers = input_dict['n_messagePassing_layers']
+            use_fine_messagePassing = input_dict['use_fine_messagePassing']
+            name = input_dict['name']
+            
+            model = gnn.GNN_Element_Neighbor_Lo_Hi(
+                    input_node_channels             = input_dict['input_node_channels'],
+                    input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
+                    input_edge_channels_fine        = input_dict['input_edge_channels_fine'],
+                    hidden_channels                 = input_dict['hidden_channels'],
+                    output_node_channels            = input_dict['output_node_channels'],
+                    n_mlp_hidden_layers             = input_dict['n_mlp_hidden_layers'],
+                    n_messagePassing_layers         = input_dict['n_messagePassing_layers'],
+                    use_fine_messagePassing         = input_dict['use_fine_messagePassing'],
+                    name                            = input_dict['name'])
 
-        model.load_state_dict(a['state_dict'])
-        if torch.cuda.is_available():
-            device = 'cuda:0'
-        else:
-            device = 'cpu'
-        model.to(device)
-        model.eval()
+            model.load_state_dict(a['state_dict'])
+            if torch.cuda.is_available():
+                device = 'cuda:0'
+            else:
+                device = 'cpu'
 
-        # Load eval and target snapshot 
-        TORCH_FLOAT = torch.float32
-        if local: 
-            #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
-            nrs_snap_dir = './temp'
-        else:
-            nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/one_shot'
-        
-        # Load in edge index 
-        poly_lo = 1
-        poly_hi = 7
-        Re = '1600'
-        if local:
-            case_path = "./temp"
-        else: 
-            case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re}_poly_7"
-        edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
-        edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
+            model.to(device)
+            model.eval()
 
-        if mode == "single_scale":
+            # Load eval and target snapshot 
+            TORCH_FLOAT = torch.float32
+            if local: 
+                #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+                nrs_snap_dir = './temp'
+            else:
+                nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/one_shot'
+            
+            # Load in edge index 
+            poly_lo = 1
+            poly_hi = 7
+            Re = '1600'
+            if local:
+                case_path = "./temp"
+            else: 
+                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re}_poly_7"
+            edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
+            edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
-        elif mode == "multi_scale":
-            edge_index_vertex_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly_lo}/edge_index_element_local_vertex_rank_0_size_4"
-            edge_index_vertex_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_{poly_hi}/edge_index_element_local_vertex_rank_0_size_4"
-            edge_index_lo = get_edge_index(edge_index_path_lo,
-                                        edge_index_vertex_path_lo)
-            edge_index_hi = get_edge_index(edge_index_path_hi,
-                                        edge_index_vertex_path_hi)
+            
+            t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
+            #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
-        t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
-        t_str_list = ['00017']
-        #t_str_list = ['000%02d' %(i) for i in range(12,41)]
-
-        # Get full edge index 
-        edge_index = edge_index_lo
-        n_nodes_per_element = edge_index.max() + 1
-        if n_element_neighbors > 0:
-            node_max_per_element = edge_index.max()
-            n_edges_per_element = edge_index.shape[1]
-            edge_index_full = torch.zeros((2, n_edges_per_element*(n_element_neighbors+1)), dtype=edge_index.dtype)
-            edge_index_full[:, :n_edges_per_element] = edge_index
-            for i in range(1,n_element_neighbors+1):
-                start = n_edges_per_element*i
-                end = n_edges_per_element*(i+1)
-                edge_index_full[:, start:end] = edge_index + (node_max_per_element+1)*i
-            edge_index = edge_index_full
-
-        for t_str in t_str_list:
-            # One-shot
-            #xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
-            #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newtgv0.f{t_str}')
-            xlo_field = readnek(nrs_snap_dir + "/p1_newtgv0.f00001")
-            xhi_field = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
-            xhi_field_pred = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
-            xhi_field_error = readnek(nrs_snap_dir + "/p7_newtgv0.f00001")
-            n_snaps = len(xlo_field.elem)
-
-            # Get the element neighborhoods
+            # Get full edge index 
+            edge_index = edge_index_lo
+            n_nodes_per_element = edge_index.max() + 1
             if n_element_neighbors > 0:
-                Nelements = len(xlo_field.elem)
-                pos_c = torch.zeros((Nelements, 3)) 
-                for i in range(Nelements):
-                    pos_c[i] = torch.tensor(xlo_field.elem[i].centroid)
-                edge_index_c = tgnn.knn_graph(x = pos_c, k = n_element_neighbors)
+                node_max_per_element = edge_index.max()
+                n_edges_per_element = edge_index.shape[1]
+                edge_index_full = torch.zeros((2, n_edges_per_element*(n_element_neighbors+1)), dtype=edge_index.dtype)
+                edge_index_full[:, :n_edges_per_element] = edge_index
+                for i in range(1,n_element_neighbors+1):
+                    start = n_edges_per_element*i
+                    end = n_edges_per_element*(i+1)
+                    edge_index_full[:, start:end] = edge_index + (node_max_per_element+1)*i
+                edge_index = edge_index_full
 
-            # Get the element masks
-            # Get the element masks
-            central_element_mask = torch.concat(
-                    (torch.ones((n_nodes_per_element), dtype=torch.int64),
-                     torch.zeros((n_nodes_per_element * n_element_neighbors), dtype=torch.int64))
-                    )
-            central_element_mask = central_element_mask.to(torch.bool)
+            for t_str in t_str_list:
+                directory_path = nrs_snap_dir + f"/predictions/{model.get_save_header()}"
+                if os.path.exists(directory_path + f"/newtgv_pred0.f{t_str}"):
+                    print(directory_path + f"/newtgv_pred0.f{t_str} \n already exists!!! Skipping...") 
+                    continue
 
-            with torch.no_grad():
-                for i in range(n_snaps):
-                    print(f"Evaluating snap {i}/{n_snaps}")
-                    
-                    pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
-                    vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
-                    pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
-                    vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
+                # One-shot
+                xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
+                xhi_field = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
+                #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newtgv0.f{t_str}')
+                xhi_field_pred = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
+                xhi_field_error = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
 
-                    x_gll = xhi_field.elem[i].pos[0,0,0,:]
-                    dx_min = x_gll[1] - x_gll[0]
+                n_snaps = len(xlo_field.elem)
 
-                    error_max = (pos_xlo_i.max(dim=0)[0] - pos_xhi_i.max(dim=0)[0]).max()
-                    error_min = (pos_xlo_i.min(dim=0)[0] - pos_xhi_i.min(dim=0)[0]).max()
-                    rel_error_max = torch.abs(error_max / dx_min)*100
-                    rel_error_min = torch.abs(error_min / dx_min)*100
+                # Get the element neighborhoods
+                if n_element_neighbors > 0:
+                    Nelements = len(xlo_field.elem)
+                    pos_c = torch.zeros((Nelements, 3)) 
+                    for i in range(Nelements):
+                        pos_c[i] = torch.tensor(xlo_field.elem[i].centroid)
+                    edge_index_c = tgnn.knn_graph(x = pos_c, k = n_element_neighbors)
 
-                    # Check positions 
-                    if (rel_error_max > 1e-2) or (rel_error_min > 1e-2):
-                        print(f"Relative error in positions exceeds 0.01% in element i={i}.")
-                        sys.exit()
-                    if (pos_xlo_i.max() == 0. and pos_xlo_i.min() == 0.):
-                        print(f"Node positions are not stored in {data_xlo_path}.")
-                        sys.exit()
-                    if (pos_xhi_i.max() == 0. and pos_xhi_i.min() == 0.):
-                        print(f"Node positions are not stored in {data_xhi_path}.")
-                        sys.exit()
+                # Get the element masks
+                # Get the element masks
+                central_element_mask = torch.concat(
+                        (torch.ones((n_nodes_per_element), dtype=torch.int64),
+                         torch.zeros((n_nodes_per_element * n_element_neighbors), dtype=torch.int64))
+                        )
+                central_element_mask = central_element_mask.to(torch.bool)
 
-                    # get x_mean and x_std 
-                    x_mean_element_lo = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
-                    x_std_element_lo = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
-                    x_mean_element_hi = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
-                    x_std_element_hi = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+                with torch.no_grad():
+                    for i in range(n_snaps):
+                        print(f"Evaluating snap {i}/{n_snaps}")
+                        
+                        pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
+                        vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
+                        pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3]
+                        vel_xhi_i = torch.tensor(xhi_field.elem[i].vel).reshape((3, -1)).T
 
-                    # element lengthscale 
-                    lengthscale_element = torch.norm(pos_xlo_i.max(dim=0)[0] - pos_xlo_i.min(dim=0)[0], p=2)
+                        x_gll = xhi_field.elem[i].pos[0,0,0,:]
+                        dx_min = x_gll[1] - x_gll[0]
 
-                    # node weight
-                    # nw = torch.ones((vel_xhi_i.shape[0], 1)) * node_weight
+                        error_max = (pos_xlo_i.max(dim=0)[0] - pos_xhi_i.max(dim=0)[0]).max()
+                        error_min = (pos_xlo_i.min(dim=0)[0] - pos_xhi_i.min(dim=0)[0]).max()
+                        rel_error_max = torch.abs(error_max / dx_min)*100
+                        rel_error_min = torch.abs(error_min / dx_min)*100
 
-                    # Get the element neighbors for the input
-                    if n_element_neighbors > 0:
-                        send = edge_index_c[0,:]
-                        recv = edge_index_c[1,:]
-                        nbrs = send[recv == i]
+                        # Check positions 
+                        if (rel_error_max > 1e-2) or (rel_error_min > 1e-2):
+                            print(f"Relative error in positions exceeds 0.01% in element i={i}.")
+                            sys.exit()
+                        if (pos_xlo_i.max() == 0. and pos_xlo_i.min() == 0.):
+                            print(f"Node positions are not stored in {data_xlo_path}.")
+                            sys.exit()
+                        if (pos_xhi_i.max() == 0. and pos_xhi_i.min() == 0.):
+                            print(f"Node positions are not stored in {data_xhi_path}.")
+                            sys.exit()
+                        
+                        # get x_mean and x_std 
+                        x_mean_element_lo = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+                        x_std_element_lo = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(central_element_mask.shape[0], 1)
+                        x_mean_element_hi = torch.mean(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
+                        x_std_element_hi = torch.std(vel_xlo_i, dim=0).unsqueeze(0).repeat(vel_xhi_i.shape[0], 1)
 
-                        pos_x_full = [pos_xlo_i]
-                        vel_x_full = [vel_xlo_i]
-                        for j in nbrs:
-                            pos_x_full.append( torch.tensor(xlo_field.elem[j].pos).reshape((3, -1)).T )
-                            vel_x_full.append( torch.tensor(xlo_field.elem[j].vel).reshape((3, -1)).T )
-                        pos_x_full = torch.concat(pos_x_full)
-                        vel_x_full = torch.concat(vel_x_full)
+                        # element lengthscale 
+                        lengthscale_element = torch.norm(pos_xlo_i.max(dim=0)[0] - pos_xlo_i.min(dim=0)[0], p=2)
 
-                        # reset pos
-                        pos_xlo_i = pos_x_full
-                        vel_xlo_i = vel_x_full
+                        # node weight
+                        # nw = torch.ones((vel_xhi_i.shape[0], 1)) * node_weight
 
-                    # create data 
-                    data = ngs.DataLoHi( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
-                          y = vel_xhi_i.to(dtype=TORCH_FLOAT),
-                          x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
-                          x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
-                          x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
-                          x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
-                          # node_weight = nw.to(dtype=TORCH_FLOAT),
-                          L = lengthscale_element.to(dtype=TORCH_FLOAT),
-                          pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
-                          pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
-                          edge_index_lo = edge_index,
-                          edge_index_hi = edge_index_hi,
-                          central_element_mask = central_element_mask,
-                          eid = torch.tensor(i))
+                        # Get the element neighbors for the input
+                        if n_element_neighbors > 0:
+                            send = edge_index_c[0,:]
+                            recv = edge_index_c[1,:]
+                            nbrs = send[recv == i]
 
-                    # for synchronizing across element boundaries
-                    if n_element_neighbors > 0:
-                        batch = None
-                        edge_index_coin = ngs.get_edge_index_coincident(
-                                batch, data.pos_norm_lo, data.edge_index_lo)
-                        degree = utils.degree(edge_index_coin[1,:], num_nodes = data.pos_norm_lo.shape[0])
-                        degree += 1.
-                        data.edge_index_coin = edge_index_coin
-                        data.degree = degree
-                    else:
-                        data.edge_index_coin = None
-                        data.degree = None
+                            pos_x_full = [pos_xlo_i]
+                            vel_x_full = [vel_xlo_i]
+                            for j in nbrs:
+                                pos_x_full.append( torch.tensor(xlo_field.elem[j].pos).reshape((3, -1)).T )
+                                vel_x_full.append( torch.tensor(xlo_field.elem[j].vel).reshape((3, -1)).T )
+                            pos_x_full = torch.concat(pos_x_full)
+                            vel_x_full = torch.concat(vel_x_full)
 
-                    data = data.to(device)
+                            # reset pos
+                            pos_xlo_i = pos_x_full
+                            vel_xlo_i = vel_x_full
 
-                    # ~~~~ Model evaluation ~~~~ # 
-                    with torch.no_grad():
-                        # 1) Preprocessing: scale input  
-                        eps = 1e-10
-                        x_scaled = (data.x - data.x_mean_lo)/(data.x_std_lo + eps)
+                        # create data 
+                        data = ngs.DataLoHi( x = vel_xlo_i.to(dtype=TORCH_FLOAT),
+                              y = vel_xhi_i.to(dtype=TORCH_FLOAT),
+                              x_mean_lo = x_mean_element_lo.to(dtype=TORCH_FLOAT),
+                              x_std_lo = x_std_element_lo.to(dtype=TORCH_FLOAT),
+                              x_mean_hi = x_mean_element_hi.to(dtype=TORCH_FLOAT),
+                              x_std_hi = x_std_element_hi.to(dtype=TORCH_FLOAT),
+                              # node_weight = nw.to(dtype=TORCH_FLOAT),
+                              L = lengthscale_element.to(dtype=TORCH_FLOAT),
+                              pos_norm_lo = (pos_xlo_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                              pos_norm_hi = (pos_xhi_i/lengthscale_element).to(dtype=TORCH_FLOAT),
+                              edge_index_lo = edge_index,
+                              edge_index_hi = edge_index_hi,
+                              central_element_mask = central_element_mask,
+                              eid = torch.tensor(i))
 
-                        # 2) Evaluate model 
-                        out_gnn = model(
-                        x = x_scaled,
-                        mask = data.central_element_mask,
-                        edge_index_lo = data.edge_index_lo,
-                        edge_index_hi = data.edge_index_hi,
-                        pos_lo = data.pos_norm_lo,
-                        pos_hi = data.pos_norm_hi,
-                        #batch_lo = data.x_batch,
-                        #batch_hi = data.y_batch,
-                        edge_index_coin = edge_index_coin,
-                        degree = degree)
-
-                        # 3) set the target
-                        if use_residual:
-                            mask = data.central_element_mask
-                            data.x_batch = data.edge_index_lo.new_zeros(data.pos_norm_lo.size(0))
-                            data.y_batch = data.edge_index_hi.new_zeros(data.pos_norm_hi.size(0))
-                            x_interp = tgnn.unpool.knn_interpolate(
-                                    x = data.x[mask,:],
-                                    pos_x = data.pos_norm_lo[mask,:],
-                                    pos_y = data.pos_norm_hi,
-                                    batch_x = data.x_batch[mask],
-                                    batch_y = data.y_batch,
-                                    k = 8)
-                            # target = (data.y - x_interp)/(data.x_std_hi + eps)
-                            # gnn = (data.y - x_interp)/(data.x_std_hi + eps)
-                            # gnn * (data.x_std_hi + eps) = (data.y - x_interp)
-                            # data.y = x_interp + gnn * (data.x_std_hi + eps)
-                            y_pred = x_interp + out_gnn * (data.x_std_hi + eps)
+                        # for synchronizing across element boundaries
+                        if n_element_neighbors > 0:
+                            batch = None
+                            edge_index_coin = ngs.get_edge_index_coincident(
+                                    batch, data.pos_norm_lo, data.edge_index_lo)
+                            degree = utils.degree(edge_index_coin[1,:], num_nodes = data.pos_norm_lo.shape[0])
+                            degree += 1.
+                            data.edge_index_coin = edge_index_coin
+                            data.degree = degree
                         else:
-                            # target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
-                            # gnn = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
-                            # gnn * (data.x_std_hi + eps) = data.y - data.x_mean_hi
-                            # data.y = data.x_mean_hi + gnn * (data.x_std_hi + eps)
-                            y_pred = data.x_mean_hi + out_gnn * (data.x_std_hi + eps)
-                    
-                    # ~~~~ Making the .f file ~~~~ # 
-                    # Re-shape the prediction, convert back to fp64 numpy 
-                    y_pred = y_pred.cpu()
-                    orig_shape = xhi_field.elem[i].vel.shape
-                    y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
-                    target = data.y
-                    target_rs = torch.reshape(target.T, orig_shape).to(dtype=torch.float64).numpy()
+                            data.edge_index_coin = None
+                            data.degree = None
 
-                    # Place prediction back in the snapshot data 
-                    xhi_field_pred.elem[i].vel[:,:,:,:] = y_pred_rs
+                        data = data.to(device)
 
-                    # Place error back in snapshot data 
-                    xhi_field_error.elem[i].vel[:,:,:,:] = target_rs - y_pred_rs 
+                        # ~~~~ Model evaluation ~~~~ # 
+                        with torch.no_grad():
+                            # 1) Preprocessing: scale input  
+                            eps = 1e-10
+                            x_scaled = (data.x - data.x_mean_lo)/(data.x_std_lo + eps)
 
-                    # Sanity check to make sure reshape is correct.
-                    # target_orig = xhi_field.elem[i].vel
-                    # err_sanity = target_orig - target_rs 
-                    asdf
+                            # 2) Evaluate model 
+                            out_gnn = model(
+                            x = x_scaled,
+                            mask = data.central_element_mask,
+                            edge_index_lo = data.edge_index_lo,
+                            edge_index_hi = data.edge_index_hi,
+                            pos_lo = data.pos_norm_lo,
+                            pos_hi = data.pos_norm_hi,
+                            #batch_lo = data.x_batch,
+                            #batch_hi = data.y_batch,
+                            edge_index_coin = data.edge_index_coin if n_element_neighbors>0 else None,
+                            degree = data.degree if n_element_neighbors>0 else None)
 
+                            # 3) set the target
+                            if use_residual:
+                                mask = data.central_element_mask
+                                data.x_batch = data.edge_index_lo.new_zeros(data.pos_norm_lo.size(0))
+                                data.y_batch = data.edge_index_hi.new_zeros(data.pos_norm_hi.size(0))
+                                x_interp = tgnn.unpool.knn_interpolate(
+                                        x = data.x[mask,:],
+                                        pos_x = data.pos_norm_lo[mask,:],
+                                        pos_y = data.pos_norm_hi,
+                                        batch_x = data.x_batch[mask],
+                                        batch_y = data.y_batch,
+                                        k = 8)
+                                # target = (data.y - x_interp)/(data.x_std_hi + eps)
+                                # gnn = (data.y - x_interp)/(data.x_std_hi + eps)
+                                # gnn * (data.x_std_hi + eps) = (data.y - x_interp)
+                                # data.y = x_interp + gnn * (data.x_std_hi + eps)
+                                y_pred = x_interp + out_gnn * (data.x_std_hi + eps)
+                            else:
+                                # target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+                                # gnn = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
+                                # gnn * (data.x_std_hi + eps) = data.y - data.x_mean_hi
+                                # data.y = data.x_mean_hi + gnn * (data.x_std_hi + eps)
+                                y_pred = data.x_mean_hi + out_gnn * (data.x_std_hi + eps)
 
-                # Write 
-                print('Writing...')
-                directory_path = nrs_snap_dir + f"/predictions/one_shot/{model.get_save_header()}"
-                if not os.path.exists(directory_path):
-                    os.makedirs(directory_path)
-                    print(f"Directory '{directory_path}' created.")
-                writenek(directory_path +  f"/newtgv_pred0.f{t_str}", xhi_field_pred)
-                writenek(directory_path +  f"/newtgv_error0.f{t_str}", xhi_field_error)
-                print(f'finished writing {t_str}') 
+                        
+                        # ~~~~ Making the .f file ~~~~ # 
+                        # Re-shape the prediction, convert back to fp64 numpy 
+                        y_pred = y_pred.cpu()
+                        orig_shape = xhi_field.elem[i].vel.shape
+                        y_pred_rs = torch.reshape(y_pred.T, orig_shape).to(dtype=torch.float64).numpy()
+                        target = data.y.cpu()
+                        target_rs = torch.reshape(target.T, orig_shape).to(dtype=torch.float64).numpy()
+
+                        # Place prediction back in the snapshot data 
+                        xhi_field_pred.elem[i].vel[:,:,:,:] = y_pred_rs
+
+                        # Place error back in snapshot data 
+                        xhi_field_error.elem[i].vel[:,:,:,:] = target_rs - y_pred_rs 
+
+                        # Sanity check to make sure reshape is correct.
+                        # target_orig = xhi_field.elem[i].vel
+                        # err_sanity = target_orig - target_rs 
+                        
+                    # Write 
+                    print('Writing...')
+                    if not os.path.exists(directory_path):
+                        os.makedirs(directory_path)
+                        print(f"Directory '{directory_path}' created.")
+                    writenek(directory_path +  f"/newtgv_pred0.f{t_str}", xhi_field_pred)
+                    writenek(directory_path +  f"/newtgv_error0.f{t_str}", xhi_field_error)
+                    print(f'finished writing {t_str}') 
 
     # ~~~~ Save predicted flowfield into .f file 
     # Just the KNN interpolation!!! 
