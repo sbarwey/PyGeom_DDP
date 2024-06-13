@@ -37,34 +37,65 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ Spectrum plots 
-    if 1 == 0:
+    if 1 == 1:
         
-        # nekrs interp : 
-        t_snap = "16"
-        data_nrs_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
-        data_knn_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_knninterp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
-        data_tgt_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
-        data_crs_7to1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # # ~~~~ EFFECT OF INTERPOLATION 
+        # ~~~~ # # nekrs interp : 
+        # ~~~~ # t_snap = "18"
+        # ~~~~ # data_nrs_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # data_knn_1to7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_knninterp_1to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # data_tgt_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # data_crs_7to1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
 
-        # incr 
-        data_nrs_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_interp_full_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
-        data_knn_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_knninterp_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
-        data_crs_3to1 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_coarse_3to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # # incr 
+        # ~~~~ # data_nrs_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_interp_full_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # data_knn_5to7 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_knninterp_5to7/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
+        # ~~~~ # data_crs_3to1 = np.load(f"./outputs/Re_1600_poly_7_testset/incr/snapshots_coarse_3to1/regtgv_reg0.f000{t_snap}-SPECTRUM.npz")
 
-        # knn interp :
+        # ~~~~ # # knn interp :
+        # ~~~~ # lw = 2
+        # ~~~~ # fig, ax = plt.subplots()
+        # ~~~~ # ax.plot(data_tgt_7['kspec'], data_tgt_7['spectrum'], color='black', lw=lw, label='Target')
+        # ~~~~ # ax.plot(data_crs_7to1['kspec'], data_crs_7to1['spectrum'], color='black', lw=lw, ls='--', label='P=1')
+        # ~~~~ # #ax.plot(data_crs_3to1['kspec'], data_crs_3to1['spectrum'], color='gray', lw=lw, ls='-.', label='P=1 (from 3)')
+        # ~~~~ # ax.plot(data_nrs_1to7['kspec'], data_nrs_1to7['spectrum'], color='blue', lw=lw, ls='--', label='NekRS')
+        # ~~~~ # #ax.plot(data_nrs_5to7['kspec'], data_nrs_5to7['spectrum'], color='cyan', lw=lw, ls='--', label='NekRS-incr')
+        # ~~~~ # #ax.plot(data_knn_1to7['kspec'], data_knn_1to7['spectrum'], color='red', lw=lw, ls='--', label='kNN')
+        # ~~~~ # #ax.plot(data_knn_5to7['kspec'], data_knn_5to7['spectrum'], color='magenta', lw=lw, ls='--', label='kNN-incr')
+
+        # ~~~~ # # plot vlines: p = 1 
+        # ~~~~ # ax.vlines(data_crs_7to1['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
+        # ~~~~ # ax.vlines(data_tgt_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
+
+        # ~~~~ # plt.show(block=False)
+        # ~~~~ # ax.set_xscale('log')
+        # ~~~~ # ax.set_yscale('log')
+        # ~~~~ # ax.set_xlim([1,300])
+        # ~~~~ # ax.set_ylim([1e-9, 1e-1])
+        # ~~~~ # ax.set_ylabel('E(k)')
+        # ~~~~ # ax.set_xlabel('k')
+        # ~~~~ # ax.grid(which='minor', alpha=0.1)
+        # ~~~~ # ax.grid(which='major', alpha=0.4)
+        # ~~~~ # ax.legend(fancybox=False, framealpha=1, edgecolor='black')
+        # ~~~~ # plt.show(block=False)
+            
+        # EFFECT OF COARSENING -- FOR PAPER 
+        data_1600_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz")
+        data_1600_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz") 
+        data_3200_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz")
+        data_3200_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz") 
+
+        plt.rcParams.update({'font.size': 16})
         lw = 2
-        fig, ax = plt.subplots()
-        ax.plot(data_tgt_7['kspec'], data_tgt_7['spectrum'], color='black', lw=lw, label='Target')
-        ax.plot(data_crs_7to1['kspec'], data_crs_7to1['spectrum'], color='black', lw=lw, ls='--', label='P=1')
-        #ax.plot(data_crs_3to1['kspec'], data_crs_3to1['spectrum'], color='gray', lw=lw, ls='-.', label='P=1 (from 3)')
-        ax.plot(data_nrs_1to7['kspec'], data_nrs_1to7['spectrum'], color='blue', lw=lw, ls='--', label='NekRS')
-        #ax.plot(data_nrs_5to7['kspec'], data_nrs_5to7['spectrum'], color='cyan', lw=lw, ls='--', label='NekRS-incr')
-        #ax.plot(data_knn_1to7['kspec'], data_knn_1to7['spectrum'], color='red', lw=lw, ls='--', label='kNN')
-        #ax.plot(data_knn_5to7['kspec'], data_knn_5to7['spectrum'], color='magenta', lw=lw, ls='--', label='kNN-incr')
+        fig, ax = plt.subplots(figsize=(6,6))
+        ax.plot(data_1600_7['kspec'], data_1600_7['spectrum'], color='black', lw=lw, label='P=7 (DNS)')
+        ax.plot(data_1600_1['kspec'], data_1600_1['spectrum'], color='blue', lw=lw, label='P=1 (Coarse)')
 
-        # plot vlines: p = 1 
-        ax.vlines(data_crs_7to1['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
-        ax.vlines(data_tgt_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='gray', zorder=-1)
+        ax.plot(data_3200_7['kspec'], data_3200_7['spectrum'], color='black', lw=lw, ls='--')
+        ax.plot(data_3200_1['kspec'], data_3200_1['spectrum'], color='blue', lw=lw, ls='--')
+
+        ax.vlines(data_1600_1['nyq_size'],  1e-9, 1e-1, lw=lw, color='blue', alpha=0.3, zorder=-1)
+        ax.vlines(data_1600_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='black', alpha=0.3, zorder=-1)
 
         plt.show(block=False)
         ax.set_xscale('log')
@@ -75,9 +106,10 @@ if __name__ == "__main__":
         ax.set_xlabel('k')
         ax.grid(which='minor', alpha=0.1)
         ax.grid(which='major', alpha=0.4)
-        ax.legend(fancybox=False, framealpha=1, edgecolor='black')
+        #ax.legend(fancybox=False, framealpha=1, edgecolor='black')
         plt.show(block=False)
-            
+
+
         pass
 
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
@@ -348,7 +380,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 1:
+    if 1 == 0:
         local = False
         use_residual = False
         n_element_neighbors = 6
@@ -947,6 +979,7 @@ if __name__ == "__main__":
         _, values_1600 = read_nrs_log('./outputs/run_logs/36_cubed/Re_1600_poly_7.log')
         _, values_2000 = read_nrs_log('./outputs/run_logs/36_cubed/Re_2000_poly_7.log')
         _, values_2400 = read_nrs_log('./outputs/run_logs/36_cubed/Re_2400_poly_7.log')
+        _, values_3200 = read_nrs_log('./outputs/run_logs/36_cubed/Re_3200_poly_7.log')
 
         _, values_1600_2 = read_nrs_log('./outputs/run_logs/72_cubed/Re_1600_poly_7.log')
         
@@ -983,6 +1016,20 @@ if __name__ == "__main__":
         #ax.set_ylabel('-dEk/dt')
         ax.set_ylabel('-dEk/dt')
         plt.show(block=False)
+
+        lw=1.5
+        plt.rcParams.update({'font.size': 16})
+        fig, ax = plt.subplots(figsize=(5,4))
+        ax.plot(values_1600[:,0], -values_1600[:,4], label='Re=1600', color='black', lw=lw)
+        ax.plot(values_3200[:,0], -values_2400[:,4], label='Re=3200', color='blue', ls='--', lw=lw)
+        ax.set_title('Dissipation Rate')
+        ax.set_xlim([0,20])
+        ax.legend()
+        ax.set_xlabel('Time')
+        #ax.set_ylabel('-dEk/dt')
+        ax.set_ylabel('-dEk/dt')
+        plt.show(block=False)
+
 
     # ~~~~ Plotting  
     if 1 == 0:
