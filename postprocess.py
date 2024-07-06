@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ Spectrum plots 
-    if 1 == 0:
+    if 1 == 1:
         
         # ~~~~ # # ~~~~ EFFECT OF INTERPOLATION 
         # ~~~~ # # nekrs interp : 
@@ -79,41 +79,303 @@ if __name__ == "__main__":
         # ~~~~ # ax.legend(fancybox=False, framealpha=1, edgecolor='black')
         # ~~~~ # plt.show(block=False)
             
-        # EFFECT OF COARSENING -- FOR PAPER 
-        data_1600_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz")
-        data_1600_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz") 
-        data_3200_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz")
-        data_3200_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz") 
+        # ~~~~ # # EFFECT OF COARSENING -- FOR PAPER 
+        # ~~~~ # data_1600_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz")
+        # ~~~~ # data_1600_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_1600/regtgv_reg0.f00002-SPECTRUM.npz") 
+        # ~~~~ # data_3200_7 = np.load("./outputs/snapshots_for_plotting/snapshots_target/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz")
+        # ~~~~ # data_3200_1 = np.load("./outputs/snapshots_for_plotting/snapshots_coarse_7to1/Re_3200/regtgv_reg0.f00002-SPECTRUM.npz") 
+
+        # ~~~~ # plt.rcParams.update({'font.size': 16})
+        # ~~~~ # lw = 2
+        # ~~~~ # fig, ax = plt.subplots(figsize=(6,6))
+        # ~~~~ # ax.plot(data_1600_7['kspec'], data_1600_7['spectrum'], color='black', lw=lw, label='P=7 (DNS)')
+        # ~~~~ # ax.plot(data_1600_1['kspec'], data_1600_1['spectrum'], color='blue', lw=lw, label='P=1 (Coarse)')
+
+        # ~~~~ # ax.plot(data_3200_7['kspec'], data_3200_7['spectrum'], color='black', lw=lw, ls='--')
+        # ~~~~ # ax.plot(data_3200_1['kspec'], data_3200_1['spectrum'], color='blue', lw=lw, ls='--')
+
+        # ~~~~ # ax.vlines(data_1600_1['nyq_size'],  1e-9, 1e-1, lw=lw, color='blue', alpha=0.3, zorder=-1)
+        # ~~~~ # ax.vlines(data_1600_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='black', alpha=0.3, zorder=-1)
+
+        # ~~~~ # plt.show(block=False)
+        # ~~~~ # ax.set_xscale('log')
+        # ~~~~ # ax.set_yscale('log')
+        # ~~~~ # ax.set_xlim([1,300])
+        # ~~~~ # ax.set_ylim([1e-9, 1e-1])
+        # ~~~~ # ax.set_ylabel('E(k)')
+        # ~~~~ # ax.set_xlabel('k')
+        # ~~~~ # ax.grid(which='minor', alpha=0.1)
+        # ~~~~ # ax.grid(which='major', alpha=0.4)
+        # ~~~~ # #ax.legend(fancybox=False, framealpha=1, edgecolor='black')
+        # ~~~~ # plt.show(block=False)
+
+
+        # PREDICTIONS -- FOR PAPER 
+        snap = "regtgv_reg0.f00021-SPECTRUM.npz"
+        data_1600_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
+        data_1600_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        data_1600_7_nekrs = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+
+        nei = 6
+        resid = True
+        
+        # Load Model 1 (coarse-scale)
+        n_mp = 12
+        fine_mp = 'False'
+        if not resid:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        else:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        print('coarse modelname: ', modelname)
+        data_1600_7_gnn_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+
+        # Load Model 2 (multiscale)
+        n_mp = 6
+        fine_mp = 'True'
+        if not resid:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        else:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        print('multiscale modelname: ', modelname)
+        data_1600_7_gnn_2 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
 
         plt.rcParams.update({'font.size': 16})
         lw = 2
-        fig, ax = plt.subplots(figsize=(6,6))
-        ax.plot(data_1600_7['kspec'], data_1600_7['spectrum'], color='black', lw=lw, label='P=7 (DNS)')
-        ax.plot(data_1600_1['kspec'], data_1600_1['spectrum'], color='blue', lw=lw, label='P=1 (Coarse)')
+        fig, ax = plt.subplots(2,1,figsize=(6,8),sharex=True)
 
-        ax.plot(data_3200_7['kspec'], data_3200_7['spectrum'], color='black', lw=lw, ls='--')
-        ax.plot(data_3200_1['kspec'], data_3200_1['spectrum'], color='blue', lw=lw, ls='--')
+        # Spectrum plot 
+        ax[0].plot(data_1600_7['kspec'], data_1600_7['spectrum'], color='black', lw=lw, label='DNS (P=7)')
+        ax[0].plot(data_1600_1['kspec'], data_1600_1['spectrum'], color='blue', lw=lw, label='Coarse (P=1)')
+        ax[0].plot(data_1600_7_nekrs['kspec'], data_1600_7_nekrs['spectrum'], color='gray', lw=lw, label='SE Interp. (P=7)')
+        ax[0].plot(data_1600_7_gnn_1['kspec'], data_1600_7_gnn_1['spectrum'], color='red', lw=lw, ls='--', label='Model 1: Coarse-Scale (P=7)')
+        ax[0].plot(data_1600_7_gnn_2['kspec'], data_1600_7_gnn_2['spectrum'], color='lime', lw=lw, ls='--', label='Model 2: Multi-Scale (P=7)')
+        ax[0].vlines(data_1600_1['nyq_size'],  1e-9, 1e-1, lw=lw, color='blue', alpha=0.3, zorder=-1)
+        ax[0].vlines(data_1600_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='black', alpha=0.3, zorder=-1)
 
-        ax.vlines(data_1600_1['nyq_size'],  1e-9, 1e-1, lw=lw, color='blue', alpha=0.3, zorder=-1)
-        ax.vlines(data_1600_7['nyq_size'],  1e-9, 1e-1, lw=lw, color='black', alpha=0.3, zorder=-1)
+        ax[0].set_xscale('log')
+        ax[0].set_yscale('log')
+        ax[0].set_xlim([1,300])
+        #ax[0].set_xlim([2,data_1600_7['nyq_size'].item()])
+        ax[0].set_ylim([1e-9, 1e-1])
+        ax[0].set_ylabel('E(k)')
+        ax[0].set_xlabel('k')
+        #ax[0].set_title(snap)
+        ax[0].grid(which='minor', alpha=0.1)
+        ax[0].grid(which='major', alpha=0.4)
+        #ax[0].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
+
+        # Spectrum error plot 
+        err_nekrs = np.abs(data_1600_7_nekrs['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
+        err_gnn_1 = np.abs(data_1600_7_gnn_1['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
+        err_gnn_2 = np.abs(data_1600_7_gnn_2['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
+        ax[1].plot(data_1600_7_nekrs['kspec'][1:], err_nekrs[1:], color='gray', lw=lw, label='Spectral (P=7)')
+        ax[1].plot(data_1600_7_gnn_1['kspec'][1:], err_gnn_1[1:], color='red', lw=lw, ls='--', label='Model 1 (P=7)')
+        ax[1].plot(data_1600_7_gnn_2['kspec'][1:], err_gnn_2[1:], color='lime', lw=lw, ls='--', label='Model 2 (P=7)')
+        ax[1].vlines(data_1600_1['nyq_size'],  0, 1e2, lw=lw, color='blue', alpha=0.3, zorder=-1)
+        ax[1].vlines(data_1600_7['nyq_size'],  0, 1e2, lw=lw, color='black', alpha=0.3, zorder=-1)
+
+        #ax[1].set_xscale('log')
+        #ax[1].set_yscale('log')
+        ax[1].set_ylim([0, 1])
+        ax[1].set_ylabel('Relative Error')
+        ax[1].set_xlabel('k')
+        ax[1].grid(which='minor', alpha=0.1)
+        ax[1].grid(which='major', alpha=0.4)
+        #ax[1].legend(fancybox=False, framealpha=1, edgecolor='black')
 
         plt.show(block=False)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_xlim([1,300])
-        ax.set_ylim([1e-9, 1e-1])
-        ax.set_ylabel('E(k)')
-        ax.set_xlabel('k')
-        ax.grid(which='minor', alpha=0.1)
-        ax.grid(which='major', alpha=0.4)
-        #ax.legend(fancybox=False, framealpha=1, edgecolor='black')
+
+    # ~~~~ Error versus number of neighbors plot 
+    if 1 == 0:
+        # PREDICTIONS -- FOR PAPER 
+        snap = "regtgv_reg0.f00021-SPECTRUM.npz"
+        data_1600_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
+        data_1600_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        data_1600_7_nekrs = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+        
+        lim_1 = data_1600_1['nyq_size']
+        lim_7 = data_1600_7['nyq_size']
+        nei_list = [0, 6, 26]
+        resid = True
+        
+        # Error curves
+        model_1_error_0_1_mean = []
+        model_1_error_0_1_min = []
+        model_1_error_0_1_max = []
+        model_1_error_1_7_mean = []
+        model_1_error_1_7_min = []
+        model_1_error_1_7_max = []
+
+        model_2_error_0_1_mean = []
+        model_2_error_0_1_min = []
+        model_2_error_0_1_max = []
+        model_2_error_1_7_mean = []
+        model_2_error_1_7_min = []
+        model_2_error_1_7_max = []
+
+        for nei in nei_list:
+
+            # Load Model 1 (coarse-scale)
+            n_mp = 12
+            fine_mp = 'False'
+            if not resid:
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            else:
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            data_1600_7_gnn_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+
+            # Load Model 2 (multiscale)
+            n_mp = 6
+            fine_mp = 'True'
+            if not resid:
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            else:
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            data_1600_7_gnn_2 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+
+            err_gnn_1 = np.abs(data_1600_7_gnn_1['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
+            err_gnn_2 = np.abs(data_1600_7_gnn_2['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
+
+            k_full = data_1600_7['kspec']
+            k_0_1 = k_full[1:int(lim_1 + 1)]
+            k_1_7 = k_full[int(lim_1 + 1):int(lim_7 + 1)]
+
+            m1_err_0_1 = err_gnn_1[1:int(lim_1 + 1)]
+            m1_err_1_7 = err_gnn_1[int(lim_1 + 1):int(lim_7 + 1)]
+
+            m2_err_0_1 = err_gnn_2[1:int(lim_1 + 1)]
+            m2_err_1_7 = err_gnn_2[int(lim_1 + 1):int(lim_7 + 1)]
+
+            model_1_error_0_1_mean.append(m1_err_0_1.mean()) 
+            model_1_error_0_1_max.append(m1_err_0_1.max()) 
+            model_1_error_0_1_min.append(m1_err_0_1.min()) 
+
+            model_1_error_1_7_mean.append(m1_err_1_7.mean()) 
+            model_1_error_1_7_max.append(m1_err_1_7.max()) 
+            model_1_error_1_7_min.append(m1_err_1_7.min()) 
+
+            model_2_error_0_1_mean.append(m2_err_0_1.mean()) 
+            model_2_error_0_1_max.append(m2_err_0_1.max()) 
+            model_2_error_0_1_min.append(m2_err_0_1.min()) 
+
+            model_2_error_1_7_mean.append(m2_err_1_7.mean()) 
+            model_2_error_1_7_max.append(m2_err_1_7.max()) 
+            model_2_error_1_7_min.append(m2_err_1_7.min()) 
+        
+        ms = 8
+        lw = 1.
+        plt.rcParams.update({'font.size': 16})
+        fig, ax = plt.subplots(1,2, sharey=True, figsize=(8,4))
+        ax[0].plot(nei_list, model_1_error_0_1_mean, color='black', lw=lw, marker='o', ms=ms)
+        ax[0].plot(nei_list, model_1_error_0_1_min, color='black', lw=lw, ls='--', marker='o', ms=ms)
+        ax[0].plot(nei_list, model_1_error_0_1_max, color='black', lw=lw, ls='-.', marker='o', ms=ms)
+        ax[0].plot(nei_list, model_2_error_0_1_mean, color='blue', lw=lw, marker='s', ms=ms)
+        ax[0].plot(nei_list, model_2_error_0_1_min, color='blue', lw=lw, ls='--', marker='s', ms=ms)
+        ax[0].plot(nei_list, model_2_error_0_1_max, color='blue', lw=lw, ls='-.', marker='s', ms=ms)
+        ax[0].set_yscale('log')
+        ax[0].set_ylabel('Relative Error in Spectrum')
+        ax[0].set_xlabel('Coarse Element Neighbors')
+
+        ax[1].plot(nei_list, model_1_error_1_7_mean, color='black', lw=lw, marker='o', ms=ms)
+        ax[1].plot(nei_list, model_1_error_1_7_min, color='black', lw=lw, ls='--', marker='o', ms=ms)
+        ax[1].plot(nei_list, model_1_error_1_7_max, color='black', lw=lw, ls='-.', marker='o', ms=ms)
+        ax[1].plot(nei_list, model_2_error_1_7_mean, color='blue', lw=lw, marker='s', ms=ms)
+        ax[1].plot(nei_list, model_2_error_1_7_min, color='blue', lw=lw, ls='--', marker='s', ms=ms)
+        ax[1].plot(nei_list, model_2_error_1_7_max, color='blue', lw=lw, ls='-.', marker='s', ms=ms)
+        ax[1].set_yscale('log')
+        ax[1].set_ylabel('Relative Error in Spectrum')
+        ax[1].set_xlabel('Coarse Element Neighbors')
+
         plt.show(block=False)
 
 
-        pass
+    # ~~~~ Scatter plots: RMS velocity vs GNN prediction error (FOR PAPER) 
+    if 1 == 0:
+        # PREDICTIONS -- FOR PAPER 
+        snap = "newtgv0.f00021"
+        snap_gnn = "newtgv_pred0.f00021"
+
+        # Target 
+        y_7 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
+        n_snaps = len(y_7.elem)
+
+        # Input
+        y_1 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+
+        # nekrs spectral interp
+        y_spectral = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+
+
+        # ~~~~ GNNs 
+        nei = 26
+        resid = True
+        
+        # Load Model 1 (coarse-scale)
+        n_mp = 12
+        fine_mp = 'False'
+        if not resid:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        else:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        print('coarse modelname: ', modelname)
+        y_gnn_1 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+
+        # Load Model 2 (multiscale)
+        n_mp = 6
+        fine_mp = 'True'
+        if not resid:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        else:
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        print('multiscale modelname: ', modelname)
+        y_gnn_2 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+
+        # element loop 
+        std_coarse = np.zeros((n_snaps,3))
+        error_spectral = np.zeros((n_snaps,3))
+        error_gnn_1 = np.zeros((n_snaps,3))
+        error_gnn_2 = np.zeros((n_snaps,3))
+
+        for i in range(n_snaps):
+            print("processing element ", i)
+            # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+            # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
+            # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
+            # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
+            # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
+
+            vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+            vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
+            vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
+            vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
+            vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
+
+            std_coarse[i] = vel_1.std(axis=0)
+            error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
+            error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
+            error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
+       
+        #ms = 1 # for zoomed-out plot 
+        ms = 5 # for zoomed-in plot
+        fig, ax = plt.subplots(1,3, figsize=(12,4))
+        for c in range(3):
+            #ax[c].scatter(error_spectral[:,c], std_coarse[:,c], color='gray', s=ms, label='SE Interp')
+            ax[c].scatter(error_gnn_1[:,c], std_coarse[:,c]   , color='black', s=ms, label='Model 1: Coarse-Scale')
+            ax[c].scatter(error_gnn_2[:,c], std_coarse[:,c]   , color='red', s=ms, label='Model 2: Multi-Scale')
+            ax[c].grid(False)
+            ax[c].set_xlabel('Mean-Squared Error')
+            ax[c].set_ylabel('Input Element Standard Deviation')
+            #if c == 0: ax[c].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
+            ax[c].set_xscale('log')
+            ax[c].set_xlim([1e-8, 5e-1])
+            ax[c].set_ylim([0,0.4])
+        plt.show(block=False)
+        
+        pass 
+
 
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
-    if 1 == 1:
+    if 1 == 0:
         n_mp = 6
         fine_mp = 'True'
 
