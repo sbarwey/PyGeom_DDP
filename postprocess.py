@@ -373,6 +373,54 @@ if __name__ == "__main__":
         
         pass 
 
+    # ~~~~ postprocessing: training losses (FOR PAPER) 
+    if 1 == 1:
+        modelpath = "./saved_models/single_scale"
+
+        re="_re3200"
+        #re=""
+
+        # Model 1: 
+        n_mp = 12
+        fine_mp = 'False'
+        m1_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m1_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m1_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+
+        # Model 2:
+        n_mp = 6
+        fine_mp = 'True'
+        m2_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+
+        plt.rcParams.update({'font.size': 18})
+        fig, ax = plt.subplots(figsize=(8,6))
+
+        # model 1 
+        ax.plot(m1_0['loss_hist_train'][0:], lw=2, color="black", label="M1-0", ls="-")
+        ax.plot(m1_6['loss_hist_train'][0:], lw=2, color="black", label="M1-6", ls="--")
+        ax.plot(m1_26['loss_hist_train'][0:], lw=2, color="black", label="M1-26", ls="-.")
+        # model 2 
+        ax.plot(m2_0['loss_hist_train'][0:], lw=2, color="red", label="M2-0", ls="-")
+        ax.plot(m2_6['loss_hist_train'][0:], lw=2, color="red", label="M2-6", ls="--")
+        ax.plot(m2_26['loss_hist_train'][0:], lw=2, color="red", label="M2-26", ls="-.")
+
+        ax.set_yscale('log')
+        ax.legend()
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel('Loss')
+        #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
+        ax.set_ylim([1e-4, 1e0])
+        
+        plt.show(block=False)
+
+
+
+
+
+        pass
+
 
     # ~~~~ postprocessing: training losses -- comparing a set of different models 
     if 1 == 0:
@@ -414,7 +462,6 @@ if __name__ == "__main__":
         f_label = '1shot+26nei, Resid'
         f_color = 'magenta'
         f_ls = '-'
-
 
         # Incremental, 0 nei
         g = torch.load(f'./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid_incr_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
@@ -650,7 +697,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 1:
+    if 1 == 0:
         local = False
         use_residual = True
         n_element_neighbors = 0 
