@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ Change model names: add "resid" to re3200 models 
-    if 1 == 1:
+    if 1 == 0:
         # Change re_3200 models to add residual 
         Re_str = "_re3200"
         Re_data = '1600'
@@ -436,7 +436,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 0:
+    if 1 == 1:
         modelpath = "./saved_models/single_scale"
 
         re="_re3200"
@@ -445,16 +445,16 @@ if __name__ == "__main__":
         # Model 1: 
         n_mp = 12
         fine_mp = 'False'
-        m1_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
-        m1_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
-        m1_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m1_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m1_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m1_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
 
         # Model 2:
         n_mp = 6
         fine_mp = 'True'
-        m2_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
-        m2_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
-        m2_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
 
         plt.rcParams.update({'font.size': 18})
         fig, ax = plt.subplots(figsize=(8,6))
