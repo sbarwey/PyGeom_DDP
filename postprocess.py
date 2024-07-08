@@ -37,7 +37,7 @@ def get_edge_index(edge_index_path: str,
 
 if __name__ == "__main__":
     # ~~~~ Spectrum plots 
-    if 1 == 1:
+    if 1 == 0:
         
         # ~~~~ # # ~~~~ EFFECT OF INTERPOLATION 
         # ~~~~ # # nekrs interp : 
@@ -650,10 +650,10 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
-        use_residual = False
-        n_element_neighbors = 6
+        use_residual = True
+        n_element_neighbors = 0 
         # if use_residual:
         #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
         # else:
@@ -661,12 +661,12 @@ if __name__ == "__main__":
 
         if use_residual:
             model_list = [
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_False.tar", # crs-6
+                #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_False.tar", # crs-6
                 f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_12_False.tar",# crs-12
                 f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_True.tar"] # fne-6
         else:
             model_list = [
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_False.tar",
+                #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_False.tar",
                 f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_12_False.tar",
                 f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_True.tar"]
 
@@ -724,7 +724,8 @@ if __name__ == "__main__":
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
-            t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
+            #t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
+            t_str_list = ['00017', '00019', '00021'] # 1 takes ~5 min 
             #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
             # Get full edge index 
