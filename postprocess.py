@@ -36,6 +36,68 @@ def get_edge_index(edge_index_path: str,
     return edge_index 
 
 if __name__ == "__main__":
+    # ~~~~ Change model names: add "resid" to re3200 models 
+    if 1 == 1:
+        # Change re_3200 models to add residual 
+        Re_str = "_re3200"
+        Re_data = '1600'
+
+        model_dir = "./saved_models/single_scale"
+
+        model_list = os.listdir(model_dir)
+        model_list = [s for s in model_list if "3200" in s]
+
+        for model_path in model_list:
+            a = torch.load(f"./saved_models/single_scale/{model_path}")
+            input_dict = a['input_dict'] 
+            name = input_dict['name']
+            
+            name_modified = name.split('re3200')[0]
+            name_modified = name_modified + "resid_re3200"
+            a['input_dict']['name'] = name_modified
+
+
+            # Create model, and re-save it  
+            input_dict = a['input_dict'] 
+            input_node_channels = input_dict['input_node_channels']
+            input_edge_channels_coarse = input_dict['input_edge_channels_coarse'] 
+            input_edge_channels_fine = input_dict['input_edge_channels_fine'] 
+            hidden_channels = input_dict['hidden_channels']
+            output_node_channels = input_dict['output_node_channels']
+            n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers']
+            n_messagePassing_layers = input_dict['n_messagePassing_layers']
+            use_fine_messagePassing = input_dict['use_fine_messagePassing']
+            name = input_dict['name']
+            
+            model = gnn.GNN_Element_Neighbor_Lo_Hi(
+                    input_node_channels             = input_dict['input_node_channels'],
+                    input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
+                    input_edge_channels_fine        = input_dict['input_edge_channels_fine'],
+                    hidden_channels                 = input_dict['hidden_channels'],
+                    output_node_channels            = input_dict['output_node_channels'],
+                    n_mlp_hidden_layers             = input_dict['n_mlp_hidden_layers'],
+                    n_messagePassing_layers         = input_dict['n_messagePassing_layers'],
+                    use_fine_messagePassing         = input_dict['use_fine_messagePassing'],
+                    name                            = input_dict['name'])
+
+            model.load_state_dict(a['state_dict'])
+
+
+            # save model 
+            model_path = model_dir + "/"+ model.get_save_header() + ".tar"
+            save_dict = {
+                        'state_dict' : a['state_dict'],
+                        'input_dict' : a['input_dict'],
+                        'loss_hist_train' : a['loss_hist_train'], 
+                        'loss_hist_test' : a['loss_hist_test'],
+                        'lr_hist' : a['lr_hist'],
+                        'training_iter' : a['training_iter']
+                        }
+            torch.save(save_dict, model_path)
+            print(model_path)
+
+
+       
     # ~~~~ Spectrum plots 
     if 1 == 0:
         
@@ -374,7 +436,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 1:
+    if 1 == 0:
         modelpath = "./saved_models/single_scale"
 
         re="_re3200"
@@ -706,16 +768,19 @@ if __name__ == "__main__":
         # else:
         #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
 
+        Re_str = "_re3200"
+        Re_data = '1600'
+
         if use_residual:
             model_list = [
                 #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_False.tar", # crs-6
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_12_False.tar",# crs-12
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_True.tar"] # fne-6
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid{Re_str}_3_7_132_128_3_2_12_False.tar",# crs-12
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid{Re_str}_3_7_132_128_3_2_6_True.tar"] # fne-6
         else:
             model_list = [
                 #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_False.tar",
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_12_False.tar",
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_True.tar"]
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap{Re_str}_3_7_132_128_3_2_12_False.tar",
+                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap{Re_str}_3_7_132_128_3_2_6_True.tar"]
 
         for model_path in model_list:
             a = torch.load(f"./saved_models/single_scale/{model_path}")
@@ -756,23 +821,22 @@ if __name__ == "__main__":
                 #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
                 nrs_snap_dir = './temp'
             else:
-                nrs_snap_dir = '/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7_testset/one_shot'
+                nrs_snap_dir = f'/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re_data}_poly_7_testset/one_shot'
             
             # Load in edge index 
             poly_lo = 1
             poly_hi = 7
-            Re = '1600'
             if local:
                 case_path = "./temp"
             else: 
-                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re}_poly_7"
+                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re_data}_poly_7"
             edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
             edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
             #t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
-            t_str_list = ['00017', '00019', '00021'] # 1 takes ~5 min 
+            t_str_list = ['00017', '00019', '00020', '00021'] # 1 takes ~5 min 
             #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
             # Get full edge index 
@@ -790,6 +854,7 @@ if __name__ == "__main__":
                 edge_index = edge_index_full
 
             for t_str in t_str_list:
+                asdf
                 directory_path = nrs_snap_dir + f"/predictions/{model.get_save_header()}"
                 if os.path.exists(directory_path + f"/newtgv_pred0.f{t_str}"):
                     print(directory_path + f"/newtgv_pred0.f{t_str} \n already exists!!! Skipping...") 
