@@ -435,6 +435,77 @@ if __name__ == "__main__":
         
         pass 
 
+    # ~~~~ 1d flow plots: Ux versus x (FOR PAPER)
+    if 1 == 1:
+        
+        # P = 7: z = pi/2 is 215 
+        file_target = "./outputs/snapshots_for_plotting/sec_4/snapshots_target/Re_1600/regtgv_reg0.f00002"
+        file_coarse = "./outputs/snapshots_for_plotting/sec_4/snapshots_coarse_7to1/Re_1600/regtgv_reg0.f00002"
+        file_interp = "./outputs/snapshots_for_plotting/sec_4/snapshots_interp_1to7/Re_1600/regtgv_reg0.f00002"
+        file_model1 = "./outputs/snapshots_for_plotting/sec_4/snapshots_model_1_nei_26/Re_1600/regtgv_reg0.f00002"
+        file_model2 = "./outputs/snapshots_for_plotting/sec_4/snapshots_model_2_nei_26/Re_1600/regtgv_reg0.f00002"
+
+        file_list = [file_target, file_coarse, file_interp, file_model1, file_model2]
+
+        # Load datasets
+        ds_list = []
+        for file in file_list:
+            print(file)
+            ds = open_dataset(file)
+            ds_list.append(ds)
+
+        # Get data
+        # y - 0.1 [USE] 
+        # y - 0.9 [USE]
+        # y - 2 [USE]
+        x_list = []
+        u_list = []
+        i = 0
+        for file in file_list:
+            print(file)
+            ds = ds_list[i] 
+            U = ds.ux.data
+            V = ds.ux.data
+            W = ds.ux.data
+            U_mag = np.sqrt(U**2 + V**2 + W**2)
+            x = ds.x.data
+            y = ds.y.data
+            z = ds.z.data
+            
+            z_idx = np.abs(z - np.pi/2).argmin()
+            y_idx = np.abs(y - 0.9).argmin()
+            print('z: ', z[z_idx])
+            print('y: ', y[y_idx])
+
+            x_list.append(x)
+            u_list.append(U_mag[:,y_idx,z_idx])
+            i+=1
+
+        # Plot
+        ms=0
+        lw=1.5
+        mew=0
+        fig, ax = plt.subplots()
+        ax.plot(x_list[0], u_list[0], ls='-', lw=lw, marker='o', ms=ms, mew=mew, fillstyle="none", label="target", color='black')
+        #ax.plot(x_list[1], u_list[1], ls='-', lw=lw, marker='s', ms=ms, mew=mew, fillstyle="none", label="coarse")
+        ax.plot(x_list[2], u_list[2], ls='-', lw=lw, marker='o', ms=ms, mew=mew, fillstyle="none", label="interp", color='gray')
+        ax.plot(x_list[3], u_list[3], ls='--', lw=lw, marker='o', ms=ms, mew=mew, fillstyle="none", label="model1", color='red')
+        ax.plot(x_list[4], u_list[4], ls='--', lw=lw, marker='o', ms=ms, mew=mew, fillstyle="none", label="model2", color='blue')
+        ax.legend()
+        ax.set_xlabel('x')
+        ax.set_ylabel('u')
+        #ax.set_ylim([u_list[0].min(), u_list[0].max()])
+        #ax.set_yscale('log')
+        ax.grid(False)
+        plt.show(block=False)
+
+
+
+
+
+        pass
+
+
     # ~~~~ postprocessing: training losses (FOR PAPER) 
     if 1 == 0:
         modelpath = "./saved_models/single_scale"
@@ -759,7 +830,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 1:
+    if 1 == 0:
         local = False
         use_residual = True
         n_element_neighbors = 0 
