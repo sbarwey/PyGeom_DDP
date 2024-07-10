@@ -436,7 +436,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 1:
+    if 1 == 0:
         modelpath = "./saved_models/single_scale"
 
         re="_re3200"
@@ -759,7 +759,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
         use_residual = True
         n_element_neighbors = 0 
@@ -769,7 +769,7 @@ if __name__ == "__main__":
         #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
 
         Re_str = "_re3200"
-        Re_data = '1600'
+        Re_data = '3200'
 
         if use_residual:
             model_list = [
@@ -854,7 +854,6 @@ if __name__ == "__main__":
                 edge_index = edge_index_full
 
             for t_str in t_str_list:
-                asdf
                 directory_path = nrs_snap_dir + f"/predictions/{model.get_save_header()}"
                 if os.path.exists(directory_path + f"/newtgv_pred0.f{t_str}"):
                     print(directory_path + f"/newtgv_pred0.f{t_str} \n already exists!!! Skipping...") 
