@@ -436,7 +436,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ 1d flow plots: Ux versus x (FOR PAPER)
-    if 1 == 1:
+    if 1 == 0:
         
         # P = 7: z = pi/2 is 215 
         file_target = "./outputs/snapshots_for_plotting/sec_4/snapshots_target/Re_1600/regtgv_reg0.f00002"
@@ -741,8 +741,9 @@ if __name__ == "__main__":
                                         edge_index_vertex_path)
 
 
-        t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
-        t_str_list = ['00017', '00020']
+        #t_str_list = ['00017','00019', '00020','00021'] # 1 takes ~5 min 
+        #t_str_list = ['00017', '00020']
+        t_str_list = ['00016', '00017', '00018', '00019', '00020', '00021']
         #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
         for t_str in t_str_list:
@@ -830,7 +831,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
         use_residual = True
         n_element_neighbors = 0 
@@ -839,8 +840,9 @@ if __name__ == "__main__":
         # else:
         #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
 
-        Re_str = "_re3200"
-        Re_data = '3200'
+        #Re_str = "_re3200"
+        Re_str = ""
+        Re_data = '1600'
 
         if use_residual:
             model_list = [
@@ -907,7 +909,8 @@ if __name__ == "__main__":
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
             #t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
-            t_str_list = ['00017', '00019', '00020', '00021'] # 1 takes ~5 min 
+            #t_str_list = ['00017', '00019', '00020', '00021'] # 1 takes ~5 min 
+            t_str_list = ['00016', '00017', '00018', '00019', '00020', '00021'] # 1 takes ~5 min 
             #t_str_list = ['000%02d' %(i) for i in range(12,41)]
 
             # Get full edge index 
