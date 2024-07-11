@@ -96,8 +96,6 @@ if __name__ == "__main__":
             torch.save(save_dict, model_path)
             print(model_path)
 
-
-       
     # ~~~~ Spectrum plots 
     if 1 == 0:
         
@@ -171,35 +169,41 @@ if __name__ == "__main__":
         # ~~~~ # #ax.legend(fancybox=False, framealpha=1, edgecolor='black')
         # ~~~~ # plt.show(block=False)
 
-
         # PREDICTIONS -- FOR PAPER 
         snap = "regtgv_reg0.f00021-SPECTRUM.npz"
-        data_1600_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
-        data_1600_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
-        data_1600_7_nekrs = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
 
-        nei = 6
+        #Re_str = "1600"
+        #Re_str_model = ""
+         
+        Re_str = "3200"
+        Re_str_model = "_re3200"
+
+        data_1600_7 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
+        data_1600_1 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        data_1600_7_nekrs = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+
+        nei = 26
         resid = True
         
         # Load Model 1 (coarse-scale)
         n_mp = 12
         fine_mp = 'False'
         if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         print('coarse modelname: ', modelname)
-        data_1600_7_gnn_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+        data_1600_7_gnn_1 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
 
         # Load Model 2 (multiscale)
         n_mp = 6
         fine_mp = 'True'
         if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         print('multiscale modelname: ', modelname)
-        data_1600_7_gnn_2 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+        data_1600_7_gnn_2 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
 
         plt.rcParams.update({'font.size': 16})
         lw = 2
@@ -251,9 +255,16 @@ if __name__ == "__main__":
     if 1 == 0:
         # PREDICTIONS -- FOR PAPER 
         snap = "regtgv_reg0.f00021-SPECTRUM.npz"
-        data_1600_7 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
-        data_1600_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
-        data_1600_7_nekrs = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+
+        #Re_str = "1600"
+        #Re_str_model = ""
+         
+        Re_str = "3200"
+        Re_str_model = "_re3200"
+
+        data_1600_7 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
+        data_1600_1 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        data_1600_7_nekrs = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
         
         lim_1 = data_1600_1['nyq_size']
         lim_7 = data_1600_7['nyq_size']
@@ -281,19 +292,19 @@ if __name__ == "__main__":
             n_mp = 12
             fine_mp = 'False'
             if not resid:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
             else:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            data_1600_7_gnn_1 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            data_1600_7_gnn_1 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
 
             # Load Model 2 (multiscale)
             n_mp = 6
             fine_mp = 'True'
             if not resid:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
             else:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            data_1600_7_gnn_2 = np.load(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
+                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            data_1600_7_gnn_2 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap}")
 
             err_gnn_1 = np.abs(data_1600_7_gnn_1['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
             err_gnn_2 = np.abs(data_1600_7_gnn_2['spectrum'] - data_1600_7['spectrum'])/data_1600_7['spectrum']
@@ -352,20 +363,27 @@ if __name__ == "__main__":
 
 
     # ~~~~ Scatter plots: RMS velocity vs GNN prediction error (FOR PAPER) 
-    if 1 == 0:
+    if 1 == 1:
         # PREDICTIONS -- FOR PAPER 
         snap = "newtgv0.f00021"
         snap_gnn = "newtgv_pred0.f00021"
 
+        Re_str = "1600"
+        Re_str_model = ""
+         
+        #Re_str = "3200"
+        #Re_str_model = "_re3200"
+
+
         # Target 
-        y_7 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_target/{snap}")
+        y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
         n_snaps = len(y_7.elem)
 
         # Input
-        y_1 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
 
         # nekrs spectral interp
-        y_spectral = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+        y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
 
 
         # ~~~~ GNNs 
@@ -376,21 +394,21 @@ if __name__ == "__main__":
         n_mp = 12
         fine_mp = 'False'
         if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         print('coarse modelname: ', modelname)
-        y_gnn_1 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
         # Load Model 2 (multiscale)
         n_mp = 6
         fine_mp = 'True'
         if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
         print('multiscale modelname: ', modelname)
-        y_gnn_2 = readnek(f"./outputs/Re_1600_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
         # element loop 
         std_coarse = np.zeros((n_snaps,3))
@@ -831,7 +849,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 1:
+    if 1 == 0:
         local = False
         use_residual = True
         n_element_neighbors = 0 
@@ -1691,7 +1709,6 @@ if __name__ == "__main__":
         #     # fig, ax = plt.subplots()
         #     # ax.plot(x, y, marker='o', ms=20)
         #     # plt.show(block=False)
-        #     # asdf
 
         #     error_max = (pos_1 - pos_2).max()
         #     rel_error = (error_max / dx_min)*100
