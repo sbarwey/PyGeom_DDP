@@ -368,12 +368,11 @@ if __name__ == "__main__":
         snap = "newtgv0.f00021"
         snap_gnn = "newtgv_pred0.f00021"
 
-        Re_str = "1600"
-        Re_str_model = ""
+        #Re_str = "1600"
+        #Re_str_model = ""
          
-        #Re_str = "3200"
-        #Re_str_model = "_re3200"
-
+        Re_str = "3200"
+        Re_str_model = "_re3200"
 
         # Target 
         y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
@@ -387,7 +386,7 @@ if __name__ == "__main__":
 
 
         # ~~~~ GNNs 
-        nei = 26
+        nei = 0
         resid = True
         
         # Load Model 1 (coarse-scale)
@@ -416,8 +415,9 @@ if __name__ == "__main__":
         error_gnn_1 = np.zeros((n_snaps,3))
         error_gnn_2 = np.zeros((n_snaps,3))
 
+        print('processing....')
         for i in range(n_snaps):
-            print("processing element ", i)
+            # print("processing element ", i)
             # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
             # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
             # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
@@ -435,21 +435,30 @@ if __name__ == "__main__":
             error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
             error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
        
-        #ms = 1 # for zoomed-out plot 
-        ms = 5 # for zoomed-in plot
-        fig, ax = plt.subplots(1,3, figsize=(12,4))
-        for c in range(3):
-            #ax[c].scatter(error_spectral[:,c], std_coarse[:,c], color='gray', s=ms, label='SE Interp')
-            ax[c].scatter(error_gnn_1[:,c], std_coarse[:,c]   , color='black', s=ms, label='Model 1: Coarse-Scale')
-            ax[c].scatter(error_gnn_2[:,c], std_coarse[:,c]   , color='red', s=ms, label='Model 2: Multi-Scale')
-            ax[c].grid(False)
-            ax[c].set_xlabel('Mean-Squared Error')
-            ax[c].set_ylabel('Input Element Standard Deviation')
-            #if c == 0: ax[c].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
-            ax[c].set_xscale('log')
-            ax[c].set_xlim([1e-8, 5e-1])
-            ax[c].set_ylim([0,0.4])
-        plt.show(block=False)
+        # Save: 
+        np.savez(f"./outputs/std_vs_error_data_nei_{Re_str}_{nei}.npz", error_gnn_1=error_gnn_1, error_gnn_2=error_gnn_2, std_coarse=std_coarse)
+
+        # Load:  
+        #error_gnn_1 = 
+        #error_gnn_2 = 
+        #std_coarse = 
+
+        # # Plot 
+        # #ms = 1 # for zoomed-out plot 
+        # ms = 5 # for zoomed-in plot
+        # fig, ax = plt.subplots(1,3, figsize=(12,4))
+        # for c in range(3):
+        #     #ax[c].scatter(error_spectral[:,c], std_coarse[:,c], color='gray', s=ms, label='SE Interp')
+        #     ax[c].scatter(error_gnn_1[:,c], std_coarse[:,c]   , color='black', s=ms, label='Model 1: Coarse-Scale')
+        #     ax[c].scatter(error_gnn_2[:,c], std_coarse[:,c]   , color='red', s=ms, label='Model 2: Multi-Scale')
+        #     ax[c].grid(False)
+        #     ax[c].set_xlabel('Mean-Squared Error')
+        #     ax[c].set_ylabel('Input Element Standard Deviation')
+        #     #if c == 0: ax[c].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
+        #     ax[c].set_xscale('log')
+        #     ax[c].set_xlim([1e-8, 5e-1])
+        #     ax[c].set_ylim([0,0.4])
+        # plt.show(block=False)
         
         pass 
 
