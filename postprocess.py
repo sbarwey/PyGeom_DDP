@@ -374,91 +374,92 @@ if __name__ == "__main__":
         Re_str = "3200"
         Re_str_model = "_re3200"
 
-        # Target 
-        y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
-        n_snaps = len(y_7.elem)
+        # # Target 
+        # y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
+        # n_snaps = len(y_7.elem)
 
-        # Input
-        y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        # # Input
+        # y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
 
-        # nekrs spectral interp
-        y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+        # # nekrs spectral interp
+        # y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
 
 
         # ~~~~ GNNs 
-        nei = 0
+        nei = 6
         resid = True
         
-        # Load Model 1 (coarse-scale)
-        n_mp = 12
-        fine_mp = 'False'
-        if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-        else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-        print('coarse modelname: ', modelname)
-        y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        # ~~~~ # # Load Model 1 (coarse-scale)
+        # ~~~~ # n_mp = 12
+        # ~~~~ # fine_mp = 'False'
+        # ~~~~ # if not resid:
+        # ~~~~ #     modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ # else:
+        # ~~~~ #     modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ # print('coarse modelname: ', modelname)
+        # ~~~~ # y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
-        # Load Model 2 (multiscale)
-        n_mp = 6
-        fine_mp = 'True'
-        if not resid:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-        else:
-            modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-        print('multiscale modelname: ', modelname)
-        y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        # ~~~~ # # Load Model 2 (multiscale)
+        # ~~~~ # n_mp = 6
+        # ~~~~ # fine_mp = 'True'
+        # ~~~~ # if not resid:
+        # ~~~~ #     modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ # else:
+        # ~~~~ #     modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ # print('multiscale modelname: ', modelname)
+        # ~~~~ # y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
-        # element loop 
-        std_coarse = np.zeros((n_snaps,3))
-        error_spectral = np.zeros((n_snaps,3))
-        error_gnn_1 = np.zeros((n_snaps,3))
-        error_gnn_2 = np.zeros((n_snaps,3))
+        # ~~~~ # # element loop 
+        # ~~~~ # std_coarse = np.zeros((n_snaps,3))
+        # ~~~~ # error_spectral = np.zeros((n_snaps,3))
+        # ~~~~ # error_gnn_1 = np.zeros((n_snaps,3))
+        # ~~~~ # error_gnn_2 = np.zeros((n_snaps,3))
 
-        print('processing....')
-        for i in range(n_snaps):
-            # print("processing element ", i)
-            # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-            # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
-            # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
-            # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
-            # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ # print('processing....')
+        # ~~~~ # for i in range(n_snaps):
+        # ~~~~ #     # print("processing element ", i)
+        # ~~~~ #     # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        # ~~~~ #     # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #     # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #     # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #     # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
 
-            vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-            vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
-            vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
-            vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
-            vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #     vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        # ~~~~ #     vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #     vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #     vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #     vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
 
-            std_coarse[i] = vel_1.std(axis=0)
-            error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
-            error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
-            error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
+        # ~~~~ #     std_coarse[i] = vel_1.std(axis=0)
+        # ~~~~ #     error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
+        # ~~~~ #     error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
+        # ~~~~ #     error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
        
-        # Save: 
-        np.savez(f"./outputs/std_vs_error_data_nei_{Re_str}_{nei}.npz", error_gnn_1=error_gnn_1, error_gnn_2=error_gnn_2, std_coarse=std_coarse)
+        # ~~~~ # # Save: 
+        # ~~~~ # # np.savez(f"./outputs/std_vs_error_data_nei_{Re_str}_{nei}.npz", error_gnn_1=error_gnn_1, error_gnn_2=error_gnn_2, std_coarse=std_coarse)
 
         # Load:  
-        #error_gnn_1 = 
-        #error_gnn_2 = 
-        #std_coarse = 
+        data = np.load(f"./outputs/std_vs_error/std_vs_error_data_nei_{Re_str}_{nei}.npz")
+        error_gnn_1 = data['error_gnn_1']
+        error_gnn_2 = data['error_gnn_2']
+        std_coarse = data['std_coarse']
 
-        # # Plot 
-        # #ms = 1 # for zoomed-out plot 
-        # ms = 5 # for zoomed-in plot
-        # fig, ax = plt.subplots(1,3, figsize=(12,4))
-        # for c in range(3):
-        #     #ax[c].scatter(error_spectral[:,c], std_coarse[:,c], color='gray', s=ms, label='SE Interp')
-        #     ax[c].scatter(error_gnn_1[:,c], std_coarse[:,c]   , color='black', s=ms, label='Model 1: Coarse-Scale')
-        #     ax[c].scatter(error_gnn_2[:,c], std_coarse[:,c]   , color='red', s=ms, label='Model 2: Multi-Scale')
-        #     ax[c].grid(False)
-        #     ax[c].set_xlabel('Mean-Squared Error')
-        #     ax[c].set_ylabel('Input Element Standard Deviation')
-        #     #if c == 0: ax[c].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
-        #     ax[c].set_xscale('log')
-        #     ax[c].set_xlim([1e-8, 5e-1])
-        #     ax[c].set_ylim([0,0.4])
-        # plt.show(block=False)
+        # Plot 
+        #ms = 1 # for zoomed-out plot 
+        ms = 5 # for zoomed-in plot
+        fig, ax = plt.subplots(1,3, figsize=(12,4))
+        for c in range(3):
+            #ax[c].scatter(error_spectral[:,c], std_coarse[:,c], color='gray', s=ms, label='SE Interp')
+            ax[c].scatter(error_gnn_1[:,c], std_coarse[:,c]   , color='black', s=ms, label='Model 1: Coarse-Scale')
+            ax[c].scatter(error_gnn_2[:,c], std_coarse[:,c]   , color='red', s=ms, label='Model 2: Multi-Scale')
+            ax[c].grid(False)
+            ax[c].set_xlabel('Mean-Squared Error')
+            ax[c].set_ylabel('Input Element Standard Deviation')
+            #if c == 0: ax[c].legend(fancybox=False, framealpha=1, edgecolor='black', prop={'size': 12})
+            ax[c].set_xscale('log')
+            ax[c].set_xlim([1e-8, 5e-1])
+            ax[c].set_ylim([0,0.4])
+        plt.show(block=False)
         
         pass 
 
