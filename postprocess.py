@@ -362,8 +362,103 @@ if __name__ == "__main__":
         plt.show(block=False)
 
 
-    # ~~~~ Scatter plots: RMS velocity vs GNN prediction error (FOR PAPER) 
+    # ~~~~ MSE over all elements (FOR PAPER) 
     if 1 == 1:
+        # PREDICTIONS -- FOR PAPER 
+        snap_list = ["newtgv0.f00016", "newtgv0.f00017", "newtgv0.f00018",
+                     "newtgv0.f00019", "newtgv0.f00020", "newtgv0.f00021"]
+        snap_gnn_list = ["newtgv_pred0.f00016", "newtgv_pred0.f00017", "newtgv_pred0.f00018",
+                         "newtgv_pred0.f00019", "newtgv_pred0.f00020", "newtgv_pred0.f00021"]
+
+
+        n_snaps = len(snap_list)
+
+        #Re_str = "1600"
+        #Re_str_model = ""
+         
+        Re_str = "3200"
+        Re_str_model = "_re3200"
+
+        # ~~~~ GNNs 
+        resid = True
+    
+        for nei in [0,6,26]:
+            mse_spectral = np.zeros(n_snaps)
+            mse_gnn_1 = np.zeros(n_snaps)
+            mse_gnn_2 = np.zeros(n_snaps)
+
+            for s in range(n_snaps):
+
+                snap = snap_list[s]
+                snap_gnn = snap_gnn_list[s]
+
+                print(f"Snap: {snap}")
+
+                # Target 
+                y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
+                n_snaps = len(y_7.elem)
+
+                # Input
+                y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+
+                # nekrs spectral interp
+                y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+
+                # Load Model 1 (coarse-scale)
+                n_mp = 12
+                fine_mp = 'False'
+                if not resid:
+                    modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                else:
+                    modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                print('coarse modelname: ', modelname)
+                y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+
+                # Load Model 2 (multiscale)
+                n_mp = 6
+                fine_mp = 'True'
+                if not resid:
+                    modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                else:
+                    modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+                print('multiscale modelname: ', modelname)
+                y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+
+                # element loop 
+                error_spectral = np.zeros((n_snaps,3))
+                error_gnn_1 = np.zeros((n_snaps,3))
+                error_gnn_2 = np.zeros((n_snaps,3))
+
+                print('processing....')
+                for i in range(n_snaps):
+                    # print("processing element ", i)
+                    # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
+                    # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
+                    # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
+                    # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
+
+                    vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+                    vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
+                    vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
+                    vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
+                    vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
+
+                    error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
+                    error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
+                    error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
+              
+                mse_spectral[s] = np.mean(error_spectral)
+                mse_gnn_1[s] = np.mean(error_gnn_1)
+                mse_gnn_2[s] = np.mean(error_gnn_2)
+
+
+            # Save: 
+            np.savez(f"./outputs/mse_global/std_vs_error_data_nei_{Re_str}_{nei}.npz", mse_spectral = mse_spectral, mse_gnn_1 = mse_gnn_1, mse_gnn_2 = mse_gnn_2)
+
+
+    # ~~~~ Scatter plots: RMS velocity vs GNN prediction error (FOR PAPER) 
+    if 1 == 0:
         # PREDICTIONS -- FOR PAPER 
         snap = "newtgv0.f00021"
         snap_gnn = "newtgv_pred0.f00021"
@@ -868,9 +963,9 @@ if __name__ == "__main__":
         # else:
         #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
 
-        #Re_str = "_re3200"
-        Re_str = ""
-        Re_data = '1600'
+        Re_str = "_re3200"
+        #Re_str = ""
+        Re_data = '3200'
 
         if use_residual:
             model_list = [
