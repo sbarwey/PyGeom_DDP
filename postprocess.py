@@ -97,7 +97,7 @@ if __name__ == "__main__":
             print(model_path)
 
     # ~~~~ Spectrum plots 
-    if 1 == 0:
+    if 1 == 1:
         
         # ~~~~ # # ~~~~ EFFECT OF INTERPOLATION 
         # ~~~~ # # nekrs interp : 
@@ -172,11 +172,22 @@ if __name__ == "__main__":
         # PREDICTIONS -- FOR PAPER 
         snap = "regtgv_reg0.f00021-SPECTRUM.npz"
 
-        #Re_str = "1600"
-        #Re_str_model = ""
-         
-        Re_str = "3200"
+        # # Trained on 1600, tested on 1600
+        # Re_str_model = ""
+        # Re_str = "1600"
+        
+        # Trained on 3200, tested on 3200 
+        #Re_str_model = "_re3200"
+        #Re_str = "3200"
+
+        # # Trained on 1600, tested on 3200
+        # Re_str_model = ""
+        # Re_str = "3200"
+
+        # Trained on 3200, tested on 1600
         Re_str_model = "_re3200"
+        Re_str = "1600"
+
 
         data_1600_7 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
         data_1600_1 = np.load(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
@@ -363,110 +374,108 @@ if __name__ == "__main__":
 
 
     # ~~~~ MSE over all elements (FOR PAPER) 
-    if 1 == 1:
+    if 1 == 0:
         # WRITE: 
-        snap_list = ["newtgv0.f00016", "newtgv0.f00017", "newtgv0.f00018",
-                     "newtgv0.f00019", "newtgv0.f00020", "newtgv0.f00021"]
-        snap_gnn_list = ["newtgv_pred0.f00016", "newtgv_pred0.f00017", "newtgv_pred0.f00018",
-                         "newtgv_pred0.f00019", "newtgv_pred0.f00020", "newtgv_pred0.f00021"]
+        # ~~~~ # snap_list = ["newtgv0.f00016", "newtgv0.f00017", "newtgv0.f00018",
+        # ~~~~ #              "newtgv0.f00019", "newtgv0.f00020", "newtgv0.f00021"]
+        # ~~~~ # snap_gnn_list = ["newtgv_pred0.f00016", "newtgv_pred0.f00017", "newtgv_pred0.f00018",
+        # ~~~~ #                  "newtgv_pred0.f00019", "newtgv_pred0.f00020", "newtgv_pred0.f00021"]
 
 
-        n_snaps = len(snap_list)
+        # ~~~~ # n_snaps = len(snap_list)
 
-        # Trained on Re=1600, eval on Re=1600
-        #Re_str_model = ""
-        #Re_str = "1600"
-        
-        ## Trained on Re=3200, eval on Re=3200
-        #Re_str_model = "_re3200"
-        #Re_str = "3200"
-        
-        # # Trained on Re=1600, eval on Re=3200
-        # Re_str_model = ""
-        # Re_str = "3200"
+        # ~~~~ # # Trained on Re=1600, eval on Re=1600
+        # ~~~~ # #Re_str_model = ""
+        # ~~~~ # #Re_str = "1600"
+        # ~~~~ # 
+        # ~~~~ # ## Trained on Re=3200, eval on Re=3200
+        # ~~~~ # #Re_str_model = "_re3200"
+        # ~~~~ # #Re_str = "3200"
+        # ~~~~ # 
+        # ~~~~ # # # Trained on Re=1600, eval on Re=3200
+        # ~~~~ # # Re_str_model = ""
+        # ~~~~ # # Re_str = "3200"
 
-        # Trained on Re=3200, eval on Re=1600
-        Re_str_model = "_re3200"
-        Re_str = "1600"
+        # ~~~~ # # Trained on Re=3200, eval on Re=1600
+        # ~~~~ # Re_str_model = "_re3200"
+        # ~~~~ # Re_str = "1600"
 
-        # ~~~~ GNNs 
-        nei = 26
-        resid = True
+        # ~~~~ # # ~~~~ GNNs 
+        # ~~~~ # nei = 26
+        # ~~~~ # resid = True
     
-        mse_spectral = np.zeros(n_snaps)
-        mse_gnn_1 = np.zeros(n_snaps)
-        mse_gnn_2 = np.zeros(n_snaps)
+        # ~~~~ # mse_spectral = np.zeros(n_snaps)
+        # ~~~~ # mse_gnn_1 = np.zeros(n_snaps)
+        # ~~~~ # mse_gnn_2 = np.zeros(n_snaps)
 
-        for s in range(n_snaps):
+        # ~~~~ # for s in range(n_snaps):
 
-            snap = snap_list[s]
-            snap_gnn = snap_gnn_list[s]
+        # ~~~~ #     snap = snap_list[s]
+        # ~~~~ #     snap_gnn = snap_gnn_list[s]
 
-            print(f"Snap: {snap}")
+        # ~~~~ #     print(f"Snap: {snap}")
 
-            # Target 
-            y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
-            n_snaps = len(y_7.elem)
+        # ~~~~ #     # Target 
+        # ~~~~ #     y_7 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_target/{snap}")
+        # ~~~~ #     n_snaps = len(y_7.elem)
 
-            # Input
-            y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
+        # ~~~~ #     # Input
+        # ~~~~ #     y_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_coarse_7to1/{snap}")
 
-            # nekrs spectral interp
-            y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
+        # ~~~~ #     # nekrs spectral interp
+        # ~~~~ #     y_spectral = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/snapshots_interp_1to7/{snap}") 
 
-            # Load Model 1 (coarse-scale)
-            n_mp = 12
-            fine_mp = 'False'
-            if not resid:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            else:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            print('coarse modelname: ', modelname)
-            y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        # ~~~~ #     # Load Model 1 (coarse-scale)
+        # ~~~~ #     n_mp = 12
+        # ~~~~ #     fine_mp = 'False'
+        # ~~~~ #     if not resid:
+        # ~~~~ #         modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ #     else:
+        # ~~~~ #         modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ #     print('coarse modelname: ', modelname)
+        # ~~~~ #     y_gnn_1 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
-            # Load Model 2 (multiscale)
-            n_mp = 6
-            fine_mp = 'True'
-            if not resid:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            else:
-                modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
-            print('multiscale modelname: ', modelname)
-            y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
+        # ~~~~ #     # Load Model 2 (multiscale)
+        # ~~~~ #     n_mp = 6
+        # ~~~~ #     fine_mp = 'True'
+        # ~~~~ #     if not resid:
+        # ~~~~ #         modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ #     else:
+        # ~~~~ #         modelname = f"gnn_lr_1em4_bs_4_nei_{nei}_c2f_multisnap_resid{Re_str_model}_3_7_132_128_3_2_{n_mp}_{fine_mp}"
+        # ~~~~ #     print('multiscale modelname: ', modelname)
+        # ~~~~ #     y_gnn_2 = readnek(f"./outputs/Re_{Re_str}_poly_7_testset/one_shot/predictions/{modelname}/{snap_gnn}")
 
-            # element loop 
-            error_spectral = np.zeros((n_snaps,3))
-            error_gnn_1 = np.zeros((n_snaps,3))
-            error_gnn_2 = np.zeros((n_snaps,3))
+        # ~~~~ #     # element loop 
+        # ~~~~ #     error_spectral = np.zeros((n_snaps,3))
+        # ~~~~ #     error_gnn_1 = np.zeros((n_snaps,3))
+        # ~~~~ #     error_gnn_2 = np.zeros((n_snaps,3))
 
-            print('processing....')
-            for i in range(n_snaps):
-                # print("processing element ", i)
-                # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-                # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
-                # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
-                # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
-                # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #     print('processing....')
+        # ~~~~ #     for i in range(n_snaps):
+        # ~~~~ #         # print("processing element ", i)
+        # ~~~~ #         # pos_7 = (y_7.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        # ~~~~ #         # pos_1 = (y_1.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #         # pos_spectral = (y_spectral.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #         # pos_gnn_1 = (y_gnn_1.elem[i].pos).reshape((3, -1)).T
+        # ~~~~ #         # pos_gnn_2 = (y_gnn_2.elem[i].pos).reshape((3, -1)).T
 
-                vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
-                vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
-                vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
-                vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
-                vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #         vel_7 = (y_7.elem[i].vel).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
+        # ~~~~ #         vel_1 = (y_1.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #         vel_spectral = (y_spectral.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #         vel_gnn_1 = (y_gnn_1.elem[i].vel).reshape((3, -1)).T
+        # ~~~~ #         vel_gnn_2 = (y_gnn_2.elem[i].vel).reshape((3, -1)).T
 
-                error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
-                error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
-                error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
-          
-            mse_spectral[s] = np.mean(error_spectral)
-            mse_gnn_1[s] = np.mean(error_gnn_1)
-            mse_gnn_2[s] = np.mean(error_gnn_2)
+        # ~~~~ #         error_spectral[i] = np.mean((vel_spectral - vel_7)**2, axis=0)
+        # ~~~~ #         error_gnn_1[i] = np.mean((vel_gnn_1 - vel_7)**2, axis=0)
+        # ~~~~ #         error_gnn_2[i] = np.mean((vel_gnn_2 - vel_7)**2, axis=0)
+        # ~~~~ #   
+        # ~~~~ #     mse_spectral[s] = np.mean(error_spectral)
+        # ~~~~ #     mse_gnn_1[s] = np.mean(error_gnn_1)
+        # ~~~~ #     mse_gnn_2[s] = np.mean(error_gnn_2)
 
+        # ~~~~ # np.savez(f"./outputs/mse_global_train_3200_eval_1600/std_vs_error_data_nei_{Re_str}_{nei}.npz", mse_spectral = mse_spectral, mse_gnn_1 = mse_gnn_1, mse_gnn_2 = mse_gnn_2)
 
-        # SAVE: 
-        np.savez(f"./outputs/mse_global_train_3200_eval_1600/std_vs_error_data_nei_{Re_str}_{nei}.npz", mse_spectral = mse_spectral, mse_gnn_1 = mse_gnn_1, mse_gnn_2 = mse_gnn_2)
-
-        # ~~~~ # # READ: 
+        # ~~~~ # # READ -- NO RE EXTRAP: 
         # ~~~~ # Re_str = '1600'
         # ~~~~ # data_1600_0  = np.load(f"./outputs/mse_global/std_vs_error_data_nei_{Re_str}_0.npz")
         # ~~~~ # data_1600_6  = np.load(f"./outputs/mse_global/std_vs_error_data_nei_{Re_str}_6.npz")
@@ -501,6 +510,46 @@ if __name__ == "__main__":
         # ~~~~ # ax.grid(False)
 
         # ~~~~ # plt.show(block=False)
+
+        # READ -- RE EXTRAP: 
+        Re_str_train = '1600'
+        Re_str_eval = '3200'
+        data_1600_0  = np.load(f"./outputs/mse_global_train_{Re_str_train}_eval_{Re_str_eval}/std_vs_error_data_nei_{Re_str_eval}_0.npz")
+        data_1600_6  = np.load(f"./outputs/mse_global_train_{Re_str_train}_eval_{Re_str_eval}/std_vs_error_data_nei_{Re_str_eval}_6.npz")
+        data_1600_26  = np.load(f"./outputs/mse_global_train_{Re_str_train}_eval_{Re_str_eval}/std_vs_error_data_nei_{Re_str_eval}_26.npz")
+
+
+        t = np.array([1,2,3])
+        idx_plot = [1,3,5]
+
+        t = np.array([1,2,3,4,5,6])
+        idx_plot = list(range(6))
+
+        width = 0.1
+        
+        # Bar chart 
+        plt.rcParams.update({'font.size': 16})
+        fig, ax = plt.subplots(figsize=(9,4))
+
+        # Model 1:
+        ax.bar(t + 0*width, data_1600_0['mse_gnn_1'][idx_plot],  width, color='silver')
+        ax.bar(t + 1*width, data_1600_6['mse_gnn_1'][idx_plot],  width, color='skyblue')
+        ax.bar(t + 2*width, data_1600_26['mse_gnn_1'][idx_plot], width, color='tomato')
+
+        # Model 2:
+        ax.bar(t + 3*width + 0.05, data_1600_0['mse_gnn_2'][idx_plot],  width, color='silver', hatch="/")
+        ax.bar(t + 4*width + 0.05, data_1600_6['mse_gnn_2'][idx_plot],  width, color='skyblue', hatch="/")
+        ax.bar(t + 5*width + 0.05, data_1600_26['mse_gnn_2'][idx_plot], width, color='tomato', hatch="/")
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel('Mean-Squared Error')
+        ax.set_ylim([0, 1e-2])
+        ax.set_xticks([])
+        ax.grid(False)
+
+        #ax.set_yscale('log')
+        #ax.set_ylim([1e-5, 1e-2])
+        plt.show(block=False)
 
 
     # ~~~~ Scatter plots: RMS velocity vs GNN prediction error (FOR PAPER) 
