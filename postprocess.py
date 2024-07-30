@@ -45,11 +45,13 @@ def count_parameters(mdl):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     a = torch.load('./saved_models/NO_NOISE_GNN_ROLLOUT_1_SEED_122_4_3_128_4_2_2_2_1_16.tar')
+    a = torch.load('./saved_models/GNN_ROLLOUT_1_SEED_122_4_3_128_4_2_2_2_2_0_16.tar')
     fig, ax = plt.subplots()
     ax.plot(a['loss_hist_train'][1:], lw=2)
     ax.plot(a['loss_hist_test'], lw=2)
+    ax.set_yscale('log')
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
     plt.show(block=False)
@@ -68,6 +70,8 @@ if 1 == 0:
             time_lag = rollout_length, 
             fraction_valid = 0.0)
     print('Done loading dataset.')
+
+    asdf
 
     # # Get data: 
     # sample = data_list[0]
@@ -286,7 +290,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Test PyGeom data 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     path_to_data = "./datasets/speedy_numpy_file_train.npz"
     device_for_loading = "cpu"
     data_train_list, data_valid_list = spd.get_pygeom_dataset(
@@ -295,6 +299,7 @@ if 1 == 1:
             time_lag = 1, 
             fraction_valid = 0.1)
     
+
     # Get data: 
     sample = data_train_list[0]
     # field_id = 3 
@@ -307,15 +312,42 @@ if 1 == 1:
     # for baseline -- n_mmp_layers = 2, max_level_topk = 0 
     # for finetune -- n_mmp_layers = 1, max_level_topk = 1
 
+    # baseline model - single scale 
+    input_node_channels = sample.x.shape[1]
+    input_edge_channels = sample.edge_attr.shape[1]
+    hidden_channels = 32
+    output_node_channels = input_node_channels
+    n_mlp_hidden_layers = 2 
+    n_mmp_layers = 2
+    n_messagePassing_layers = 8
+    max_level_mmp = 0
+    l_char = 1
+    max_level_topk = 0
+    rf_topk = 4
 
-    # Baseline model 
+    model_ss = gnn.TopkMultiscaleGNN(
+            input_node_channels,
+            input_edge_channels,
+            hidden_channels,
+            output_node_channels,
+            n_mlp_hidden_layers,
+            n_mmp_layers,
+            n_messagePassing_layers,
+            max_level_mmp,
+            l_char,
+            max_level_topk,
+            rf_topk,
+            name='gnn')
+
+
+    # baseline model - multiscale  
     input_node_channels = sample.x.shape[1]
     input_edge_channels = sample.edge_attr.shape[1]
     hidden_channels = 32
     output_node_channels = input_node_channels
     n_mlp_hidden_layers = 2 
     n_mmp_layers = 2 
-    n_messagePassing_layers = 2 
+    n_messagepassing_layers = 2 
     max_level_mmp = 2
     l_char = 1
     max_level_topk = 0
