@@ -61,7 +61,7 @@ class TopkMultiscaleGNN(torch.nn.Module):
                 input_channels = self.input_node_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -70,7 +70,7 @@ class TopkMultiscaleGNN(torch.nn.Module):
                 input_channels = self.input_edge_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -79,7 +79,7 @@ class TopkMultiscaleGNN(torch.nn.Module):
                 input_channels = self.hidden_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.output_node_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 )
         
         # ~~~~ down mmp layers
@@ -279,7 +279,7 @@ class MultiscaleGNN(torch.nn.Module):
                 input_channels = self.input_node_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -288,7 +288,7 @@ class MultiscaleGNN(torch.nn.Module):
                 input_channels = self.input_edge_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -297,7 +297,7 @@ class MultiscaleGNN(torch.nn.Module):
                 input_channels = self.hidden_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.output_node_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 )
         
         # ~~~~ Processor 
@@ -393,7 +393,7 @@ class SinglescaleGNN(torch.nn.Module):
                 input_channels = self.input_node_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -402,7 +402,7 @@ class SinglescaleGNN(torch.nn.Module):
                 input_channels = self.input_edge_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.hidden_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.hidden_channels)
                 )
 
@@ -411,7 +411,7 @@ class SinglescaleGNN(torch.nn.Module):
                 input_channels = self.hidden_channels,
                 hidden_channels = [self.hidden_channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.output_node_channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 )
         
         # ~~~~ Processor 
@@ -556,7 +556,7 @@ class MessagePassingLayer(torch.nn.Module):
                 input_channels = self.channels*3,
                 hidden_channels = [self.channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.channels)
                 )
 
@@ -565,7 +565,7 @@ class MessagePassingLayer(torch.nn.Module):
                 input_channels = self.channels*2,
                 hidden_channels = [self.channels]*(self.n_mlp_hidden_layers+1),
                 output_channels = self.channels,
-                activation_layer = torch.nn.ELU(),
+                activation_layer = torch.nn.ReLU(),
                 norm_layer = torch.nn.LayerNorm(self.channels)
                 )
 
