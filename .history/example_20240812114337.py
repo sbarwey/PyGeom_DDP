@@ -39,7 +39,7 @@ ax.imshow(f_plt)
 plt.show(block=False)
 
 # Create model 
-device = 'cpu' 
+device = 'cpu'
 
 # ~~~~ Baseline model settings (no top-k pooling) 
 # 1 MMP level (no graph coarsening), and 0 top-k levels 
