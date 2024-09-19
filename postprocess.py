@@ -918,7 +918,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions, small trajectories...')
     if torch.cuda.is_available():
         device = 'cuda:0'
@@ -927,6 +927,7 @@ if 1 == 1:
 
     header_list = ['no_budget_reg', 'budget_reg_lam_0.0001', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01', 'baseline']
     header_list = ['budget_reg_lam_test_no_inv_budget']
+    header_list = ['baseline']
 
     for header in header_list: 
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
@@ -974,6 +975,7 @@ if 1 == 1:
             Re_list = sorted([item for item in Re_list if 'Re_' in item])
             Re_test = Re_list[1::2]
             Re_test = ['Re_27233', 'Re_35392', 'Re_45589']
+            Re_test = ['Re_45589']
 
             for Re_str in Re_test: # loops through Re_test 
                 print('\t%s' %(Re_str))
@@ -986,8 +988,8 @@ if 1 == 1:
                 use_radius = False
                 gnn_dt = 10
 
-                #rollout_steps = 50
-                rollout_steps = 300
+                rollout_steps = 50
+                #rollout_steps = 300
                 test_dataset, _ = bfs.get_pygeom_dataset_cell_data(
                     path_to_vtk_test, 
                     path_to_ei, 
@@ -1018,6 +1020,7 @@ if 1 == 1:
                 # randomly select some integers 
                 # traj_index_list = [50, 150, 250]
                 traj_index_list = [250]
+                asdf
                 for traj_id in traj_index_list: 
                     # This is where openfoam cases will be saved. 
                     #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
@@ -1141,12 +1144,6 @@ if 1 == 1:
                     np.save(budget_folder + '/mse_mask_rollout.npy', mse_mask)
                     np.save(budget_folder + '/mse_full_singlestep.npy', mse_full_ss)
                     np.save(budget_folder + '/mse_mask_singlestep.npy', mse_mask_ss)
-
-
-
-
-
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Focus on effect of Re (big data)
@@ -2087,5 +2084,9 @@ if 1 == 0:
     #ax.set_xlim([0.0075, 0.015])
     #ax.set_ylim([0.003, 0.009])
     plt.show(block=False)
+
+
+
+
 
 
