@@ -139,7 +139,7 @@ def get_pygeom_dataset_cell_data(
 
     # Edge attributes and index, and node positions 
     #print('Reading edge index and node positions...')
-    edge_index = torch.tensor(np.loadtxt(path_to_ei, dtype=np.long).T)
+    edge_index = torch.tensor(np.loadtxt(path_to_ei, dtype=np.longlong).T)
     #edge_attr = np.loadtxt(path_to_ea, dtype=np.float32)
     pos = torch.tensor(np.loadtxt(path_to_pos, dtype=np.float32))
   

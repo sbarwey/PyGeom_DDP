@@ -32,8 +32,8 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-import models.cnn as cnn
-import models.gnn as gnn
+#import models.gnn as gnn
+import models.gnn_topk_relu as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -242,7 +242,8 @@ class Trainer:
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
         # MMP unet + topk 
-        preamble = 'LAM_TEST_NO_INV_B_' 
+        #preamble = 'LAM_TEST_NO_INV_B_' 
+        preamble = 'TOPK_RELU_'
 
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
