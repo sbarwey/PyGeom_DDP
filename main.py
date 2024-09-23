@@ -33,7 +33,8 @@ import torch_geometric
 
 # Models
 #import models.gnn as gnn
-import models.gnn_topk_relu as gnn
+#import models.gnn_topk_relu as gnn
+import models.gnn_topk_sigmoid as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -243,7 +244,8 @@ class Trainer:
 
         # MMP unet + topk 
         #preamble = 'LAM_TEST_NO_INV_B_' 
-        preamble = 'TOPK_RELU_'
+        #preamble = 'TOPK_RELU_'
+        preamble = 'TOPK_SIGMOID_'
 
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
