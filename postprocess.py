@@ -29,8 +29,8 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-import models.cnn as cnn 
-import models.gnn as gnn 
+#import models.gnn as gnn 
+import models.gnn_topk_relu as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -918,7 +918,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
     print('Write model predictions, small trajectories...')
     if torch.cuda.is_available():
         device = 'cuda:0'
@@ -928,10 +928,12 @@ if 1 == 0:
     header_list = ['no_budget_reg', 'budget_reg_lam_0.0001', 'budget_reg_lam_0.001', 'budget_reg_lam_0.01', 'baseline']
     header_list = ['budget_reg_lam_test_no_inv_budget']
     header_list = ['baseline']
+    header_list = ['no_budget_reg']
 
     for header in header_list: 
         modelpath = './saved_models/big_data/dt_gnn_1em4/' + header 
         temp = os.listdir(modelpath)
+        temp = ['TOPK_RELU_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar']
         modelpath_list = [modelpath + '/' + item for item in temp]
 
         for modelpath in modelpath_list: # loops through RF  
@@ -976,6 +978,7 @@ if 1 == 0:
             Re_test = Re_list[1::2]
             Re_test = ['Re_27233', 'Re_35392', 'Re_45589']
             Re_test = ['Re_45589']
+            Re_test = ['Re_35392']
 
             for Re_str in Re_test: # loops through Re_test 
                 print('\t%s' %(Re_str))
@@ -1149,7 +1152,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- UQ stuff [FOR PAPER REVISION] 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions, small trajectories...')
     if torch.cuda.is_available():
         device = 'cuda:0'
