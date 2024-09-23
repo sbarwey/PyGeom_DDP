@@ -29,8 +29,8 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-#import models.gnn as gnn 
-import models.gnn_topk_relu as gnn
+import models.gnn as gnn 
+#import models.gnn_topk_relu as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -139,7 +139,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0: 
+if 1 == 1: 
     print('Postprocess training losses (original)')
 
     # # Comparing baselines:  
@@ -169,6 +169,9 @@ if 1 == 0:
     ft_16 = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
     ft_16_label = 'Finetuned, RF=16'
 
+    ft_16_topkrelu = torch.load('saved_models/big_data/dt_gnn_1em4/%s/TOPK_RELU_NO_RADIUS_LR_1em5_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_16_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
+    ft_16_topkrelu_label = 'Finetuned, RF=16, topkrelu'
+
         
     desc = 'budget_reg_lam_0.001'
     ft_2_br = torch.load('saved_models/big_data/dt_gnn_1em4/%s/NO_RADIUS_LR_1em5_BUDGET_REG_pretrained_topk_unet_rollout_1_seed_65_down_topk_1_1_up_topk_1_factor_2_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(desc))
@@ -192,8 +195,8 @@ if 1 == 0:
     baseline_loss = np.mean(bl['loss_hist_test'][-10:])
 
     # No budget reg 
-    combined = [ft_2, ft_4, ft_8, ft_16]
-    labels = [ft_2_label, ft_4_label, ft_8_label, ft_16_label]
+    combined = [ft_2, ft_4, ft_8, ft_16, ft_16_topkrelu]
+    labels = [ft_2_label, ft_4_label, ft_8_label, ft_16_label, ft_16_topkrelu_label]
 
     fig, ax = plt.subplots(figsize=(8,6))
     ax.axhline(y=baseline_loss, color='black', linestyle='--', lw=2)
@@ -206,6 +209,8 @@ if 1 == 0:
     ax.legend(fancybox=False, edgecolor='black', framealpha=1)
     ax.set_title('Validation Loss -- Lam = 0')
     plt.show(block=False)
+
+    asdf
 
     # With budget reg
     combined = [ft_2_br, ft_4_br, ft_8_br, ft_16_br]
@@ -918,7 +923,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1:
+if 1 == 0:
     print('Write model predictions, small trajectories...')
     if torch.cuda.is_available():
         device = 'cuda:0'
