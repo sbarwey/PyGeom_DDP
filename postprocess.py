@@ -1259,8 +1259,8 @@ if 1 == 1:
             for traj_id in traj_index_list: 
                 # This is where openfoam cases will be saved. 
                 #save_dir = '/Users/sbarwey/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
-                #save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
-                save_dir = '/Volumes/Novus_SB_14TB/mbp22_backup/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
+                save_dir = '/lus/eagle/projects/datascience/sbarwey/cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
+                #save_dir = '/Volumes/Novus_SB_14TB/mbp22_backup/Files/openfoam_cases/backward_facing_step/Backward_Facing_Step_Cropped_Predictions_Forecasting/big_data_trajectories/%s/traj_%d/%s' %(Re_str,traj_id,header)
 
                 if not os.path.exists(save_dir + '/' + model_save_header):
                     os.makedirs(save_dir + '/' + model_save_header)
@@ -1340,7 +1340,6 @@ if 1 == 1:
                         target_full[model_id, t, :, :] = target.cpu().numpy()
                         mask_ss_full[model_id, t, :, 0] = mask_ss.cpu().numpy() 
                         mask_ro_full[model_id, t, :, 0] = mask.cpu().numpy()
-                        break
                     
                     model.to('cpu')
 
