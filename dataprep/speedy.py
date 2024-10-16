@@ -57,8 +57,8 @@ def get_pygeom_dataset(
     dist = transforms.Distance(norm = False, max_value = None, cat = True)
 
     # populate edge_attr
-    cart(data_ref) # adds cartesian/component-wise distance
-    dist(data_ref) # adds euclidean distance
+    data_ref = cart(data_ref) # adds cartesian/component-wise distance
+    data_ref = dist(data_ref) # adds euclidean distance
 
     # extract edge_attr
     edge_attr = data_ref.edge_attr
