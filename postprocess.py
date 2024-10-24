@@ -7,7 +7,7 @@ from torch_geometric.data import Data
 import torch_geometric.utils as utils
 import torch_geometric.nn as tgnn 
 import matplotlib.pyplot as plt
-import dataprep.nekrs_graph_setup as ngs
+import dataprep.nekrs_graph_setup_bfs as ngs
 import models.gnn as gnn
 from pymech.neksuite import readnek,writenek
 from pymech.dataset import open_dataset
@@ -97,7 +97,7 @@ if __name__ == "__main__":
             print(model_path)
 
     # ~~~~ Spectrum plots 
-    if 1 == 1:
+    if 1 == 0:
         
         # ~~~~ # # ~~~~ EFFECT OF INTERPOLATION 
         # ~~~~ # # nekrs interp : 
@@ -1886,16 +1886,18 @@ if __name__ == "__main__":
  
 
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
-    if 1 == 0:
-        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
-        field1 = readnek(nrs_snap_dir + '/snapshots_target/newtgv0.f00010')
+    if 1 == 1:
+        #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
+        nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_5100_p_7/one_shot'
+        field1 = readnek(nrs_snap_dir + '/snapshots_target/newbfs0.f00010')
         first_element = field1.elem[0]
         print("Type =", type(first_element))
         print(first_element)
 
         #field2 = readnek(nrs_snap_dir + '/snapshots_interp_1to7/newtgv0.f00010')
-        field2 = readnek(nrs_snap_dir + '/snapshots_coarse_7to1/newtgv0.f00010')
+        field2 = readnek(nrs_snap_dir + '/snapshots_coarse_7to1/newbfs0.f00010')
 
+        
         # i_err = []
         # for i in range(len(field1.elem)):
         #     pos_1 = field1.elem[i].pos
@@ -1930,14 +1932,6 @@ if __name__ == "__main__":
         ax.scatter(pos_fine[:,0], pos_fine[:,1])
         ax.scatter(pos_crse[:,0], pos_crse[:,1])
         plt.show(block=False)
-
-
-        # construct interpolation matrices 
-        #pos_fine = (field_fine.elem[eid].pos).reshape((3,-1)).T
-        #pos_crse = (field_crse.elem[eid].pos).reshape((3,-1)).T
-        eid = 0
-        pos_fine = field_fine.elem[eid].pos 
-        pos_crse = field_crse.elem[eid].pos
 
 
         # Test reshaping : 
@@ -1979,11 +1973,16 @@ if __name__ == "__main__":
         # Test plotting: 
         if 1 == 0:
             # Read in element-local edge index 
-            edge_index = torch.tensor(np.loadtxt("./temp/edge_index_element_local_rank_0_size_4").astype(np.int64).T)
+            edge_index_poly_7 = torch.tensor(np.loadtxt("./temp/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4").astype(np.int64).T)
+            edge_index_poly_1 = torch.tensor(np.loadtxt("./temp/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4").astype(np.int64).T)
 
+            element_poly_7 = field1.elem[1234]
+            element_poly_1 = field2.elem[1234]
 
             # Plot 
-            pos = torch.tensor(first_element.pos).reshape((3, -1)).T
+            element = element_poly_1
+            edge_index = edge_index_poly_1
+            pos = torch.tensor(element.pos).reshape((3, -1)).T
             edge_xyz = pos[edge_index].permute(1,0,2)
             
             ms = 50
@@ -2008,5 +2007,55 @@ if __name__ == "__main__":
             ax.set_aspect('equal')
             fig.tight_layout()
             plt.show(block=False)
+
+        # Test data pruning 
+        if 1 == 1:
+
+            xhi = field1    
+            xlo = field2
+
+            chi = np.zeros((xhi.nel, 3), dtype=np.float64)
+            clo = np.zeros((xlo.nel, 3), dtype=np.float64)
+            for i in range(xhi.nel):
+                chi[i,:] = xhi.elem[i].centroid[:]
+            for i in range(xlo.nel):
+                clo[i,:] = xlo.elem[i].centroid[:]
+
+            # Keep 100% of elements below y=0, only a 20% above y>0 
+            eid = list(range(xhi.nel))
+            eid = np.array(eid, dtype=np.longlong)
+            is_below_step = chi[:,1] < 0
+            eid_below_step = eid[is_below_step]
+            eid_above_step = eid[~is_below_step]
+
+            sample_size = int(0.1 * len(eid_above_step))
+            eid_above_step_sampled = np.random.choice(eid_above_step, size=sample_size, replace=False)
+
+            eid_keep = np.concatenate((eid_below_step, eid_above_step_sampled))
+            eid_keep.sort()
+
+            fig, ax = plt.subplots(figsize=(12,6))
+            ax.scatter(chi[eid_below_step,0], chi[eid_below_step,1], s=15, color='red')
+            ax.scatter(chi[eid_above_step,0], chi[eid_above_step,1], s=15, color='black')
+            ax.scatter(chi[eid_above_step_sampled,0], chi[eid_above_step_sampled,1], s=15, color='red')
+            ax.set_aspect('equal')
+            ax.grid(False)
+            plt.show(block=False)
+
+            fig, ax = plt.subplots(figsize=(12,6))
+            ax.scatter(chi[eid_keep,0], chi[eid_keep,1], s=15, color='red')
+            ax.set_aspect('equal')
+            ax.grid(False)
+            plt.show(block=False)
+
+            # fig = plt.figure()
+            # ax = fig.add_subplot(111, projection='3d')
+            # ax.scatter(chi[eid_below_step,0], chi[eid_below_step,1], chi[eid_below_step,2], s=5, color='red')
+            # ax.scatter(chi[eid_above_step,0], chi[eid_above_step,1], chi[eid_above_step,2], s=5, color='red')
+            # ax.set_aspect('equal')
+            # plt.show(block=False)
+
+
+            pass
         
 
