@@ -33,7 +33,7 @@ import torch_geometric
 
 import models.gnn as gnn
 
-import dataprep.nekrs_graph_setup as ngs
+import dataprep.nekrs_graph_setup_bfs as ngs
 
 log = logging.getLogger(__name__)
 
@@ -104,21 +104,21 @@ def write_full_dataset(cfg: DictConfig):
 
     # ~~~~ one-shot setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field 
     # GNN is end-to-end .. i.e., it does the interpolation.
-    #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv"
-    case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv"
-    Re_list = ['5100'] #['1600', '2000', '2400']
-    snap_list = ['newtgv0.f00008', 'newtgv0.f00009', 'newtgv0.f00010']
-    n_element_neighbors = 26
+    case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/bfs_2"
+    #case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2"
+    Re_list = ['5100'] 
+    snap_list = ['newbfs0.f00001', 'newbfs0.f00002', 'newbfs0.f00003', 'newbfs0.f00004', 'newbfs0.f00005', 'newbfs0.f00006', 'newbfs0.f00007', 'newbfs0.f00008', 'newbfs0.f00009', 'newbfs0.f00010']
+    n_element_neighbors = 0
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
             snap = snap_list[snap_id]
-            input_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_coarse_7to1/{snap}" 
-            target_path = f"{case_path}/Re_{Re}_poly_7/one_shot/snapshots_target/{snap}" 
+            input_path = f"{case_path}/Re_{Re}_p_7/one_shot/snapshots_coarse_7to1/{snap}" 
+            target_path = f"{case_path}/Re_{Re}_p_7/one_shot/snapshots_target/{snap}" 
 
             # element-local edge index 
-            edge_index_path_lo = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4"
-            edge_index_path_hi = f"{case_path}/Re_{Re}_poly_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
+            edge_index_path_lo = f"{case_path}/Re_{Re}_p_7/gnn_outputs_poly_1/edge_index_element_local_rank_0_size_4"
+            edge_index_path_hi = f"{case_path}/Re_{Re}_p_7/gnn_outputs_poly_7/edge_index_element_local_rank_0_size_4"
 
             if RANK == 0:
                     log.info('in get_pygeom_dataset...')
@@ -135,16 +135,19 @@ def write_full_dataset(cfg: DictConfig):
             train_dataset += train_dataset_temp
             test_dataset += test_dataset_temp
 
+    print(f"number of training elements: {len(train_dataset)}")
+    print(f"number of validate elements: {len(test_dataset)}")
+
     # try torch.save 
     t_save = time.time()
-    torch.save(train_dataset, cfg.data_dir + f"train_dataset.pt")
-    torch.save(test_dataset, cfg.data_dir + f"valid_dataset.pt")
+    torch.save(train_dataset, cfg.data_dir + f"train_dataset_bfs.pt")
+    torch.save(test_dataset, cfg.data_dir + f"valid_dataset_bfs.pt")
     t_save = time.time() - t_save 
     
     # load the dataset 
     t_load = time.time()
-    train_dataset = torch.load(cfg.data_dir + f"train_dataset.pt")
-    test_dataset = torch.load(cfg.data_dir + f"valid_dataset.pt")
+    train_dataset = torch.load(cfg.data_dir + f"train_dataset_bfs.pt")
+    test_dataset = torch.load(cfg.data_dir + f"valid_dataset_bfs.pt")
     t_load = time.time() - t_load
 
     if RANK == 0:

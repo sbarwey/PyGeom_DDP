@@ -278,8 +278,26 @@ def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
     xlo_field = readnek(data_xlo_path)
     xhi_field = readnek(data_xhi_path)
 
+    # Prune data: Keep 100% of elements below y=0, only 10% above y>0 
+    print('\tKeep 100% of elements below y=0, only 10% above y>0')
+    eid = list(range(xhi_field.nel))
+    eid = np.array(eid, dtype=np.longlong)
+
+    chi = np.zeros((xhi_field.nel, 3), dtype=np.float64)
+    for i in range(xhi_field.nel):
+        chi[i,:] = xhi_field.elem[i].centroid[:]
+
+    is_below_step = chi[:,1] < 0
+    eid_below_step = eid[is_below_step]
+    eid_above_step = eid[~is_below_step]
+    sample_size = int(0.1 * len(eid_above_step))
+    eid_above_step_sampled = np.random.choice(eid_above_step, size=sample_size, replace=False)
+    eid_keep = np.concatenate((eid_below_step, eid_above_step_sampled))
+    eid_keep.sort()
+
     # Train / valid split
-    n_snaps = len(xlo_field.elem)
+    #n_snaps = len(xlo_field.elem)
+    n_snaps = len(eid_keep)
 
     if fraction_valid > 0:
         # How many total snapshots to extract 
@@ -321,7 +339,9 @@ def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
 
     data_train_list = []
     data_valid_list = []
-    for i in range(n_snaps):
+    for it in range(len(eid_keep)):
+        i = eid_keep[it] # element id
+
         pos_xlo_i = torch.tensor(xlo_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
         vel_xlo_i = torch.tensor(xlo_field.elem[i].vel).reshape((3, -1)).T
         pos_xhi_i = torch.tensor(xhi_field.elem[i].pos).reshape((3, -1)).T # pygeom pos format -- [N, 3] 
@@ -407,7 +427,7 @@ def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
 
         data_temp = data_temp.to(device_for_loading)
 
-        if idx_train_mask[i] == 1:
+        if idx_train_mask[it] == 1:
             data_train_list.append(data_temp)
         else:
             data_valid_list.append(data_temp)
