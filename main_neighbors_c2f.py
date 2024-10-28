@@ -123,11 +123,13 @@ class Trainer:
 
         # ~~~~ Init datasets
         self.data = self.setup_data()
+        dist.barrier()
         # if WITH_CUDA: 
         #     self.data['train']['stats'][0][0] = self.data['train']['stats'][0][0].cuda()
         #     self.data['train']['stats'][0][1] = self.data['train']['stats'][0][1].cuda()
         #     self.data['train']['stats'][1][0] = self.data['train']['stats'][1][0].cuda()
         #     self.data['train']['stats'][1][1] = self.data['train']['stats'][1][1].cuda()
+
 
         # ~~~~ Init model and move to gpu 
         self.model = self.build_model()
@@ -143,6 +145,7 @@ class Trainer:
             self.model_path = cfg.model_dir + 'model.tar'
 
         # ~~~~ Load model parameters if we are restarting from checkpoint
+        dist.barrier()
         self.epoch = 0
         self.epoch_start = 1
         self.training_iter = 0
@@ -166,7 +169,7 @@ class Trainer:
                 self.loss_hist_train = loss_hist_train_new
                 self.loss_hist_test = loss_hist_test_new
                 self.lr_hist = lr_hist_new 
-            
+        dist.barrier()
 
         # ~~~~ Wrap model in DDP
         if WITH_DDP and SIZE > 1:
@@ -301,6 +304,7 @@ class Trainer:
         data: DataBatch
     ) -> Tensor:
         #t_total = time.time()
+        dist.barrier()
         try: 
             _ = data.node_weight
         except AttributeError: 
@@ -369,6 +373,7 @@ class Trainer:
             target = (data.y - data.x_mean_hi)/(data.x_std_hi + eps)
 
         # 4) evaluate loss 
+        dist.barrier()
         # loss = self.loss_fn(out_gnn, target) # vanilla mse 
         loss = torch.mean( data.node_weight * (out_gnn - target)**2 )
 
@@ -385,6 +390,7 @@ class Trainer:
         #if RANK == 0:
         #    if self.training_iter < 500:
         #        log.info(f"t_1: {t_1}s \t t_2: {t_2}s \t t_total: {t_total}s")
+        dist.barrier()
 
         return loss
 
