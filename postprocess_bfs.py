@@ -475,29 +475,15 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
         use_residual = True
         n_element_neighbors = 0 
-        # if use_residual:
-        #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
-        # else:
-        #     a = torch.load(f"./saved_models/single_scale/gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar")
+        Re_str = "re5100"
+        Re_data = '5100'
 
-        Re_str = "_re3200"
-        #Re_str = ""
-        Re_data = '3200'
-
-        if use_residual:
-            model_list = [
-                #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid_3_7_132_128_3_2_6_False.tar", # crs-6
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid{Re_str}_3_7_132_128_3_2_12_False.tar",# crs-12
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_resid{Re_str}_3_7_132_128_3_2_6_True.tar"] # fne-6
-        else:
-            model_list = [
-                #f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_3_7_132_128_3_2_6_False.tar",
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap{Re_str}_3_7_132_128_3_2_12_False.tar",
-                f"gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap{Re_str}_3_7_132_128_3_2_6_True.tar"]
+        model_list = [
+            f"bfs_gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_{Re_str}_3_7_132_128_3_2_6_True.tar"]# crs-12
 
         for model_path in model_list:
             a = torch.load(f"./saved_models/single_scale/{model_path}")
@@ -511,7 +497,7 @@ if __name__ == "__main__":
             n_messagePassing_layers = input_dict['n_messagePassing_layers']
             use_fine_messagePassing = input_dict['use_fine_messagePassing']
             name = input_dict['name']
-            
+
             model = gnn.GNN_Element_Neighbor_Lo_Hi(
                     input_node_channels             = input_dict['input_node_channels'],
                     input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
@@ -538,7 +524,7 @@ if __name__ == "__main__":
                 #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
                 nrs_snap_dir = './temp'
             else:
-                nrs_snap_dir = f'/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re_data}_poly_7_testset/one_shot'
+                nrs_snap_dir = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_{Re_data}_p_7/one_shot"
             
             # Load in edge index 
             poly_lo = 1
@@ -546,16 +532,14 @@ if __name__ == "__main__":
             if local:
                 case_path = "./temp"
             else: 
-                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/tgv/Re_{Re_data}_poly_7"
+                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_{Re_data}_p_7" 
+
             edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
             edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
-            #t_str_list = ['00019', '00020','00021'] # 1 takes ~5 min 
-            #t_str_list = ['00017', '00019', '00020', '00021'] # 1 takes ~5 min 
-            t_str_list = ['00016', '00017', '00018', '00019', '00020', '00021'] # 1 takes ~5 min 
-            #t_str_list = ['000%02d' %(i) for i in range(12,41)]
+            t_str_list = ['00010', '00011'] # 1 takes ~5 min 
 
             # Get full edge index 
             edge_index = edge_index_lo
@@ -570,19 +554,19 @@ if __name__ == "__main__":
                     end = n_edges_per_element*(i+1)
                     edge_index_full[:, start:end] = edge_index + (node_max_per_element+1)*i
                 edge_index = edge_index_full
-
+                
             for t_str in t_str_list:
                 directory_path = nrs_snap_dir + f"/predictions/{model.get_save_header()}"
-                if os.path.exists(directory_path + f"/newtgv_pred0.f{t_str}"):
-                    print(directory_path + f"/newtgv_pred0.f{t_str} \n already exists!!! Skipping...") 
+                if os.path.exists(directory_path + f"/newbfs_pred0.f{t_str}"):
+                    print(directory_path + f"/newbfs_pred0.f{t_str} \n already exists!!! Skipping...") 
                     continue
 
                 # One-shot
-                xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newtgv0.f{t_str}')
-                xhi_field = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
-                #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newtgv0.f{t_str}')
-                xhi_field_pred = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
-                xhi_field_error = readnek(nrs_snap_dir + f'/snapshots_target/newtgv0.f{t_str}')
+                xlo_field = readnek(nrs_snap_dir + f'/snapshots_coarse_{poly_hi}to{poly_lo}/newbfs0.f{t_str}')
+                xhi_field = readnek(nrs_snap_dir + f'/snapshots_target/newbfs0.f{t_str}')
+                #xhi_field = readnek(nrs_snap_dir + f'/snapshots_interp_{poly_lo}to{poly_hi}/newbfs0.f{t_str}')
+                xhi_field_pred = readnek(nrs_snap_dir + f'/snapshots_target/newbfs0.f{t_str}')
+                xhi_field_error = readnek(nrs_snap_dir + f'/snapshots_target/newbfs0.f{t_str}')
 
                 n_snaps = len(xlo_field.elem)
 
@@ -734,7 +718,6 @@ if __name__ == "__main__":
                                 # data.y = data.x_mean_hi + gnn * (data.x_std_hi + eps)
                                 y_pred = data.x_mean_hi + out_gnn * (data.x_std_hi + eps)
 
-                        
                         # ~~~~ Making the .f file ~~~~ # 
                         # Re-shape the prediction, convert back to fp64 numpy 
                         y_pred = y_pred.cpu()
@@ -758,8 +741,8 @@ if __name__ == "__main__":
                     if not os.path.exists(directory_path):
                         os.makedirs(directory_path)
                         print(f"Directory '{directory_path}' created.")
-                    writenek(directory_path +  f"/newtgv_pred0.f{t_str}", xhi_field_pred)
-                    writenek(directory_path +  f"/newtgv_error0.f{t_str}", xhi_field_error)
+                    writenek(directory_path +  f"/newbfs_pred0.f{t_str}", xhi_field_pred)
+                    writenek(directory_path +  f"/newbfs_error0.f{t_str}", xhi_field_error)
                     print(f'finished writing {t_str}') 
 
     # ~~~~ Save predicted flowfield into .f file 
@@ -1236,7 +1219,7 @@ if __name__ == "__main__":
  
 
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
-    if 1 == 1:
+    if 1 == 0:
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
         nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_5100_p_7/one_shot'
         field1 = readnek(nrs_snap_dir + '/snapshots_target/newbfs0.f00010')
