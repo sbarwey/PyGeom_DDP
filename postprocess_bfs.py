@@ -429,7 +429,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 1:
+    if 1 == 0:
 
         modelpath = "./saved_models/single_scale"
 
@@ -1342,7 +1342,7 @@ if __name__ == "__main__":
             plt.show(block=False)
 
         # Test data pruning 
-        if 1 == 1:
+        if 1 == 0:
 
             xhi = field1    
             xlo = field2
@@ -1406,4 +1406,65 @@ if __name__ == "__main__":
 
             pass
         
+
+    if 1 == 1:
+        """
+        Model freezing tests. 
+        For one model: 
+            - freeze encoder
+            - freeze decoder
+            - freeze coarse-scale processor 
+            - freeze fine-scale processor 
+        """
+
+        # Load a model 
+        modelpath = "./saved_models/single_scale/bfs_gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_re5100_3_7_132_128_3_2_6_True.tar"
+        a = torch.load(modelpath)
+        input_dict = a['input_dict']
+
+        model = gnn.GNN_Element_Neighbor_Lo_Hi( 
+                    input_node_channels = input_dict['input_node_channels'],
+                    input_edge_channels_coarse = input_dict['input_edge_channels_coarse'],
+                    input_edge_channels_fine = input_dict['input_edge_channels_fine'],
+                    hidden_channels = input_dict['hidden_channels'],
+                    output_node_channels = input_dict['output_node_channels'],
+                    n_mlp_hidden_layers = input_dict['n_mlp_hidden_layers'], 
+                    n_messagePassing_layers = input_dict['n_messagePassing_layers'],
+                    use_fine_messagePassing = input_dict['use_fine_messagePassing'], 
+                    name = input_dict['name'])
+
+        
+        # node eencoder
+        node_encoder = model.node_encoder
+        edge_encoder_coarse = model.edge_encoder_coarse
+        edge_encoder_fine = model.edge_encoder_fine
+        node_decoder = model.node_decoder 
+        processor_coarse = model.processor_coarse
+        processor_fine = model.processor_fine
+
+        # Count the model parameters 
+        def count_parameters(mod):
+            return sum(p.numel() for p in mod.parameters() if p.requires_grad)
+
+        # Node encoder 
+        print(f"Parameters in the model: {count_parameters(model)}")
+        print(f"\tnode_encoder: {count_parameters(node_encoder)}")
+        print(f"\tedge_encoder_coarse: {count_parameters(edge_encoder_coarse)}")
+        print(f"\tedge_encoder_fine: {count_parameters(edge_encoder_fine)}")
+        print(f"\tnode_decoder: {count_parameters(node_decoder)}")
+        print(f"\tprocessor_coarse: {count_parameters(processor_coarse)}")
+        print(f"\tprocessor_fine: {count_parameters(processor_fine)}")
+        
+        # Freeze the fine-scale message passing layer  
+        for mp_layer in processor_fine: 
+            mp_layer.freeze_parameters()
+
+        print(f"Parameters in the model: {count_parameters(model)}")
+        
+
+
+
+
+        pass
+
 
