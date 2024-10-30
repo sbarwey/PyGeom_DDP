@@ -429,7 +429,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 0:
+    if 1 == 1:
 
         modelpath = "./saved_models/single_scale"
 
@@ -475,7 +475,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 1:
+    if 1 == 0:
         local = False
         use_residual = True
         n_element_neighbors = 0 
