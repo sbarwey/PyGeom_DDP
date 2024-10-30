@@ -108,7 +108,7 @@ def write_full_dataset(cfg: DictConfig):
     case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2"
     Re_list = ['5100'] 
     snap_list = ['newbfs0.f00001', 'newbfs0.f00002', 'newbfs0.f00003', 'newbfs0.f00004', 'newbfs0.f00005', 'newbfs0.f00006', 'newbfs0.f00007', 'newbfs0.f00008', 'newbfs0.f00009', 'newbfs0.f00010']
-    n_element_neighbors = 0
+    n_element_neighbors = 26
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):
             Re = Re_list[Re_id]
