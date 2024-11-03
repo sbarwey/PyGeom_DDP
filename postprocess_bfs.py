@@ -429,17 +429,19 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 0:
+    if 1 == 1:
 
         modelpath = "./saved_models/single_scale"
 
         re="re5100"
         #re=""
 
-        # # Model 1: 
-        # n_mp = 12
-        # fine_mp = 'False'
+        # Model 1: 
+        n_mp = 12
+        fine_mp = 'False'
         # m1_0 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+
+        m1_0 = torch.load(f'{modelpath}/bfs_gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
         # m1_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
         # m1_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
 
@@ -448,19 +450,22 @@ if __name__ == "__main__":
         fine_mp = 'True'
         m2_0 = torch.load(f'{modelpath}/bfs_gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
         #m2_6 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_6_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
-        #m2_26 = torch.load(f'{modelpath}/gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+        m2_26 = torch.load(f'{modelpath}/bfs_gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar')
+
+        m2_26_ft = torch.load(f'{modelpath}/bfs_finetune_freeze_fsp_gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_{re}_3_7_132_128_3_2_{n_mp}_{fine_mp}.tar') 
 
         plt.rcParams.update({'font.size': 18})
         fig, ax = plt.subplots(figsize=(8,6))
 
         # # model 1 
-        # ax.plot(m1_0['loss_hist_train'][0:], lw=2, color="black", label="M1-0", ls="-")
+        ax.plot(m1_0['loss_hist_train'][0:], lw=2, color="black", label="M1-0", ls="-")
         # ax.plot(m1_6['loss_hist_train'][0:], lw=2, color="black", label="M1-6", ls="--")
         # ax.plot(m1_26['loss_hist_train'][0:], lw=2, color="black", label="M1-26", ls="-.")
         # model 2 
         ax.plot(m2_0['loss_hist_train'][0:], lw=2, color="red", label="M2-0", ls="-")
         # ax.plot(m2_6['loss_hist_train'][0:], lw=2, color="red", label="M2-6", ls="--")
-        # ax.plot(m2_26['loss_hist_train'][0:], lw=2, color="red", label="M2-26", ls="-.")
+        ax.plot(m2_26['loss_hist_train'][0:], lw=2, color="red", label="M2-26", ls="-.")
+        ax.plot(m2_26_ft['loss_hist_train'][0:], lw=2, color="blue", label="M2-26-FT", ls="-.")
 
         #ax.set_yscale('log')
         ax.legend()
@@ -1407,7 +1412,7 @@ if __name__ == "__main__":
             pass
         
 
-    if 1 == 1:
+    if 1 == 0:
         """
         Model freezing tests. 
         For one model: 
