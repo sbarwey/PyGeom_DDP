@@ -32,9 +32,7 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-#import models.gnn as gnn
-#import models.gnn_topk_relu as gnn
-import models.gnn_topk_sigmoid as gnn
+import models.gnn_cons as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -242,97 +240,25 @@ class Trainer:
          
         bbox = [tnsr.item() for tnsr in self.bounding_box]
 
-        # MMP unet + topk 
-        #preamble = 'LAM_TEST_NO_INV_B_' 
-        #preamble = 'TOPK_RELU_'
-        preamble = 'TOPK_SIGMOID_'
+        modelname = 'consmp_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) 
 
-        if not self.cfg.use_noise:
-            preamble += 'NO_NOISE_'
+        if RANK == 0: log.info(f"Modelname: {modelname}")
 
-        if not self.cfg.use_radius:
-            preamble += 'NO_RADIUS_LR_1em5_' 
-
-        if self.cfg.mask_regularization:
-            preamble += 'BUDGET_REG_'
-
-        #modelname = 'topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # baseline
-        modelname = 'pretrained_topk_unet_rollout_%d_seed_%d' %(self.cfg.rollout_steps, self.cfg.seed) # finetune
-
-        topk_reduction_factor = self.cfg.topk_rf
-        model = gnn.GNN_TopK_NoReduction(
-                in_channels_node = 2,
-                in_channels_edge = 3,
+        model = gnn.ConsGNN(
+                input_node_channels = 2,
                 hidden_channels = 128,
-                out_channels = 2, 
-                n_mlp_encode = 3, 
-                n_mlp_mp = 2,
-                n_mp_down_topk = [1,1], # [2], #[1,1],
-                n_mp_up_topk = [1], #[], #[1],
-                pool_ratios = [1./topk_reduction_factor],
-                n_mp_down_enc = [2,2,2], # [4,4,4],
-                n_mp_up_enc = [2,2], # [4,4],
-                n_mp_down_dec = [2,2,2],
-                n_mp_up_dec = [2,2], 
-                lengthscales_enc = [0.01, 0.02],
-                lengthscales_dec = [0.01, 0.02], 
-                bounding_box = bbox, 
-                interpolation_mode = 'knn',
-                act = F.elu,
-                param_sharing = False,
-                name = preamble + modelname)
-
-        if RANK == 0:
-            log.info('NAME: ' + preamble + modelname)
-            log.info('SAVE HEADER: ' + model.get_save_header())
-
-        # ~~~~ FINE-TUNING: 
-        # first, read a trained baseline model (a baseline model without top-k) 
-        #modelpath = self.cfg.work_dir + '/saved_models/big_data/dt_gnn_1em4/%s_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(baseline_modelname)
-        modelpath = self.cfg.baseline_modelpath
-        if RANK == 0:
-            log.info('BASELINE MODEL PATH: ' + modelpath)
-
-        p = torch.load(modelpath)
-        input_dict = p['input_dict']
-        model_read = gnn.GNN_TopK_NoReduction(
-            in_channels_node = input_dict['in_channels_node'],
-            in_channels_edge = input_dict['in_channels_edge'],
-            hidden_channels = input_dict['hidden_channels'],
-            out_channels = input_dict['out_channels'],
-            n_mlp_encode = input_dict['n_mlp_encode'],
-            n_mlp_mp = input_dict['n_mlp_mp'],
-            n_mp_down_topk = input_dict['n_mp_down_topk'],
-            n_mp_up_topk = input_dict['n_mp_up_topk'],
-            pool_ratios = input_dict['pool_ratios'],
-            n_mp_down_enc = input_dict['n_mp_down_enc'],
-            n_mp_up_enc = input_dict['n_mp_up_enc'],
-            n_mp_down_dec = input_dict['n_mp_down_dec'],
-            n_mp_up_dec = input_dict['n_mp_up_dec'], 
-            lengthscales_enc = input_dict['lengthscales_enc'],
-            lengthscales_dec = input_dict['lengthscales_dec'], 
-            bounding_box = input_dict['bounding_box'], 
-            interpolation_mode = input_dict['interp'], 
-            act = input_dict['act'], 
-            param_sharing = input_dict['param_sharing'],
-            filter_lengthscale = input_dict['filter_lengthscale'], 
-            name = input_dict['name'])
-
-        model_read.load_state_dict(p['state_dict'])
+                output_node_channels = 2, 
+                n_mlp_hidden_layers = 2, 
+                n_messagePassing_layers = 8,
+                identical_messagePassing = False,
+                name = modelname)
 
         def count_parameters(mdl):
             return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
 
         if RANK == 0: 
-            print('number of parameters before overwriting: ', count_parameters(model))
-
-        # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
-        model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
-        model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
-        model.set_node_edge_encoder_decoder(model_read)
-
-        if RANK == 0: 
-            print('number of parameters after overwriting: ', count_parameters(model))
+            log.info(f"SAVE HEADER: {model.get_save_header()}")
+            log.info(f"number of parameters: {count_parameters(model)}")
 
         return model
 
@@ -475,13 +401,18 @@ class Trainer:
             loss_dict['comp2'] = loss_dict['comp2'].cuda()
             loss_dict['lam'] = loss_dict['lam'].cuda()
         
+
+        # compute the normal vector 
+        ei = data.edge_index 
+        ei = data.edge_index
+        pos_send = data.pos[ei[0,:]]
+        pos_recv = data.pos[ei[1,:]]
+        dvec = pos_send - pos_recv
+        dist = torch.norm(dvec, dim=1, keepdim=True)
+        nvec = dvec/dist
+
         self.optimizer.zero_grad()
-
-        ## Single prediction:
-        #out = self.model(data.x, data.edge_index, data.edge_attr, data.pos, data.batch)
-        #loss = self.loss_fn(out, data.x)
-
-                
+        
         # Rollout prediction: 
         x_new = data.x
         for t in range(rollout_length):
@@ -493,34 +424,13 @@ class Trainer:
             else:
                 x_old = torch.clone(x_new)
 
-            x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-            #x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-            x_new = x_old + x_src
+            x_new = self.model(x_old, data.edge_index, data.pos, data.edge_attr, nvec, data.batch)
 
             # Accumulate loss 
             target = data.y[t]
             if WITH_CUDA:
                 target = target.cuda()
-
-            if self.cfg.mask_regularization:
-                mse_total = self.loss_fn(x_new, target) 
-                mask = mask.view((-1,1))
-                mse_mask = self.loss_fn(mask*x_new, mask*target)
-
-                budget = mse_mask / mse_total
-                lam = loss_dict['lam']
-                #loss_budget = lam * (1.0/budget) # inverse budget 
-                loss_budget = lam * budget # direct budget -- when lam is negative 
-                
-                # total loss :
-                loss += loss_scale * ( mse_total + loss_budget )
-
-                # store components: 
-                loss_dict['comp1'] += loss_scale * mse_total.item()
-                loss_dict['comp2'] += loss_scale * loss_budget.item()
-
-            else:
-                loss += loss_scale * self.loss_fn(x_new, target)
+            loss += loss_scale * self.loss_fn(x_new, target)
 
 
         if self.scaler is not None and isinstance(self.scaler, GradScaler):
@@ -640,38 +550,35 @@ class Trainer:
                     loss_dict['comp2'] = loss_dict['comp2'].cuda()
                     loss_dict['lam'] = loss_dict['lam'].cuda()
                 
+                # compute the normal vector 
+                ei = data.edge_index 
+                ei = data.edge_index
+                pos_send = data.pos[ei[0,:]] 
+                pos_recv = data.pos[ei[1,:]]
+                dvec = pos_send - pos_recv
+                dist = torch.norm(dvec, dim=1, keepdim=True)
+                nvec = dvec/dist 
+                            
+                self.optimizer.zero_grad()
+                            
                 # Rollout prediction: 
                 x_new = data.x
                 for t in range(rollout_length):
-                    x_old = torch.clone(x_new)
-                    x_src, mask = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-                    #x_src, mask, x_src_bl = self.model(x_old, data.edge_index, data.edge_attr, data.pos, data.batch)
-                    x_new = x_old + x_src
-
+                    if self.cfg.use_noise and t == 0:
+                        noise = self.noise_dist.sample((data.x.shape[0],))
+                        if WITH_CUDA:
+                            noise = noise.cuda()
+                        x_old = torch.clone(x_new) + noise
+                    else:       
+                        x_old = torch.clone(x_new)
+                                
+                    x_new = self.model(x_old, data.edge_index, data.pos, data.edge_attr, nvec, data.batch)
+                                
                     # Accumulate loss 
                     target = data.y[t]
                     if WITH_CUDA:
                         target = target.cuda()
-                    
-                    if self.cfg.mask_regularization:
-                        mse_total = self.loss_fn(x_new, target) 
-                        mask = mask.view((-1,1))
-                        mse_mask = self.loss_fn(mask*x_new, mask*target)
-
-                        budget = mse_mask / mse_total
-                        lam = loss_dict['lam']
-                        # loss_budget = lam * (1.0/budget) # inverse budget 
-                        loss_budget = lam * budget # direct budget -- when lam is negative 
-                        
-                        # total loss :
-                        loss += loss_scale * ( mse_total + loss_budget )
-
-                        # store components: 
-                        loss_dict['comp1'] += loss_scale * mse_total.item()
-                        loss_dict['comp2'] += loss_scale * loss_budget.item()
-                    else:
-                        loss += loss_scale * self.loss_fn(x_new, target)
-
+                    loss += loss_scale * self.loss_fn(x_new, target)
 
                 running_loss += loss.item()
                 running_loss_dict['comp1'] += loss_dict['comp1'].item()
@@ -832,7 +739,7 @@ def train(cfg: DictConfig):
 
 @hydra.main(version_base=None, config_path='./conf', config_name='config')
 def main(cfg: DictConfig) -> None:
-    print('Rank %d, local rank %d, which has device %s. Sees %d devices. Seed = %d' %(RANK,int(LOCAL_RANK),DEVICE,torch.cuda.device_count(), cfg.seed))
+    #print('Rank %d, local rank %d, which has device %s. Sees %d devices. Seed = %d' %(RANK,int(LOCAL_RANK),DEVICE,torch.cuda.device_count(), cfg.seed))
 
     if RANK == 0:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
