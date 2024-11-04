@@ -29,8 +29,8 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-import models.gnn as gnn 
-#import models.gnn_topk_relu as gnn
+#import models.gnn as gnn 
+import models.gnn_topk_relu as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -139,7 +139,7 @@ seed_list = None
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Postprocess training losses: ORIGINAL 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 1: 
+if 1 == 0: 
     print('Postprocess training losses (original)')
 
     # # Comparing baselines:  
@@ -923,7 +923,7 @@ if 1 == 0:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Write model predictions -- Small trajectories, for assessing rollout accuracy (FOR PAPER)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if 1 == 0:
+if 1 == 1:
     print('Write model predictions, small trajectories...')
     if torch.cuda.is_available():
         device = 'cuda:0'
@@ -982,8 +982,8 @@ if 1 == 0:
             Re_list = sorted([item for item in Re_list if 'Re_' in item])
             Re_test = Re_list[1::2]
             Re_test = ['Re_27233', 'Re_35392', 'Re_45589']
-            Re_test = ['Re_45589']
-            Re_test = ['Re_35392']
+            #Re_test = ['Re_45589']
+            #Re_test = ['Re_35392']
 
             for Re_str in Re_test: # loops through Re_test 
                 print('\t%s' %(Re_str))

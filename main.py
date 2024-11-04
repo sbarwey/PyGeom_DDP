@@ -32,9 +32,9 @@ Tensor = torch.Tensor
 import torch_geometric
 
 # Models
-#import models.gnn as gnn
+import models.gnn as gnn
 #import models.gnn_topk_relu as gnn
-import models.gnn_topk_sigmoid as gnn
+#import models.gnn_topk_sigmoid as gnn
 
 # Data preparation
 import dataprep.unstructured_mnist as umnist
@@ -245,7 +245,8 @@ class Trainer:
         # MMP unet + topk 
         #preamble = 'LAM_TEST_NO_INV_B_' 
         #preamble = 'TOPK_RELU_'
-        preamble = 'TOPK_SIGMOID_'
+        #preamble = 'TOPK_SIGMOID_'
+        preamble = 'TIME_TEST_'
 
         if not self.cfg.use_noise:
             preamble += 'NO_NOISE_'
@@ -267,8 +268,8 @@ class Trainer:
                 out_channels = 2, 
                 n_mlp_encode = 3, 
                 n_mlp_mp = 2,
-                n_mp_down_topk = [1,1], # [2], #[1,1],
-                n_mp_up_topk = [1], #[], #[1],
+                n_mp_down_topk = [2], # [1,1], # [2], #[1,1],
+                n_mp_up_topk = [], # [1], #[], #[1],
                 pool_ratios = [1./topk_reduction_factor],
                 n_mp_down_enc = [2,2,2], # [4,4,4],
                 n_mp_up_enc = [2,2], # [4,4],
@@ -286,39 +287,39 @@ class Trainer:
             log.info('NAME: ' + preamble + modelname)
             log.info('SAVE HEADER: ' + model.get_save_header())
 
-        # ~~~~ FINE-TUNING: 
-        # first, read a trained baseline model (a baseline model without top-k) 
-        #modelpath = self.cfg.work_dir + '/saved_models/big_data/dt_gnn_1em4/%s_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(baseline_modelname)
-        modelpath = self.cfg.baseline_modelpath
-        if RANK == 0:
-            log.info('BASELINE MODEL PATH: ' + modelpath)
+        # ~~~~ # # ~~~~ FINE-TUNING: 
+        # ~~~~ # # first, read a trained baseline model (a baseline model without top-k) 
+        # ~~~~ # #modelpath = self.cfg.work_dir + '/saved_models/big_data/dt_gnn_1em4/%s_down_topk_2_up_topk_factor_4_hc_128_down_enc_2_2_2_up_enc_2_2_down_dec_2_2_2_up_dec_2_2_param_sharing_0.tar' %(baseline_modelname)
+        # ~~~~ # modelpath = self.cfg.baseline_modelpath
+        # ~~~~ # if RANK == 0:
+        # ~~~~ #     log.info('BASELINE MODEL PATH: ' + modelpath)
 
-        p = torch.load(modelpath)
-        input_dict = p['input_dict']
-        model_read = gnn.GNN_TopK_NoReduction(
-            in_channels_node = input_dict['in_channels_node'],
-            in_channels_edge = input_dict['in_channels_edge'],
-            hidden_channels = input_dict['hidden_channels'],
-            out_channels = input_dict['out_channels'],
-            n_mlp_encode = input_dict['n_mlp_encode'],
-            n_mlp_mp = input_dict['n_mlp_mp'],
-            n_mp_down_topk = input_dict['n_mp_down_topk'],
-            n_mp_up_topk = input_dict['n_mp_up_topk'],
-            pool_ratios = input_dict['pool_ratios'],
-            n_mp_down_enc = input_dict['n_mp_down_enc'],
-            n_mp_up_enc = input_dict['n_mp_up_enc'],
-            n_mp_down_dec = input_dict['n_mp_down_dec'],
-            n_mp_up_dec = input_dict['n_mp_up_dec'], 
-            lengthscales_enc = input_dict['lengthscales_enc'],
-            lengthscales_dec = input_dict['lengthscales_dec'], 
-            bounding_box = input_dict['bounding_box'], 
-            interpolation_mode = input_dict['interp'], 
-            act = input_dict['act'], 
-            param_sharing = input_dict['param_sharing'],
-            filter_lengthscale = input_dict['filter_lengthscale'], 
-            name = input_dict['name'])
+        # ~~~~ # p = torch.load(modelpath)
+        # ~~~~ # input_dict = p['input_dict']
+        # ~~~~ # model_read = gnn.GNN_TopK_NoReduction(
+        # ~~~~ #     in_channels_node = input_dict['in_channels_node'],
+        # ~~~~ #     in_channels_edge = input_dict['in_channels_edge'],
+        # ~~~~ #     hidden_channels = input_dict['hidden_channels'],
+        # ~~~~ #     out_channels = input_dict['out_channels'],
+        # ~~~~ #     n_mlp_encode = input_dict['n_mlp_encode'],
+        # ~~~~ #     n_mlp_mp = input_dict['n_mlp_mp'],
+        # ~~~~ #     n_mp_down_topk = input_dict['n_mp_down_topk'],
+        # ~~~~ #     n_mp_up_topk = input_dict['n_mp_up_topk'],
+        # ~~~~ #     pool_ratios = input_dict['pool_ratios'],
+        # ~~~~ #     n_mp_down_enc = input_dict['n_mp_down_enc'],
+        # ~~~~ #     n_mp_up_enc = input_dict['n_mp_up_enc'],
+        # ~~~~ #     n_mp_down_dec = input_dict['n_mp_down_dec'],
+        # ~~~~ #     n_mp_up_dec = input_dict['n_mp_up_dec'], 
+        # ~~~~ #     lengthscales_enc = input_dict['lengthscales_enc'],
+        # ~~~~ #     lengthscales_dec = input_dict['lengthscales_dec'], 
+        # ~~~~ #     bounding_box = input_dict['bounding_box'], 
+        # ~~~~ #     interpolation_mode = input_dict['interp'], 
+        # ~~~~ #     act = input_dict['act'], 
+        # ~~~~ #     param_sharing = input_dict['param_sharing'],
+        # ~~~~ #     filter_lengthscale = input_dict['filter_lengthscale'], 
+        # ~~~~ #     name = input_dict['name'])
 
-        model_read.load_state_dict(p['state_dict'])
+        # ~~~~ # model_read.load_state_dict(p['state_dict'])
 
         def count_parameters(mdl):
             return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
@@ -326,13 +327,13 @@ class Trainer:
         if RANK == 0: 
             print('number of parameters before overwriting: ', count_parameters(model))
 
-        # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
-        model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
-        model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
-        model.set_node_edge_encoder_decoder(model_read)
+        # ~~~~ # # write parameters from baseline trained model into new model, and freeze the baseline model parameters in the top-k model  
+        # ~~~~ # model.set_mmp_layer(model_read.down_mps[0][0], model.down_mps[0][0])
+        # ~~~~ # model.set_mmp_layer(model_read.down_mps[0][1], model.up_mps[0][0])
+        # ~~~~ # model.set_node_edge_encoder_decoder(model_read)
 
-        if RANK == 0: 
-            print('number of parameters after overwriting: ', count_parameters(model))
+        # ~~~~ # if RANK == 0: 
+        # ~~~~ #     print('number of parameters after overwriting: ', count_parameters(model))
 
         return model
 
