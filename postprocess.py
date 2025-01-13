@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
         use_residual = True
         n_element_neighbors = 0 
@@ -1085,7 +1085,7 @@ if __name__ == "__main__":
             n_messagePassing_layers = input_dict['n_messagePassing_layers']
             use_fine_messagePassing = input_dict['use_fine_messagePassing']
             name = input_dict['name']
-            
+
             model = gnn.GNN_Element_Neighbor_Lo_Hi(
                     input_node_channels             = input_dict['input_node_channels'],
                     input_edge_channels_coarse      = input_dict['input_edge_channels_coarse'],
@@ -1096,6 +1096,10 @@ if __name__ == "__main__":
                     n_messagePassing_layers         = input_dict['n_messagePassing_layers'],
                     use_fine_messagePassing         = input_dict['use_fine_messagePassing'],
                     name                            = input_dict['name'])
+
+            def count_parameters(mdl):
+                return sum(p.numel() for p in mdl.parameters() if p.requires_grad)
+            print(f"number of parameters in the model: {count_parameters(model)}")
 
             model.load_state_dict(a['state_dict'])
             if torch.cuda.is_available():
@@ -1886,7 +1890,7 @@ if __name__ == "__main__":
  
 
     # ~~~~ PyMech tests -- SB: this is how we go between pymech / pygeom representations. 
-    if 1 == 1:
+    if 1 == 0:
         #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
         nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_5100_p_7/one_shot'
         field1 = readnek(nrs_snap_dir + '/snapshots_target/newbfs0.f00010')

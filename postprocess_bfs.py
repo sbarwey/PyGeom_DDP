@@ -458,19 +458,20 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(figsize=(8,6))
 
         # # model 1 
-        ax.plot(m1_0['loss_hist_train'][0:], lw=2, color="black", label="M1-0", ls="-")
+        # ax.plot(m1_0['loss_hist_train'][0:], lw=2, color="black", label="M1-0", ls="-")
         # ax.plot(m1_6['loss_hist_train'][0:], lw=2, color="black", label="M1-6", ls="--")
         # ax.plot(m1_26['loss_hist_train'][0:], lw=2, color="black", label="M1-26", ls="-.")
         # model 2 
-        ax.plot(m2_0['loss_hist_train'][0:], lw=2, color="red", label="M2-0", ls="-")
+        # ax.plot(m2_0['loss_hist_train'][0:], lw=2, color="red", label="M2-0", ls="-")
         # ax.plot(m2_6['loss_hist_train'][0:], lw=2, color="red", label="M2-6", ls="--")
-        ax.plot(m2_26['loss_hist_train'][0:], lw=2, color="red", label="M2-26", ls="-.")
-        ax.plot(m2_26_ft['loss_hist_train'][0:], lw=2, color="blue", label="M2-26-FT", ls="-.")
+        ax.plot(m2_26['loss_hist_train'][0:], lw=2, color="red", label="Baseline", ls="-")
+        ax.plot(m2_26_ft['loss_hist_train'][0:], lw=2, color="blue", label="Fine-tuned", ls="-")
 
         #ax.set_yscale('log')
-        ax.legend()
+        #ax.legend()
         ax.set_xlabel('Epochs')
         ax.set_ylabel('Loss')
+        #ax.set_xscale('log')
         #ax.tick_params(axis='y', labelcolor='red')  # Set y-axis tick labels to red
         #ax.set_ylim([1e-4, 1e0])
         
