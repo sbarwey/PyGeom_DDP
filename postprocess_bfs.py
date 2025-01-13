@@ -429,7 +429,7 @@ if __name__ == "__main__":
         pass 
 
     # ~~~~ postprocessing: training losses (FOR PAPER) 
-    if 1 == 1:
+    if 1 == 0:
 
         modelpath = "./saved_models/single_scale"
 
@@ -481,15 +481,15 @@ if __name__ == "__main__":
 
     # ~~~~ Save predicted flowfield into .f file 
     # COARSE-TO-FINE GNN 
-    if 1 == 0:
+    if 1 == 1:
         local = False
         use_residual = True
-        n_element_neighbors = 0 
+        n_element_neighbors = 0
         Re_str = "re5100"
         Re_data = '5100'
 
         model_list = [
-            f"bfs_gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_{Re_str}_3_7_132_128_3_2_6_True.tar"]# crs-12
+            f"bfs_gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_{Re_str}_3_7_132_128_3_2_6_True.tar"]
 
         for model_path in model_list:
             a = torch.load(f"./saved_models/single_scale/{model_path}")
@@ -545,7 +545,8 @@ if __name__ == "__main__":
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
-            t_str_list = ['00010', '00011'] # 1 takes ~5 min 
+            #t_str_list = ['00010', '00011'] # 1 takes ~5 min 
+            t_str_list = [f"{i:05d}" for i in range(1, 14)] # full set 
 
             # Get full edge index 
             edge_index = edge_index_lo
