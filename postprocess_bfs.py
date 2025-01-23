@@ -1,5 +1,6 @@
 import numpy as np
 import os,sys,time
+import re
 import torch 
 import torch.nn.functional as F
 import torch_geometric
@@ -484,16 +485,17 @@ if __name__ == "__main__":
     if 1 == 1:
         local = False
         use_residual = True
-        n_element_neighbors = 0
-        Re_str = "re5100"
-        Re_data = '5100'
+        Re_str = "re1600"
+        Re_data = "3200"
 
         model_list = [
-            f"bfs_gnn_lr_1em4_bs_4_nei_{n_element_neighbors}_c2f_multisnap_{Re_str}_3_7_132_128_3_2_6_True.tar"]
+            f"bfs_sampled_gnn_lr_1em4_bs_4_nei_0_c2f_multisnap_resid_{Re_str}_3_7_132_128_3_2_6_True.tar",
+            f"bfs_sampled_gnn_lr_1em4_bs_4_nei_26_c2f_multisnap_resid_{Re_str}_3_7_132_128_3_2_6_True.tar"]
 
         for model_path in model_list:
             a = torch.load(f"./saved_models/single_scale/{model_path}")
             input_dict = a['input_dict'] 
+            n_element_neighbors = int(re.search(r"nei_(\d+)", input_dict['name']).group(1))
             input_node_channels = input_dict['input_node_channels']
             input_edge_channels_coarse = input_dict['input_edge_channels_coarse'] 
             input_edge_channels_fine = input_dict['input_edge_channels_fine'] 
@@ -530,7 +532,7 @@ if __name__ == "__main__":
                 #nrs_snap_dir = '/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/tgv/Re_1600_poly_7'
                 nrs_snap_dir = './temp'
             else:
-                nrs_snap_dir = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_{Re_data}_p_7/one_shot"
+                nrs_snap_dir = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2_rampup/Re_{Re_data}_p_7/one_shot"
             
             # Load in edge index 
             poly_lo = 1
@@ -538,15 +540,15 @@ if __name__ == "__main__":
             if local:
                 case_path = "./temp"
             else: 
-                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2/Re_{Re_data}_p_7" 
+                case_path = f"/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2_rampup/Re_{Re_data}_p_7" 
 
             edge_index_path_lo = f"{case_path}/gnn_outputs_poly_{poly_lo}/edge_index_element_local_rank_0_size_4"
             edge_index_path_hi = f"{case_path}/gnn_outputs_poly_{poly_hi}/edge_index_element_local_rank_0_size_4"
             edge_index_lo = get_edge_index(edge_index_path_lo)
             edge_index_hi = get_edge_index(edge_index_path_hi)
             
-            #t_str_list = ['00010', '00011'] # 1 takes ~5 min 
-            t_str_list = [f"{i:05d}" for i in range(1, 14)] # full set 
+            t_str_list = ['00010', '00011'] # 1 takes ~5 min 
+            #t_str_list = [f"{i:05d}" for i in range(1, 14)] # full set 
 
             # Get full edge index 
             edge_index = edge_index_lo

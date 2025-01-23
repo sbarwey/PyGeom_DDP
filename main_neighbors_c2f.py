@@ -35,6 +35,7 @@ import torch_geometric.nn as tgnn
 import models.gnn as gnn
 
 import dataprep.nekrs_graph_setup_bfs as ngs
+#import dataprep.nekrs_graph_setup_tgv as ngs
 
 log = logging.getLogger(__name__)
 
@@ -243,11 +244,10 @@ class Trainer:
         #test_dataset = torch.load(self.cfg.data_dir + "Single_Snapshot_Re_1600_T_10.0_Interp_1to7/valid_dataset.pt")
 
         # multi snapshot - oneshot  
+        Re=3200
         n_element_neighbors = self.cfg.n_element_neighbors
-        #train_dataset = torch.load(self.cfg.data_dir + f"/train_dataset.pt")
-        #test_dataset = torch.load(self.cfg.data_dir + f"/valid_dataset.pt")
-        train_dataset = torch.load(self.cfg.data_dir + f"/BFS_Multi_Snapshot_Re_5100_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine/train_dataset.pt")
-        test_dataset = torch.load(self.cfg.data_dir + f"/BFS_Multi_Snapshot_Re_5100_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine/valid_dataset.pt")
+        train_dataset = torch.load(self.cfg.data_dir + f"/Multi_Snapshot_Re_{Re}_T_8.0_9.0_10.0_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine/train_dataset.pt")
+        test_dataset = torch.load(self.cfg.data_dir + f"/Multi_Snapshot_Re_{Re}_T_8.0_9.0_10.0_Interp_1to7_Neighbors_{n_element_neighbors}_Coarse2Fine/valid_dataset.pt")
 
         # # multi snapshot - incr 
         # train_dataset = [] 

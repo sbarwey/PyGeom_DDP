@@ -105,9 +105,23 @@ def write_full_dataset(cfg: DictConfig):
     # ~~~~ one-shot setup -- COARSE-TO-FINE. Here, input is coarse field, instead of interpolated c2f field 
     # GNN is end-to-end .. i.e., it does the interpolation.
     #case_path = "/Volumes/Novus_SB_14TB/nek/nekrs_cases/examples_v23_gnn/bfs_2"
-    case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2"
-    Re_list = ['5100'] 
-    snap_list = ['newbfs0.f00001', 'newbfs0.f00002', 'newbfs0.f00003', 'newbfs0.f00004', 'newbfs0.f00005', 'newbfs0.f00006', 'newbfs0.f00007', 'newbfs0.f00008', 'newbfs0.f00009', 'newbfs0.f00010']
+    #case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/bfs_2_rampup"
+    case_path = "/lus/eagle/projects/datascience/sbarwey/codes/nek/nekrs_cases/examples_v23_gnn/cavity_rampup"
+    Re_list = ['1600'] 
+    # original dataset -- three snaps 
+    #snap_list = ['newbfs0.f00010', 'newbfs0.f00012', 'newbfs0.f00014']
+    #snap_list = ['newcavity0.f00010', 'newcavity0.f00012', 'newcavity0.f00014']
+    # finetuning on cavity: 
+    #snap_list = ['newcavity0.f00012']
+
+    # bigger dataset: 
+    #snap_list = ['newbfs0.f00002', 'newbfs0.f00004', 'newbfs0.f00006', 
+    #             'newbfs0.f00008', 'newbfs0.f00010', 'newbfs0.f00012',
+    #             'newbfs0.f00014', 'newbfs0.f00016', 'newbfs0.f00018']
+    #snap_list = ['newcavity0.f00002', 'newcavity0.f00004', 'newcavity0.f00006', 
+    #             'newcavity0.f00008', 'newcavity0.f00010', 'newcavity0.f00012',
+    #             'newcavity0.f00014', 'newcavity0.f00016', 'newcavity0.f00018']
+    snap_list = ['newcavity0.f00010']
     n_element_neighbors = 26
     for Re_id in range(len(Re_list)):
         for snap_id in range(len(snap_list)):

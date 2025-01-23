@@ -286,22 +286,22 @@ def get_pygeom_dataset_lo_hi_pymech(data_xlo_path: str,
     for i in range(xhi_field.nel):
         chi[i,:] = xhi_field.elem[i].centroid[:]
 
-    # # Keep 100% of elements below y=0, only 10% above y>0 
-    # print('\tKeep 100% of elements below y=0, only 10% above y>0')
-    # is_below_step = chi[:,1] < 0
-    # eid_below_step = eid[is_below_step]
-    # eid_above_step = eid[~is_below_step]
-    # sample_size = int(0.1 * len(eid_above_step))
-    # eid_above_step_sampled = np.random.choice(eid_above_step, size=sample_size, replace=False)
-    # eid_keep = np.concatenate((eid_below_step, eid_above_step_sampled))
-    # eid_keep.sort()
-
-    # Discard all elements in warmup region (to the left of x = -5)
-    print('\tDiscard elements in rampup region (to the left of x = -5)')
-    is_after_warmup = chi[:,0] > -5.0
-    eid_after_warmup = eid[is_after_warmup]
-    eid_keep = eid_after_warmup
+    # Keep 100% of elements below y=0, only 10% above y>0 
+    print('\tKeep 100% of elements below y=0, only 10% above y>0')
+    is_below_step = (chi[:, 1] < 0.5) | (chi[:, 1] > 4.5)
+    eid_below_step = eid[is_below_step]
+    eid_above_step = eid[~is_below_step]
+    sample_size = int(0.1 * len(eid_above_step))
+    eid_above_step_sampled = np.random.choice(eid_above_step, size=sample_size, replace=False)
+    eid_keep = np.concatenate((eid_below_step, eid_above_step_sampled))
     eid_keep.sort()
+
+    # # Discard all elements in warmup region (to the left of x = -5)
+    # print('\tDiscard elements in rampup region (to the left of x = -5)')
+    # is_after_warmup = chi[:,0] > -5.0
+    # eid_after_warmup = eid[is_after_warmup]
+    # eid_keep = eid_after_warmup
+    # eid_keep.sort()
 
 
     # Train / valid split
